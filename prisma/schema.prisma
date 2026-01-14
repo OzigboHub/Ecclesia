@@ -121,9 +121,24 @@ model User {
   appointmentsMade          Appointment[]      @relation("AppointmentCreator")
   appointmentsAssigned      Appointment[]      @relation("AppointmentAssignee")
   paymentsRecorded          Payment[]          @relation("PaymentRecorder")
+  passwordResetTokens       PasswordResetToken[]
 
   @@index([organizationId])
   @@index([email])
+}
+
+// --- Password Reset Tokens ---
+model PasswordResetToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([token])
+  @@index([userId])
 }
 
 // --- Pious Organizations ---

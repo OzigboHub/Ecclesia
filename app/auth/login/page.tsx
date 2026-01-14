@@ -1,6 +1,7 @@
 'use client';
 
-import { useTransition } from 'react';
+import { useState, useTransition } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -9,10 +10,12 @@ import { login } from '@/app/actions/auth.actions';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Eye, EyeOff } from 'lucide-react';
 
 export default function LoginPage() {
 	const router = useRouter();
 	const [isPending, startTransition] = useTransition();
+	const [showPassword, setShowPassword] = useState(false);
 
 	const form = useForm<LoginInput>({
 		resolver: zodResolver(loginSchema),
@@ -95,26 +98,51 @@ export default function LoginPage() {
 						</div>
 
 						<div className='space-y-2'>
-							<label
-								htmlFor='password'
-								className='text-sm font-medium'
-							>
-								Password
-							</label>
-							<Input
-								id='password'
-								type='password'
-								placeholder='••••••••'
-								{...register('password')}
-								disabled={isPending}
-								autoComplete='current-password'
-								aria-invalid={!!errors.password}
-								aria-describedby={
-									errors.password
-										? 'password-error'
-										: undefined
-								}
-							/>
+							<div className='flex items-center justify-between'>
+								<label
+									htmlFor='password'
+									className='text-sm font-medium'
+								>
+									Password
+								</label>
+								<Link
+									href='/auth/forgot-password'
+									className='text-xs text-primary hover:underline'
+								>
+									Forgot password?
+								</Link>
+							</div>
+							<div className='relative'>
+								<Input
+									id='password'
+									type={showPassword ? 'text' : 'password'}
+									placeholder='••••••••'
+									{...register('password')}
+									disabled={isPending}
+									autoComplete='current-password'
+									className='pr-10'
+									aria-invalid={!!errors.password}
+									aria-describedby={
+										errors.password
+											? 'password-error'
+											: undefined
+									}
+								/>
+								<button
+									type='button'
+									onClick={() =>
+										setShowPassword(!showPassword)
+									}
+									className='absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground'
+									tabIndex={-1}
+								>
+									{showPassword ? (
+										<EyeOff className='h-4 w-4' />
+									) : (
+										<Eye className='h-4 w-4' />
+									)}
+								</button>
+							</div>
 							{errors.password && (
 								<p
 									id='password-error'
@@ -135,8 +163,16 @@ export default function LoginPage() {
 						</Button>
 					</form>
 
-					<div className='mt-6 text-center text-sm text-muted-foreground'>
-						<p>Need help? Contact your parish administrator.</p>
+					<div className='mt-6 text-center text-sm'>
+						<p className='text-muted-foreground'>
+							Don&apos;t have an account?{' '}
+							<Link
+								href='/auth/register'
+								className='text-primary hover:underline font-medium'
+							>
+								Register
+							</Link>
+						</p>
 					</div>
 				</div>
 

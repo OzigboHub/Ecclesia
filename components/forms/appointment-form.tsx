@@ -1,133 +1,318 @@
-'use client'
+'use client';
 
-import * as React from 'react'
-import { Input } from '@/components/ui/input'
-import { Select } from '@/components/ui/select'
-import { Button } from '@/components/ui/button'
+import { useTransition, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import {
+	createAppointmentSchema,
+	type CreateAppointmentInput,
+} from '@/lib/validators/appointment.schema';
+import { createAppointment } from '@/app/actions/appointment.actions';
+import { getParishioners } from '@/app/actions/parishioner.actions';
+import { toast } from 'sonner';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 
 interface AppointmentFormProps {
-    onSubmit: (data: any) => void
-    isLoading?: boolean
+	onSuccess?: () => void;
 }
 
-const APPOINTMENT_TYPE_OPTIONS = [
-    { label: 'Confession', value: 'CONFESSION' },
-    { label: 'Counseling', value: 'COUNSELING' },
-    { label: 'Meeting with Parish Priest', value: 'MEETING' },
-    { label: 'Other', value: 'OTHER' },
-]
+interface Parishioner {
+	id: string;
+	firstName: string;
+	lastName: string;
+	email: string | null;
+	phone: string | null;
+}
 
-const ASSIGNED_TO_OPTIONS = [
-    { label: 'Rev. Fr. John Doe', value: 'fr-john' },
-    { label: 'Rev. Fr. Peter Smith', value: 'fr-peter' },
-    { label: 'Parish Secretary', value: 'secretary' },
-]
+export function AppointmentForm({ onSuccess }: AppointmentFormProps) {
+	const [isPending, startTransition] = useTransition();
+	const [parishioners, setParishioners] = useState<Parishioner[]>([]);
+	const [isLoadingParishioners, setIsLoadingParishioners] = useState(true);
+	const router = useRouter();
 
-export function AppointmentForm({ onSubmit, isLoading }: AppointmentFormProps) {
-    const [formData, setFormData] = React.useState({
-        title: '',
-        description: '',
-        startTime: '',
-        endTime: '',
-        type: 'MEETING',
-        assignedToId: '',
-        parishionerName: '',
-        contactPhone: '',
-    })
+	const form = useForm<CreateAppointmentInput>({
+		resolver: zodResolver(createAppointmentSchema),
+		defaultValues: {
+			title: '',
+			description: '',
+			type: 'MEETING',
+			startTime: '',
+			endTime: '',
+			assignedToId: '',
+			parishionerId: '',
+			notes: '',
+		},
+	});
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-        const { name, value } = e.target
-        setFormData(prev => ({ ...prev, [name]: value }))
-    }
+	const {
+		register,
+		handleSubmit,
+		control,
+		formState: { errors },
+		setError,
+		reset,
+	} = form;
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault()
-        onSubmit(formData)
-    }
+	// Load parishioners
+	useEffect(() => {
+		async function loadParishioners() {
+			const result = await getParishioners();
+			if (result.success && result.data) {
+				setParishioners(result.data);
+			}
+			setIsLoadingParishioners(false);
+		}
+		loadParishioners();
+	}, []);
 
-    return (
-        <form onSubmit={handleSubmit} className="space-y-4">
-            <Input
-                label="Appointment Title"
-                name="title"
-                value={formData.title}
-                onChange={handleChange}
-                placeholder="e.g. Wedding Counseling"
-                required
-            />
+	const onSubmit = (data: CreateAppointmentInput) => {
+		startTransition(async () => {
+			const result = await createAppointment(data);
 
-            <div className="pt-2">
-                <label className="block text-sm font-medium mb-1.5">Description (Optional)</label>
-                <textarea
-                    name="description"
-                    value={formData.description}
-                    onChange={(e: any) => handleChange(e)}
-                    className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 min-h-[80px]"
-                    placeholder="Briefly describe the purpose of the meeting..."
-                />
-            </div>
+			if (result.success) {
+				toast.success(result.message);
+				reset();
+				router.refresh();
+				onSuccess?.();
+			} else {
+				toast.error(result.message);
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Select
-                    label="Appointment Type"
-                    name="type"
-                    options={APPOINTMENT_TYPE_OPTIONS}
-                    value={formData.type}
-                    onChange={handleChange}
-                    required
-                />
-                <Select
-                    label="Assign To"
-                    name="assignedToId"
-                    options={ASSIGNED_TO_OPTIONS}
-                    value={formData.assignedToId}
-                    onChange={handleChange}
-                    required
-                />
-            </div>
+				// Set server-side validation errors on fields
+				if (result.errors) {
+					Object.entries(result.errors).forEach(
+						([field, messages]) => {
+							setError(field as keyof CreateAppointmentInput, {
+								type: 'server',
+								message: messages[0],
+							});
+						}
+					);
+				}
+			}
+		});
+	};
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Input
-                    label="Start Date & Time"
-                    type="datetime-local"
-                    name="startTime"
-                    value={formData.startTime}
-                    onChange={handleChange}
-                    required
-                />
-                <Input
-                    label="End Date & Time"
-                    type="datetime-local"
-                    name="endTime"
-                    value={formData.endTime}
-                    onChange={handleChange}
-                    required
-                />
-            </div>
+	return (
+		<form
+			onSubmit={handleSubmit(onSubmit)}
+			className='space-y-4'
+		>
+			{/* Appointment Title */}
+			<div className='space-y-2'>
+				<Label htmlFor='title'>Appointment Title *</Label>
+				<Input
+					id='title'
+					{...register('title')}
+					placeholder='e.g., Wedding Counseling'
+					disabled={isPending}
+					aria-invalid={!!errors.title}
+					aria-describedby={errors.title ? 'title-error' : undefined}
+				/>
+				{errors.title && (
+					<p
+						id='title-error'
+						className='text-sm text-destructive'
+					>
+						{errors.title.message}
+					</p>
+				)}
+			</div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Input
-                    label="Parishioner Name"
-                    name="parishionerName"
-                    value={formData.parishionerName}
-                    onChange={handleChange}
-                    placeholder="Who is visiting?"
-                    required
-                />
-                <Input
-                    label="Contact Phone"
-                    name="contactPhone"
-                    value={formData.contactPhone}
-                    onChange={handleChange}
-                    required
-                />
-            </div>
+			{/* Description */}
+			<div className='space-y-2'>
+				<Label htmlFor='description'>Description</Label>
+				<Textarea
+					id='description'
+					{...register('description')}
+					placeholder='Briefly describe the purpose of the meeting...'
+					rows={3}
+					disabled={isPending}
+				/>
+				{errors.description && (
+					<p className='text-sm text-destructive'>
+						{errors.description.message}
+					</p>
+				)}
+			</div>
 
-            <div className="flex justify-end gap-3 pt-4 border-t border-border">
-                <Button type="submit" isLoading={isLoading} className="w-full sm:w-auto">
-                    Schedule Appointment
-                </Button>
-            </div>
-        </form>
-    )
+			<div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
+				{/* Appointment Type */}
+				<div className='space-y-2'>
+					<Label htmlFor='type'>Appointment Type *</Label>
+					<Controller
+						name='type'
+						control={control}
+						render={({ field }) => (
+							<Select
+								value={field.value}
+								onValueChange={field.onChange}
+								disabled={isPending}
+							>
+								<SelectTrigger id='type'>
+									<SelectValue placeholder='Select type' />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value='CONFESSION'>
+										Confession
+									</SelectItem>
+									<SelectItem value='COUNSELING'>
+										Counseling
+									</SelectItem>
+									<SelectItem value='MEETING'>
+										Meeting with Parish Priest
+									</SelectItem>
+									<SelectItem value='OTHER'>Other</SelectItem>
+								</SelectContent>
+							</Select>
+						)}
+					/>
+					{errors.type && (
+						<p className='text-sm text-destructive'>
+							{errors.type.message}
+						</p>
+					)}
+				</div>
+
+				{/* Parishioner Selection */}
+				<div className='space-y-2'>
+					<Label htmlFor='parishionerId'>Parishioner *</Label>
+					<Controller
+						name='parishionerId'
+						control={control}
+						render={({ field }) => (
+							<Select
+								value={field.value}
+								onValueChange={field.onChange}
+								disabled={isPending || isLoadingParishioners}
+							>
+								<SelectTrigger id='parishionerId'>
+									<SelectValue
+										placeholder={
+											isLoadingParishioners
+												? 'Loading...'
+												: 'Select parishioner'
+										}
+									/>
+								</SelectTrigger>
+								<SelectContent>
+									{parishioners.map((p) => (
+										<SelectItem
+											key={p.id}
+											value={p.id}
+										>
+											{p.firstName} {p.lastName}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						)}
+					/>
+					{errors.parishionerId && (
+						<p className='text-sm text-destructive'>
+							{errors.parishionerId.message}
+						</p>
+					)}
+				</div>
+			</div>
+
+			<div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
+				{/* Start Time */}
+				<div className='space-y-2'>
+					<Label htmlFor='startTime'>Start Date & Time *</Label>
+					<Input
+						id='startTime'
+						type='datetime-local'
+						{...register('startTime')}
+						disabled={isPending}
+						aria-invalid={!!errors.startTime}
+					/>
+					{errors.startTime && (
+						<p className='text-sm text-destructive'>
+							{errors.startTime.message}
+						</p>
+					)}
+				</div>
+
+				{/* End Time */}
+				<div className='space-y-2'>
+					<Label htmlFor='endTime'>End Date & Time *</Label>
+					<Input
+						id='endTime'
+						type='datetime-local'
+						{...register('endTime')}
+						disabled={isPending}
+						aria-invalid={!!errors.endTime}
+					/>
+					{errors.endTime && (
+						<p className='text-sm text-destructive'>
+							{errors.endTime.message}
+						</p>
+					)}
+				</div>
+			</div>
+
+			{/* Assigned To - Optional for now */}
+			<div className='space-y-2'>
+				<Label htmlFor='assignedToId'>
+					Assign To (Optional - Staff Member ID)
+				</Label>
+				<Input
+					id='assignedToId'
+					{...register('assignedToId')}
+					placeholder='Leave empty for unassigned'
+					disabled={isPending}
+				/>
+				{errors.assignedToId && (
+					<p className='text-sm text-destructive'>
+						{errors.assignedToId.message}
+					</p>
+				)}
+			</div>
+
+			{/* Notes */}
+			<div className='space-y-2'>
+				<Label htmlFor='notes'>Additional Notes</Label>
+				<Textarea
+					id='notes'
+					{...register('notes')}
+					placeholder='Any special requirements or notes...'
+					rows={2}
+					disabled={isPending}
+				/>
+				{errors.notes && (
+					<p className='text-sm text-destructive'>
+						{errors.notes.message}
+					</p>
+				)}
+			</div>
+
+			<div className='flex justify-end gap-3 pt-4 border-t border-border'>
+				<Button
+					type='button'
+					variant='outline'
+					onClick={() => reset()}
+					disabled={isPending}
+				>
+					Reset
+				</Button>
+				<Button
+					type='submit'
+					disabled={isPending}
+				>
+					{isPending ? 'Scheduling...' : 'Schedule Appointment'}
+				</Button>
+			</div>
+		</form>
+	);
 }
