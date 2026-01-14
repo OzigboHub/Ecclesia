@@ -1,0 +1,134 @@
+import { z } from 'zod';
+
+// ============================================
+// COMMON FIELD SCHEMAS (Reusable)
+// ============================================
+
+const nameSchema = z
+	.string()
+	.min(2, 'Name must be at least 2 characters')
+	.max(100, 'Name must not exceed 100 characters')
+	.trim();
+
+const emailSchema = z
+	.string()
+	.min(1, 'Email is required')
+	.email('Please enter a valid email address')
+	.toLowerCase()
+	.trim();
+
+const passwordSchema = z
+	.string()
+	.min(8, 'Password must be at least 8 characters')
+	.regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+	.regex(/[0-9]/, 'Password must contain at least one number')
+	.regex(
+		/[^A-Za-z0-9]/,
+		'Password must contain at least one special character'
+	);
+
+// ============================================
+// USER ROLES
+// ============================================
+
+export const userRoles = [
+	'SUPER_ADMIN',
+	'PARISH_ADMIN',
+	'PARISH_SECRETARY',
+	'PARISH_STAFF',
+	'OUTSTATION_ADMIN',
+	'ORGANIZATION_PRESIDENT',
+	'ORGANIZATION_SECRETARY',
+	'PARISHIONER',
+] as const;
+
+export type UserRoleType = (typeof userRoles)[number];
+
+export const roleLabels: Record<UserRoleType, string> = {
+	SUPER_ADMIN: 'Super Admin',
+	PARISH_ADMIN: 'Parish Admin',
+	PARISH_SECRETARY: 'Parish Secretary',
+	PARISH_STAFF: 'Parish Staff',
+	OUTSTATION_ADMIN: 'Outstation Admin',
+	ORGANIZATION_PRESIDENT: 'Organization President',
+	ORGANIZATION_SECRETARY: 'Organization Secretary',
+	PARISHIONER: 'Parishioner',
+};
+
+export const roleDescriptions: Record<UserRoleType, string> = {
+	SUPER_ADMIN: 'Full system access across all organizations',
+	PARISH_ADMIN: 'Full access to parish and outstations',
+	PARISH_SECRETARY: 'Manage parishioners, payments, and records',
+	PARISH_STAFF: 'Limited parish operations access',
+	OUTSTATION_ADMIN: 'Full access to outstation only',
+	ORGANIZATION_PRESIDENT: 'Lead a pious organization',
+	ORGANIZATION_SECRETARY: 'Assist pious organization management',
+	PARISHIONER: 'Basic member access',
+};
+
+// ============================================
+// CREATE USER SCHEMA
+// ============================================
+
+export const createUserSchema = z.object({
+	firstName: nameSchema,
+	lastName: nameSchema,
+	email: emailSchema,
+	password: passwordSchema,
+	role: z.enum(userRoles, {
+		message: 'Please select a valid role',
+	}),
+});
+
+export type CreateUserInput = z.infer<typeof createUserSchema>;
+
+// ============================================
+// UPDATE USER SCHEMA
+// ============================================
+
+export const updateUserSchema = z.object({
+	firstName: nameSchema.optional(),
+	lastName: nameSchema.optional(),
+	email: emailSchema.optional(),
+	role: z
+		.enum(userRoles, {
+			message: 'Please select a valid role',
+		})
+		.optional(),
+});
+
+export type UpdateUserInput = z.infer<typeof updateUserSchema>;
+
+// ============================================
+// CHANGE PASSWORD SCHEMA
+// ============================================
+
+export const changePasswordSchema = z
+	.object({
+		newPassword: passwordSchema,
+		confirmPassword: z.string().min(1, 'Please confirm your password'),
+	})
+	.refine((data) => data.newPassword === data.confirmPassword, {
+		message: 'Passwords do not match',
+		path: ['confirmPassword'],
+	});
+
+export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
+
+// ============================================
+// USER FILTER/QUERY SCHEMA
+// ============================================
+
+export const userQuerySchema = z.object({
+	page: z.coerce.number().int().positive().default(1),
+	limit: z.coerce.number().int().min(1).max(100).default(20),
+	search: z.string().optional(),
+	role: z.enum(userRoles).optional(),
+	isActive: z.coerce.boolean().optional(),
+	sortBy: z
+		.enum(['firstName', 'lastName', 'email', 'createdAt', 'lastLogin'])
+		.default('createdAt'),
+	sortOrder: z.enum(['asc', 'desc']).default('desc'),
+});
+
+export type UserQuery = z.infer<typeof userQuerySchema>;
