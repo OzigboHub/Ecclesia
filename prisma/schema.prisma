@@ -50,40 +50,40 @@ model OrganizationFeatureSettings {
   id                        String       @id @default(uuid())
   organizationId            String       @unique
   organization              Organization @relation(fields: [organizationId], references: [id])
-  
+
   // Core Features
   enableParishionerManagement Boolean    @default(true)
   enableSacramentalRecords    Boolean    @default(true)
   enableFinancialManagement   Boolean    @default(true)
-  
+
   // Payment Features
   enableOfferings             Boolean    @default(true)
   enableTithes                Boolean    @default(true)
   enableDonationCampaigns     Boolean    @default(true)
   enableCustomDonationTypes   Boolean    @default(true)
   enableMonthlyTracking       Boolean    @default(true)
-  
+
   // Spiritual Features
   enableMassIntentions        Boolean    @default(true)
   enableAppointments          Boolean    @default(true)
   enableConfessionBooking     Boolean    @default(true)
-  
+
   // Communication Features
   enableLiveStreaming         Boolean    @default(false)
   enableAnnouncements         Boolean    @default(true)
   enableSMSNotifications      Boolean    @default(false)
   enableEmailNotifications    Boolean    @default(true)
-  
+
   // Organization Features
   enablePiousOrganizations    Boolean    @default(true)
   enableEventManagement       Boolean    @default(true)
-  
+
   // Advanced Features
   enableOnlinePayments        Boolean    @default(false)
   enableRecurringDonations    Boolean    @default(false)
   enableMobileApp             Boolean    @default(false)
   enablePublicWebsite         Boolean    @default(true)
-  
+
   createdAt                   DateTime   @default(now())
   updatedAt                   DateTime   @updatedAt
 
@@ -152,7 +152,6 @@ model PiousOrganization {
 enum Gender {
   MALE
   FEMALE
-  OTHER
 }
 
 enum MaritalStatus {
@@ -173,6 +172,9 @@ model Parishioner {
   dateOfBirth    DateTime?
   gender         Gender?
   maritalStatus  MaritalStatus?
+  occupation     String?
+  isActive       Boolean        @default(true)
+  deletedAt      DateTime?
   organizationId String
   organization   Organization   @relation(fields: [organizationId], references: [id])
   createdAt      DateTime       @default(now())
@@ -380,7 +382,7 @@ model Payment {
   paymentMethod       PaymentMethod
   paymentStatus       PaymentStatus     @default(PENDING)
   transactionRef      String?           @unique
-  
+
   // Payer Information
   parishionerId       String?
   parishioner         Parishioner?      @relation(fields: [parishionerId], references: [id])
@@ -388,7 +390,7 @@ model Payment {
   onBehalfOf          String?           // Optional: If paying on behalf of someone else
   payerEmail          String?
   payerPhone          String?
-  
+
   // Link to specific purpose
   massIntentionId     String?
   massIntention       MassIntention?    @relation(fields: [massIntentionId], references: [id])
@@ -396,13 +398,13 @@ model Payment {
   donationCampaign    DonationCampaign? @relation(fields: [donationCampaignId], references: [id])
   donationId          String?
   donation            Donation?         @relation(fields: [donationId], references: [id])
-  
+
   // Organization and Audit
   organizationId      String
   organization        Organization      @relation(fields: [organizationId], references: [id])
   recordedById        String
   recordedBy          User              @relation("PaymentRecorder", fields: [recordedById], references: [id])
-  
+
   notes               String?
   receiptNumber       String?           @unique
   paymentDate         DateTime          @default(now())

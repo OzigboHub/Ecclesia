@@ -5,14 +5,13 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
-	createParishionerSchema,
-	type CreateParishionerInput,
+	updateParishionerSchema,
+	type UpdateParishionerInput,
 } from '@/lib/validators/parishioner.schema';
-import { createParishioner } from '@/app/actions/parishioner.actions';
+import { updateParishioner } from '@/app/actions/parishioner.actions';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
 	Select,
 	SelectContent,
@@ -20,29 +19,33 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
+import type { Parishioner } from '@prisma/client';
 
-interface ParishionerFormProps {
-	onSuccess?: () => void;
+interface ParishionerEditFormProps {
+	parishioner: Parishioner;
 }
 
-export function ParishionerForm({ onSuccess }: ParishionerFormProps) {
+export function ParishionerEditForm({ parishioner }: ParishionerEditFormProps) {
 	const [isPending, startTransition] = useTransition();
 	const router = useRouter();
 
-	const form = useForm<CreateParishionerInput>({
-		resolver: zodResolver(createParishionerSchema),
+	const form = useForm<UpdateParishionerInput>({
+		resolver: zodResolver(updateParishionerSchema),
 		defaultValues: {
-			firstName: '',
-			lastName: '',
-			email: '',
-			phone: '',
-			gender: undefined,
-			maritalStatus: undefined,
-			dateOfBirth: undefined,
-			address: '',
-			occupation: '',
+			firstName: parishioner.firstName,
+			lastName: parishioner.lastName,
+			email: parishioner.email ?? '',
+			phone: parishioner.phone ?? '',
+			gender: parishioner.gender ?? undefined,
+			maritalStatus: parishioner.maritalStatus ?? undefined,
+			dateOfBirth: parishioner.dateOfBirth
+				? new Date(parishioner.dateOfBirth).toISOString().split('T')[0]
+				: undefined,
+			address: parishioner.address ?? '',
+			occupation: parishioner.occupation ?? '',
 		},
 	});
 
@@ -51,21 +54,18 @@ export function ParishionerForm({ onSuccess }: ParishionerFormProps) {
 		handleSubmit,
 		formState: { errors },
 		setError,
-		reset,
-		setValue,
 		watch,
+		setValue,
 	} = form;
 
-	const onSubmit = (data: CreateParishionerInput) => {
+	const onSubmit = (data: UpdateParishionerInput) => {
 		startTransition(async () => {
-			const result = await createParishioner(data);
+			const result = await updateParishioner(parishioner.id, data);
 
 			if (result.success) {
 				toast.success(result.message);
-				reset();
-				router.push('/dashboard/parishioners');
+				router.push(`/dashboard/parishioners/${parishioner.id}`);
 				router.refresh();
-				onSuccess?.();
 			} else {
 				toast.error(result.message);
 
@@ -73,7 +73,7 @@ export function ParishionerForm({ onSuccess }: ParishionerFormProps) {
 				if (result.errors) {
 					Object.entries(result.errors).forEach(
 						([field, messages]) => {
-							setError(field as keyof CreateParishionerInput, {
+							setError(field as keyof UpdateParishionerInput, {
 								type: 'server',
 								message: messages[0],
 							});
@@ -98,10 +98,7 @@ export function ParishionerForm({ onSuccess }: ParishionerFormProps) {
 					<div className='grid gap-4 md:grid-cols-2'>
 						{/* First Name */}
 						<div className='space-y-2'>
-							<Label htmlFor='firstName'>
-								First Name{' '}
-								<span className='text-destructive'>*</span>
-							</Label>
+							<Label htmlFor='firstName'>First Name *</Label>
 							<Input
 								id='firstName'
 								{...register('firstName')}
@@ -126,10 +123,7 @@ export function ParishionerForm({ onSuccess }: ParishionerFormProps) {
 
 						{/* Last Name */}
 						<div className='space-y-2'>
-							<Label htmlFor='lastName'>
-								Last Name{' '}
-								<span className='text-destructive'>*</span>
-							</Label>
+							<Label htmlFor='lastName'>Last Name *</Label>
 							<Input
 								id='lastName'
 								{...register('lastName')}
@@ -156,19 +150,14 @@ export function ParishionerForm({ onSuccess }: ParishionerFormProps) {
 					<div className='grid gap-4 md:grid-cols-2'>
 						{/* Gender */}
 						<div className='space-y-2'>
-							<Label htmlFor='gender'>
-								Gender{' '}
-								<span className='text-destructive'>*</span>
-							</Label>
+							<Label htmlFor='gender'>Gender *</Label>
 							<Select
 								value={watch('gender') || ''}
 								onValueChange={(value) =>
 									setValue(
 										'gender',
 										value as 'MALE' | 'FEMALE',
-										{
-											shouldValidate: true,
-										}
+										{ shouldValidate: true }
 									)
 								}
 								disabled={isPending}
@@ -258,9 +247,7 @@ export function ParishionerForm({ onSuccess }: ParishionerFormProps) {
 				<CardContent className='space-y-4'>
 					{/* Email */}
 					<div className='space-y-2'>
-						<Label htmlFor='email'>
-							Email <span className='text-destructive'>*</span>
-						</Label>
+						<Label htmlFor='email'>Email *</Label>
 						<Input
 							id='email'
 							type='email'
@@ -325,7 +312,7 @@ export function ParishionerForm({ onSuccess }: ParishionerFormProps) {
 				<CardHeader>
 					<CardTitle>Additional Information</CardTitle>
 				</CardHeader>
-				<CardContent>
+				<CardContent className='space-y-4'>
 					{/* Occupation */}
 					<div className='space-y-2'>
 						<Label htmlFor='occupation'>Occupation</Label>
@@ -345,7 +332,7 @@ export function ParishionerForm({ onSuccess }: ParishionerFormProps) {
 			</Card>
 
 			{/* Submit Buttons */}
-			<div className='flex justify-end gap-3'>
+			<div className='flex justify-end gap-3 pt-4 border-t'>
 				<Button
 					type='button'
 					variant='outline'
@@ -361,7 +348,7 @@ export function ParishionerForm({ onSuccess }: ParishionerFormProps) {
 					{isPending && (
 						<Loader2 className='mr-2 h-4 w-4 animate-spin' />
 					)}
-					{isPending ? 'Creating...' : 'Create Parishioner'}
+					{isPending ? 'Saving...' : 'Save Changes'}
 				</Button>
 			</div>
 		</form>
