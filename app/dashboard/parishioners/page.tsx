@@ -2,6 +2,7 @@ import { auth } from '@/auth';
 import { redirect } from 'next/navigation';
 import { getParishioners } from '@/app/actions/parishioner.actions';
 import { ParishionersList } from '@/components/features/parishioners/parishioners-list';
+import { CsvImportDialog } from '@/components/features/parishioners/csv-import-dialog';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import Link from 'next/link';
@@ -39,12 +40,15 @@ export default async function ParishionersPage() {
 						Manage your parish members
 					</p>
 				</div>
-				<Link href='/dashboard/parishioners/new'>
-					<Button>
-						<Plus className='mr-2 h-4 w-4' />
-						Add Parishioner
-					</Button>
-				</Link>
+				<div className='flex gap-2'>
+					<CsvImportDialog />
+					<Link href='/dashboard/parishioners/new'>
+						<Button>
+							<Plus className='mr-2 h-4 w-4' />
+							Add Parishioner
+						</Button>
+					</Link>
+				</div>
 			</div>
 
 			{/* Parishioners List */}

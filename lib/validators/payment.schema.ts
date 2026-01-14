@@ -1,0 +1,155 @@
+import { z } from 'zod';
+
+// Nigerian Naira amount validation
+const nairaAmountSchema = z
+	.number()
+	.positive('Amount must be greater than ₦0')
+	.max(100_000_000, 'Amount cannot exceed ₦100,000,000')
+	.multipleOf(0.01, 'Amount must have at most 2 decimal places');
+
+// ============================================
+// CREATE SCHEMA
+// ============================================
+
+export const createPaymentSchema = z
+	.object({
+		amount: nairaAmountSchema,
+		purpose: z.enum([
+			'OFFERING',
+			'TITHE',
+			'MASS_INTENTION',
+			'DONATION_CAMPAIGN',
+			'CUSTOM_DONATION',
+			'OTHER',
+		]),
+		month: z.number().int().min(1).max(12).optional(),
+		paymentMethod: z.enum([
+			'BANK_TRANSFER',
+			'CARD',
+			'MOBILE_MONEY',
+			'CHECK',
+		]),
+		parishionerId: z.string().uuid('Invalid parishioner ID').optional(),
+		payerName: z
+			.string()
+			.min(2, 'Payer name must be at least 2 characters')
+			.max(100, 'Payer name must not exceed 100 characters'),
+		onBehalfOf: z
+			.string()
+			.max(100, 'On behalf of must not exceed 100 characters')
+			.optional(),
+		payerEmail: z.string().email('Invalid email address').optional(),
+		payerPhone: z
+			.string()
+			.regex(
+				/^(\+234|0)[789][01]\d{8}$/,
+				'Enter a valid Nigerian phone number'
+			)
+			.optional(),
+		massIntentionId: z.string().uuid().optional(),
+		donationCampaignId: z.string().uuid().optional(),
+		notes: z
+			.string()
+			.max(1000, 'Notes must not exceed 1000 characters')
+			.optional(),
+	})
+	.refine((data) => data.purpose !== 'OFFERING' || data.month, {
+		message: 'Month is required for offerings',
+		path: ['month'],
+	})
+	.refine(
+		(data) => data.purpose !== 'MASS_INTENTION' || data.massIntentionId,
+		{
+			message: 'Mass intention is required for mass intention payments',
+			path: ['massIntentionId'],
+		}
+	)
+	.refine(
+		(data) =>
+			data.purpose !== 'DONATION_CAMPAIGN' || data.donationCampaignId,
+		{
+			message: 'Donation campaign is required for campaign donations',
+			path: ['donationCampaignId'],
+		}
+	);
+
+export type CreatePaymentInput = z.infer<typeof createPaymentSchema>;
+
+// ============================================
+// UPDATE SCHEMA (for pending payments only)
+// ============================================
+
+export const updatePaymentSchema = z.object({
+	amount: nairaAmountSchema.optional(),
+	paymentMethod: z
+		.enum(['BANK_TRANSFER', 'CARD', 'MOBILE_MONEY', 'CHECK'])
+		.optional(),
+	payerName: z.string().min(2).max(100).optional(),
+	onBehalfOf: z.string().max(100).optional(),
+	payerEmail: z.string().email().optional(),
+	payerPhone: z
+		.string()
+		.regex(/^(\+234|0)[789][01]\d{8}$/)
+		.optional(),
+	notes: z.string().max(1000).optional(),
+});
+
+export type UpdatePaymentInput = z.infer<typeof updatePaymentSchema>;
+
+// ============================================
+// QUERY/FILTER SCHEMA
+// ============================================
+
+export const paymentQuerySchema = z.object({
+	page: z.coerce.number().int().positive().default(1),
+	limit: z.coerce.number().int().min(1).max(100).default(20),
+	search: z.string().optional(),
+	purpose: z
+		.enum([
+			'OFFERING',
+			'TITHE',
+			'MASS_INTENTION',
+			'DONATION_CAMPAIGN',
+			'CUSTOM_DONATION',
+			'OTHER',
+		])
+		.optional(),
+	status: z.enum(['PENDING', 'COMPLETED', 'FAILED', 'REFUNDED']).optional(),
+	method: z
+		.enum(['BANK_TRANSFER', 'CARD', 'MOBILE_MONEY', 'CHECK'])
+		.optional(),
+	parishionerId: z.string().uuid().optional(),
+	month: z.coerce.number().int().min(1).max(12).optional(),
+	dateFrom: z.coerce.date().optional(),
+	dateTo: z.coerce.date().optional(),
+	sortBy: z
+		.enum(['amount', 'paymentDate', 'createdAt', 'payerName'])
+		.default('paymentDate'),
+	sortOrder: z.enum(['asc', 'desc']).default('desc'),
+});
+
+export type PaymentQuery = z.infer<typeof paymentQuerySchema>;
+
+// ============================================
+// PAYSTACK INITIALIZATION SCHEMA
+// ============================================
+
+export const paystackInitializeSchema = z.object({
+	amount: nairaAmountSchema,
+	email: z.string().email('Valid email is required for online payment'),
+	purpose: z.enum([
+		'OFFERING',
+		'TITHE',
+		'MASS_INTENTION',
+		'DONATION_CAMPAIGN',
+		'CUSTOM_DONATION',
+		'OTHER',
+	]),
+	parishionerId: z.string().uuid().optional(),
+	payerName: z.string().min(2).max(100),
+	month: z.number().int().min(1).max(12).optional(),
+	massIntentionId: z.string().uuid().optional(),
+	donationCampaignId: z.string().uuid().optional(),
+});
+
+export type PaystackInitializeInput = z.infer<typeof paystackInitializeSchema>;

@@ -47,6 +47,11 @@ export const createParishionerSchema = z.object({
 	lastName: nameSchema,
 	email: emailSchema,
 	phone: phoneSchema,
+	photoUrl: z
+		.string()
+		.url('Please enter a valid URL')
+		.optional()
+		.or(z.literal('')),
 	dateOfBirth: dateOfBirthSchema,
 	gender: z.enum(['MALE', 'FEMALE'], {
 		message: 'Please select a gender',
@@ -67,6 +72,71 @@ export const createParishionerSchema = z.object({
 });
 
 export type CreateParishionerInput = z.infer<typeof createParishionerSchema>;
+
+// ============================================
+// CSV IMPORT SCHEMA
+// ============================================
+
+export const csvParishionerSchema = z.object({
+	firstName: nameSchema,
+	lastName: nameSchema,
+	email: emailSchema.optional(),
+	phone: phoneSchema,
+	dateOfBirth: dateOfBirthSchema,
+	gender: z
+		.enum(['MALE', 'FEMALE', 'Male', 'Female', 'male', 'female'], {
+			message: 'Gender must be MALE or FEMALE',
+		})
+		.transform((val) => val.toUpperCase() as 'MALE' | 'FEMALE'),
+	maritalStatus: z
+		.enum(
+			[
+				'SINGLE',
+				'MARRIED',
+				'WIDOWED',
+				'DIVORCED',
+				'Single',
+				'Married',
+				'Widowed',
+				'Divorced',
+				'single',
+				'married',
+				'widowed',
+				'divorced',
+			],
+			{
+				message: 'Invalid marital status',
+			}
+		)
+		.transform(
+			(val) =>
+				val.toUpperCase() as
+					| 'SINGLE'
+					| 'MARRIED'
+					| 'WIDOWED'
+					| 'DIVORCED'
+		)
+		.optional(),
+	address: z.string().max(500).optional(),
+	occupation: z.string().max(100).optional(),
+});
+
+export type CsvParishionerInput = z.infer<typeof csvParishionerSchema>;
+
+export const csvImportResultSchema = z.object({
+	total: z.number(),
+	successful: z.number(),
+	failed: z.number(),
+	errors: z.array(
+		z.object({
+			row: z.number(),
+			email: z.string().optional(),
+			error: z.string(),
+		})
+	),
+});
+
+export type CsvImportResult = z.infer<typeof csvImportResultSchema>;
 
 // ============================================
 // UPDATE PARISHIONER SCHEMA (All fields optional)

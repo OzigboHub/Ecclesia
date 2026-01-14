@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { DeleteParishionerButton } from '@/components/features/parishioners/delete-parishioner-button';
+import { PhotoUpload } from '@/components/features/parishioners/photo-upload';
 
 interface PageProps {
 	params: Promise<{ id: string }>;
@@ -88,6 +89,14 @@ export default async function ParishionerDetailPage({ params }: PageProps) {
 							<ArrowLeft className='h-5 w-5' />
 						</Button>
 					</Link>
+
+					{/* Photo Upload */}
+					<PhotoUpload
+						parishionerId={parishioner.id}
+						currentPhotoUrl={parishioner.photoUrl}
+						parishionerName={`${parishioner.firstName} ${parishioner.lastName}`}
+					/>
+
 					<div>
 						<h1 className='text-2xl md:text-3xl font-bold tracking-tight'>
 							{parishioner.firstName} {parishioner.lastName}

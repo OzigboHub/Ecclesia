@@ -168,6 +168,7 @@ model Parishioner {
   otherNames     String?
   email          String?        @unique
   phone          String?
+  photoUrl       String?        // Profile picture URL
   address        String?
   dateOfBirth    DateTime?
   gender         Gender?
@@ -359,7 +360,6 @@ enum PaymentPurpose {
 }
 
 enum PaymentMethod {
-  CASH
   BANK_TRANSFER
   CARD
   MOBILE_MONEY
