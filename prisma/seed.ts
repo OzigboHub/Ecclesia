@@ -1,13 +1,17 @@
-import {
-	PrismaClient,
-	UserRole,
-	HierarchyLevel,
-	Gender,
-	MaritalStatus,
-} from '@prisma/client';
+import { PrismaClient, UserRole, HierarchyLevel, Gender, MaritalStatus } from '@prisma/client';
+import { PrismaNeon } from '@prisma/adapter-neon';
+import { neonConfig } from '@neondatabase/serverless';
 import bcrypt from 'bcryptjs';
 
-const prisma = new PrismaClient();
+neonConfig.webSocketConstructor = globalThis.WebSocket;
+
+const connectionString = process.env.DATABASE_URL;
+if (!connectionString) {
+	throw new Error('DATABASE_URL environment variable is not set');
+}
+
+const adapter = new PrismaNeon({ connectionString });
+const prisma = new PrismaClient({ adapter });
 
 async function main() {
 	console.log('Start seeding...');

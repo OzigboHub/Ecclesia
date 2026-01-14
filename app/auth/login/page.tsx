@@ -1,105 +1,150 @@
-'use client'
+'use client';
 
-import { signIn } from 'next-auth/react'
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { useTransition } from 'react';
+import { useRouter } from 'next/navigation';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { loginSchema, type LoginInput } from '@/lib/validators/auth.schema';
+import { login } from '@/app/actions/auth.actions';
+import { toast } from 'sonner';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 export default function LoginPage() {
-    const router = useRouter()
-    const [email, setEmail] = useState('')
-    const [password, setPassword] = useState('')
-    const [error, setError] = useState('')
-    const [isLoading, setIsLoading] = useState(false)
+	const router = useRouter();
+	const [isPending, startTransition] = useTransition();
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault()
-        setError('')
-        setIsLoading(true)
+	const form = useForm<LoginInput>({
+		resolver: zodResolver(loginSchema),
+		defaultValues: {
+			email: '',
+			password: '',
+		},
+	});
 
-        try {
-            const result = await signIn('credentials', {
-                email,
-                password,
-                redirect: false,
-            })
+	const {
+		register,
+		handleSubmit,
+		formState: { errors },
+	} = form;
 
-            if (result?.error) {
-                setError('Invalid email or password')
-            } else if (result?.ok) {
-                router.push('/dashboard')
-                router.refresh()
-            }
-        } catch (err) {
-            setError('An error occurred. Please try again.')
-        } finally {
-            setIsLoading(false)
-        }
-    }
+	const onSubmit = (data: LoginInput) => {
+		startTransition(async () => {
+			const result = await login(data);
 
-    return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-accent/20 p-4">
-            <div className="w-full max-w-md">
-                {/* Logo/Branding */}
-                <div className="text-center mb-8">
-                    <h1 className="text-4xl font-bold text-primary mb-2">Ecclesia</h1>
-                    <p className="text-muted-foreground">Digital Parish Manager</p>
-                </div>
+			if (result.success) {
+				toast.success('Welcome back!');
+				router.push('/dashboard');
+				router.refresh();
+			} else {
+				toast.error(result.message ?? 'Invalid email or password');
+			}
+		});
+	};
 
-                {/* Login Card */}
-                <div className="bg-background/80 backdrop-blur-sm border border-border rounded-lg shadow-2xl p-8">
-                    <h2 className="text-2xl font-semibold mb-6 text-center">Welcome Back</h2>
+	return (
+		<div className='min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-accent/20 p-4'>
+			<div className='w-full max-w-md'>
+				{/* Logo/Branding */}
+				<div className='text-center mb-8'>
+					<h1 className='text-4xl font-bold text-primary mb-2'>
+						Ecclesia
+					</h1>
+					<p className='text-muted-foreground'>
+						Digital Parish Manager
+					</p>
+				</div>
 
-                    <form onSubmit={handleSubmit} className="space-y-5">
-                        <Input
-                            label="Email"
-                            type="email"
-                            placeholder="your.email@example.com"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            required
-                            disabled={isLoading}
-                            autoComplete="email"
-                        />
+				{/* Login Card */}
+				<div className='bg-background/80 backdrop-blur-sm border border-border rounded-lg shadow-2xl p-8'>
+					<h2 className='text-2xl font-semibold mb-6 text-center'>
+						Welcome Back
+					</h2>
 
-                        <Input
-                            label="Password"
-                            type="password"
-                            placeholder="••••••••"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            required
-                            disabled={isLoading}
-                            autoComplete="current-password"
-                        />
+					<form
+						onSubmit={handleSubmit(onSubmit)}
+						className='space-y-5'
+					>
+						<div className='space-y-2'>
+							<label
+								htmlFor='email'
+								className='text-sm font-medium'
+							>
+								Email
+							</label>
+							<Input
+								id='email'
+								type='email'
+								placeholder='your.email@example.com'
+								{...register('email')}
+								disabled={isPending}
+								autoComplete='email'
+								aria-invalid={!!errors.email}
+								aria-describedby={
+									errors.email ? 'email-error' : undefined
+								}
+							/>
+							{errors.email && (
+								<p
+									id='email-error'
+									className='text-sm text-destructive'
+								>
+									{errors.email.message}
+								</p>
+							)}
+						</div>
 
-                        {error && (
-                            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 rounded-md p-3 text-sm">
-                                {error}
-                            </div>
-                        )}
+						<div className='space-y-2'>
+							<label
+								htmlFor='password'
+								className='text-sm font-medium'
+							>
+								Password
+							</label>
+							<Input
+								id='password'
+								type='password'
+								placeholder='••••••••'
+								{...register('password')}
+								disabled={isPending}
+								autoComplete='current-password'
+								aria-invalid={!!errors.password}
+								aria-describedby={
+									errors.password
+										? 'password-error'
+										: undefined
+								}
+							/>
+							{errors.password && (
+								<p
+									id='password-error'
+									className='text-sm text-destructive'
+								>
+									{errors.password.message}
+								</p>
+							)}
+						</div>
 
-                        <Button
-                            type="submit"
-                            className="w-full"
-                            size="lg"
-                            disabled={isLoading}
-                        >
-                            {isLoading ? 'Signing in...' : 'Sign In'}
-                        </Button>
-                    </form>
+						<Button
+							type='submit'
+							className='w-full'
+							size='lg'
+							disabled={isPending}
+						>
+							{isPending ? 'Signing in...' : 'Sign In'}
+						</Button>
+					</form>
 
-                    <div className="mt-6 text-center text-sm text-muted-foreground">
-                        <p>Need help? Contact your parish administrator.</p>
-                    </div>
-                </div>
+					<div className='mt-6 text-center text-sm text-muted-foreground'>
+						<p>Need help? Contact your parish administrator.</p>
+					</div>
+				</div>
 
-                {/* Footer */}
-                <div className="mt-6 text-center text-xs text-muted-foreground">
-                    <p>© 2026 Ecclesia DPM. All rights reserved.</p>
-                </div>
-            </div>
-        </div>
-    )
+				{/* Footer */}
+				<div className='mt-6 text-center text-xs text-muted-foreground'>
+					<p>© 2026 Ecclesia DPM. All rights reserved.</p>
+				</div>
+			</div>
+		</div>
+	);
 }
