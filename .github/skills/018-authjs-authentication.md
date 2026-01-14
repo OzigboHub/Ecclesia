@@ -3,13 +3,14 @@
 ## Metadata
 
 -   **ID**: `ecclesia.auth.authjs`
--   **Version**: 1.0.0
+-   **Version**: 2.0.0
 -   **Category**: Authentication
 -   **Priority**: Critical
+-   **Next.js Version**: 16.x
 
 ## Purpose
 
-Implement authentication using Auth.js (NextAuth v5) with JWT strategy. Handle session management, protected routes, and role-based access throughout the application.
+Implement authentication using Auth.js (NextAuth v5) with JWT strategy in Next.js 16. Handle session management, protected routes, and role-based access throughout the application using the new `proxy.ts` pattern.
 
 ## Constraints
 
@@ -19,17 +20,23 @@ Implement authentication using Auth.js (NextAuth v5) with JWT strategy. Handle s
 -   **Extend session with custom fields** — id, role, organizationId
 -   **Use ProtectedRoute** for client-side route guards
 -   **Use `auth()` helper** instead of `getServerSession()`
+-   **Split config**: `auth.config.ts` for configuration, `auth.ts` for instance
+-   **Use `proxy.ts`** instead of `middleware.ts` (Next.js 16 pattern)
 
-## Auth.js Configuration
+## Auth.js Configuration (Split Pattern)
+
+### Step 1: Create Auth Config
 
 ```ts
-// auth.ts (root of project)
-import NextAuth from 'next-auth';
+// auth.config.ts (root of project)
+import type { NextAuthConfig } from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 import bcrypt from 'bcryptjs';
+import { ZodError } from 'zod';
 import db from '@/lib/db';
+import { loginSchema } from '@/lib/validators/auth.schema';
 
-export const { handlers, signIn, signOut, auth } = NextAuth({
+export const authConfig: NextAuthConfig = {
 	providers: [
 		Credentials({
 			credentials: {
@@ -37,37 +44,53 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 				password: { label: 'Password', type: 'password' },
 			},
 			async authorize(credentials) {
-				if (!credentials?.email || !credentials?.password) {
+				try {
+					// Validate credentials with Zod (recommended)
+					const { email, password } = await loginSchema.parseAsync(
+						credentials
+					);
+
+					const user = await db.user.findUnique({
+						where: { email },
+						include: { organization: true },
+					});
+
+					if (!user || !user.isActive || !user.password) {
+						return null;
+					}
+
+					const isValid = await bcrypt.compare(
+						password,
+						user.password
+					);
+
+					if (!isValid) {
+						return null;
+					}
+
+					// Update last login
+					await db.user.update({
+						where: { id: user.id },
+						data: { lastLogin: new Date() },
+					});
+
+					// Return user data for JWT
+					return {
+						id: user.id,
+						email: user.email,
+						name: `${user.firstName} ${user.lastName}`,
+						role: user.role,
+						organizationId: user.organizationId,
+						organizationName: user.organization?.name ?? null,
+					};
+				} catch (error) {
+					// Handle Zod validation errors
+					if (error instanceof ZodError) {
+						return null;
+					}
+					console.error('Auth error:', error);
 					return null;
 				}
-
-				const user = await db.user.findUnique({
-					where: { email: credentials.email as string },
-					include: { organization: true },
-				});
-
-				if (!user || !user.password) {
-					return null;
-				}
-
-				const isValid = await bcrypt.compare(
-					credentials.password as string,
-					user.password
-				);
-
-				if (!isValid) {
-					return null;
-				}
-
-				// Return user data for JWT
-				return {
-					id: user.id,
-					email: user.email,
-					name: user.name,
-					role: user.role,
-					organizationId: user.organizationId,
-					organizationName: user.organization?.name ?? null,
-				};
 			},
 		}),
 	],
@@ -76,18 +99,25 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 		maxAge: 24 * 60 * 60, // 24 hours
 	},
 	callbacks: {
-		async jwt({ token, user }) {
-			// Initial sign in
+		// Note: In v5 beta, custom user properties require type casting
+		jwt({ token, user }) {
+			// Initial sign in - extend token with custom user fields
 			if (user) {
-				token.id = user.id;
-				token.role = user.role;
-				token.organizationId = user.organizationId;
-				token.organizationName = user.organizationName;
+				token.id = user.id as string;
+				// Cast user to access custom properties not in base User type
+				token.role = (user as unknown as Record<string, unknown>)
+					.role as string;
+				token.organizationId = (
+					user as unknown as Record<string, unknown>
+				).organizationId as string;
+				token.organizationName = (
+					user as unknown as Record<string, unknown>
+				).organizationName as string | null;
 			}
 			return token;
 		},
-		async session({ session, token }) {
-			// Extend session with custom fields
+		session({ session, token }) {
+			// Extend session with custom fields from token
 			if (session.user) {
 				session.user.id = token.id as string;
 				session.user.role = token.role as string;
@@ -103,8 +133,26 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 		signIn: '/auth/login',
 		error: '/auth/error',
 	},
-});
+};
 ```
+
+### Step 2: Create Auth Instance
+
+```ts
+// auth.ts (root of project)
+import NextAuth from 'next-auth';
+import { authConfig } from '@/auth.config';
+
+export const { handlers, signIn, signOut, auth } = NextAuth(authConfig);
+```
+
+### Benefits of Split Configuration
+
+-   ✅ **Edge-compatible** - Config can be imported in `proxy.ts` without database dependencies
+-   ✅ **Better organization** - Separate concerns: configuration vs. instance
+-   ✅ **Reusability** - Config can be imported in multiple places without circular dependencies
+-   ✅ **Type-safe** - Uses `NextAuthConfig` type for proper TypeScript support
+-   ✅ **Cleaner code** - `auth.ts` is just 4 lines
 
 ## API Route Handler
 
@@ -560,12 +608,14 @@ export async function requireRole(allowedRoles: string[]) {
 }
 ```
 
-## Middleware (Optional)
+## Route Protection with proxy.ts (Next.js 16)
 
 ```ts
-// middleware.ts
-import { auth } from '@/auth';
-import { NextResponse } from 'next/server';
+// proxy.ts (root of project - Next.js 16 pattern)
+import NextAuth from 'next-auth';
+import { authConfig } from '@/auth.config';
+
+const { auth } = NextAuth(authConfig);
 
 export default auth((req) => {
 	const isLoggedIn = !!req.auth;
@@ -574,21 +624,26 @@ export default auth((req) => {
 
 	// Redirect authenticated users away from auth pages
 	if (isLoggedIn && isOnAuth) {
-		return NextResponse.redirect(new URL('/dashboard', req.url));
+		return Response.redirect(new URL('/dashboard', req.url));
 	}
 
 	// Redirect unauthenticated users to login
 	if (!isLoggedIn && isOnDashboard) {
-		return NextResponse.redirect(new URL('/auth/login', req.url));
+		return Response.redirect(new URL('/auth/login', req.url));
 	}
-
-	return NextResponse.next();
 });
 
 export const config = {
 	matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
 };
 ```
+
+**Why proxy.ts instead of middleware.ts?**
+
+-   Next.js 16 introduced `proxy.ts` as the new convention for route interception
+-   Better edge runtime compatibility
+-   Improved performance and bundling
+-   Direct access to auth config without importing full auth instance
 
 ## Anti-Patterns to Avoid
 
@@ -648,19 +703,22 @@ token.organizationId = user.organizationId;
 
 ## Key Differences from NextAuth v4
 
-| Feature              | NextAuth v4                                      | Auth.js v5                                       |
+| Feature              | NextAuth v4                                      | Auth.js v5 (Next.js 16)                          |
 | -------------------- | ------------------------------------------------ | ------------------------------------------------ |
-| Config file          | `app/api/auth/[...nextauth]/route.ts`            | `auth.ts` (root)                                 |
+| Config file          | `app/api/auth/[...nextauth]/route.ts`            | `auth.config.ts` + `auth.ts` (root)              |
 | Get session (server) | `getServerSession(authOptions)`                  | `auth()`                                         |
 | Imports              | `import NextAuth from 'next-auth'`               | `import NextAuth from 'next-auth'` + destructure |
 | Providers            | `import Provider from 'next-auth/providers/...'` | Same                                             |
 | Route handler        | Export `authOptions` + handler                   | Export `handlers`                                |
 | Sign in/out          | `signIn()` from client                           | Can use server actions                           |
-| Middleware           | Custom implementation                            | Built-in `auth()` wrapper                        |
+| Route protection     | `middleware.ts`                                  | `proxy.ts` (Next.js 16 pattern)                  |
+| Config pattern       | Inline in route                                  | Split: config + instance                         |
 
 ## Testing Checklist
 
--   [ ] `auth.ts` configured at project root
+-   [ ] `auth.config.ts` created with NextAuthConfig type
+-   [ ] `auth.ts` imports config and exports handlers
+-   [ ] `proxy.ts` configured for route protection (Next.js 16)
 -   [ ] Route handler exports `handlers`
 -   [ ] Session extended with custom fields
 -   [ ] Type definitions updated (next-auth.d.ts)
@@ -669,7 +727,7 @@ token.organizationId = user.organizationId;
 -   [ ] Role checks implemented where needed
 -   [ ] Login/logout flows working
 -   [ ] Redirect to login on unauthenticated access
--   [ ] Middleware configured (optional)
+-   [ ] Protected routes work correctly
 
 ## Related Skills
 
@@ -681,5 +739,8 @@ token.organizationId = user.organizationId;
 
 -   [Auth.js Documentation](https://authjs.dev/)
 -   [Auth.js v5 Migration Guide](https://authjs.dev/getting-started/migrating-to-v5)
+-   [Next.js 16 Documentation](https://nextjs.org/docs)
+-   [auth.config.ts](../../auth.config.ts)
 -   [auth.ts](../../auth.ts)
+-   [proxy.ts](../../proxy.ts)
 -   [types/next-auth.d.ts](../../types/next-auth.d.ts)

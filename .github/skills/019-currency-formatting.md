@@ -263,14 +263,16 @@ import { CurrencyInput } from '@/components/ui/currency-input';
 import { z } from 'zod';
 
 export const paymentSchema = z.object({
+	// Zod v4: Use .min() for required validation instead of { required_error }
 	amount: z
-		.number({ required_error: 'Amount is required' })
+		.number()
 		.positive('Amount must be greater than zero')
 		.multipleOf(0.01, 'Amount can have at most 2 decimal places'),
 
 	// Alternative: accept string and transform
 	amountFromString: z
 		.string()
+		.min(1, 'Amount is required')
 		.transform((val) => parseFloat(val.replace(/[₦,]/g, '')))
 		.pipe(z.number().positive()),
 });

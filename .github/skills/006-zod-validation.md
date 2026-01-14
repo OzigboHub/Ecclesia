@@ -3,9 +3,10 @@
 ## Metadata
 
 -   **ID**: `ecclesia.validation.zod_schemas`
--   **Version**: 1.0.0
+-   **Version**: 1.1.0
 -   **Category**: Validation
 -   **Priority**: Critical
+-   **Zod Version**: 4.x
 
 ## Purpose
 
@@ -25,6 +26,23 @@ Always validate inputs in Server Actions using Zod schemas. This ensures type sa
 -   **Use descriptive error messages**
 -   **Validate at Server Action level, not in components**
 -   **Create separate schemas for create vs update operations**
+-   **Zod v4 API**: Use `.min(1, 'message')` for required fields, NOT `{ required_error: '...' }`
+
+## Zod v4 Breaking Change
+
+⚠️ **Important**: Zod v4 removed the `required_error` parameter from `.string()`, `.number()`, etc.
+
+```tsx
+// ❌ WRONG (Zod v3 pattern - no longer works)
+const schema = z.object({
+	email: z.string({ required_error: 'Email is required' }).email(),
+});
+
+// ✅ CORRECT (Zod v4 pattern)
+const schema = z.object({
+	email: z.string().min(1, 'Email is required').email('Invalid email'),
+});
+```
 
 ## File Structure
 
