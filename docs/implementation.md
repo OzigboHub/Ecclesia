@@ -1,5 +1,5 @@
 # Implementation Plan
-## Lumina Digital Parish Manager (DPM)
+## Ecclesia Digital Parish Manager (DPM)
 
 **Version:** 1.0  
 **Project Duration:** 16 Weeks  

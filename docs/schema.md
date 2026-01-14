@@ -1,5 +1,5 @@
 // Enhanced Prisma Schema with Advanced Payment Flow
-// Lumina Digital Parish Manager (DPM)
+// Ecclesia Digital Parish Manager (DPM)
 
 generator client {
   provider = "prisma-client-js"

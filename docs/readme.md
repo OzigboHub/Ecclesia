@@ -1,8 +1,8 @@
-# Lumina Digital Parish Manager (DPM)
+# Ecclesia Digital Parish Manager (DPM)
 
 ## Overview
 
-Lumina DPM is a comprehensive parish management system designed specifically for Catholic ecclesiastical structures. It provides a robust platform for managing parishes, outstations, parishioners, sacramental records, donations, mass intentions, appointments, and live streaming services.
+Ecclesia DPM is a comprehensive parish management system designed specifically for Catholic ecclesiastical structures. It provides a robust platform for managing parishes, outstations, parishioners, sacramental records, donations, mass intentions, appointments, and live streaming services.
 
 ## Key Features
 
@@ -80,8 +80,8 @@ Lumina DPM is a comprehensive parish management system designed specifically for
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/your-org/lumina-dpm.git
-cd lumina-dpm
+git clone https://github.com/your-org/ecclesia-dpm.git
+cd ecclesia-dpm
 ```
 
 ### 2. Install Dependencies
@@ -98,7 +98,7 @@ Create a `.env` file in the root directory:
 
 ```env
 # Database
-DATABASE_URL="postgresql://username:password@localhost:5432/lumina_dpm"
+DATABASE_URL="postgresql://username:password@localhost:5432/ecclesia_dpm"
 
 # NextAuth
 NEXTAUTH_SECRET="your-secret-key-here"
@@ -134,7 +134,7 @@ Visit `http://localhost:3000` to access the application.
 ## Project Structure
 
 ```
-lumina-dpm/
+ecclesia-dpm/
 ├── app/                    # Next.js App Router
 │   ├── (auth)/            # Authentication pages
 │   ├── (dashboard)/       # Dashboard pages
@@ -293,13 +293,13 @@ npm run test:e2e
 
 ## License
 
-This project is proprietary software owned by Lumina Corp.
+This project is proprietary software owned by Ecclesia Corp.
 
 ## Support
 
 For technical support, please contact:
-- Email: support@luminadpm.com
-- Documentation: https://docs.luminadpm.com
+- Email: support@ecclesiadpm.com
+- Documentation: https://docs.ecclesiadpm.com
 
 ## Roadmap
 

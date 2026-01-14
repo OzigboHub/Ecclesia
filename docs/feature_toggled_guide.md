@@ -1,5 +1,5 @@
 # Feature Toggle System
-## Lumina Digital Parish Manager (DPM)
+## Ecclesia Digital Parish Manager (DPM)
 
 **Version:** 1.0  
 **Last Updated:** January 2026
@@ -8,7 +8,7 @@
 
 ## 1. Overview
 
-The Lumina DPM Feature Toggle System enables parishes to customize their platform experience by enabling or disabling specific features based on their unique requirements, budget constraints, and operational needs. This system provides:
+The Ecclesia DPM Feature Toggle System enables parishes to customize their platform experience by enabling or disabling specific features based on their unique requirements, budget constraints, and operational needs. This system provides:
 
 - **Cost Optimization**: Pay only for features you use
 - **Simplified Onboarding**: Start with basic features and enable advanced ones gradually
@@ -755,4 +755,4 @@ describe('Feature Toggle Integration', () => {
 
 ## Conclusion
 
-The Feature Toggle System provides Lumina DPM with the flexibility needed to serve diverse parish requirements while maintaining a single, unified codebase. By following this guide, developers can implement feature-aware functionality, and administrators can optimize their parish's digital infrastructure.
+The Feature Toggle System provides Ecclesia DPM with the flexibility needed to serve diverse parish requirements while maintaining a single, unified codebase. By following this guide, developers can implement feature-aware functionality, and administrators can optimize their parish's digital infrastructure.
