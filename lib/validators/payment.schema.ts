@@ -24,6 +24,7 @@ export const createPaymentSchema = z
 		]),
 		month: z.number().int().min(1).max(12).optional(),
 		paymentMethod: z.enum([
+			'CASH',
 			'BANK_TRANSFER',
 			'CARD',
 			'MOBILE_MONEY',

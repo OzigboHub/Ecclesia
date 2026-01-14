@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition, useEffect } from 'react';
+import { Suspense, useState, useTransition, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
@@ -25,7 +25,7 @@ import {
 	LockKeyhole,
 } from 'lucide-react';
 
-export default function ResetPasswordPage() {
+function ResetPasswordForm() {
 	const router = useRouter();
 	const searchParams = useSearchParams();
 	const token = searchParams.get('token');
@@ -395,5 +395,16 @@ export default function ResetPasswordPage() {
 				</div>
 			</div>
 		</div>
+	);
+}
+export default function ResetPasswordPage() {
+	return (
+		<Suspense fallback={
+			<div className='flex min-h-screen items-center justify-center'>
+				<Spinner />
+			</div>
+		}>
+			<ResetPasswordForm />
+		</Suspense>
 	);
 }

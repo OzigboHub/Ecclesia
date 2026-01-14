@@ -50,7 +50,12 @@ export function Sidebar() {
 		// If no role restriction, show to everyone
 		if (!('roles' in item) || !item.roles) return true;
 		// Check if user's role is in the allowed roles
-		return session?.user?.role && item.roles.includes(session.user.role);
+		return (
+			session?.user?.role &&
+			item.roles.includes(
+				session.user.role as 'SUPER_ADMIN' | 'PARISH_ADMIN'
+			)
+		);
 	});
 
 	return (

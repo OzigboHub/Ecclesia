@@ -1,77 +1,145 @@
-'use client'
+'use client';
 
-import * as React from 'react'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import {
+	createPiousOrganizationSchema,
+	type CreatePiousOrganizationInput,
+} from '@/lib/validators/pious-organization.schema';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 
 interface PiousOrganizationFormProps {
-    initialData?: any
-    onSubmit: (data: any) => void
-    isLoading?: boolean
+	initialData?: CreatePiousOrganizationInput;
+	onSubmit: (data: CreatePiousOrganizationInput) => void;
+	isLoading?: boolean;
 }
 
-export function PiousOrganizationForm({ initialData, onSubmit, isLoading }: PiousOrganizationFormProps) {
-    const [formData, setFormData] = React.useState({
-        name: initialData?.name || '',
-        description: initialData?.description || '',
-        presidentName: initialData?.presidentName || '',
-        secretaryName: initialData?.secretaryName || '',
-    })
+export function PiousOrganizationForm({
+	initialData,
+	onSubmit,
+	isLoading,
+}: PiousOrganizationFormProps) {
+	const form = useForm<CreatePiousOrganizationInput>({
+		resolver: zodResolver(createPiousOrganizationSchema),
+		defaultValues: {
+			name: initialData?.name || '',
+			description: initialData?.description || '',
+			presidentName: initialData?.presidentName || '',
+			secretaryName: initialData?.secretaryName || '',
+		},
+	});
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-        const { name, value } = e.target
-        setFormData(prev => ({ ...prev, [name]: value }))
-    }
+	const {
+		register,
+		handleSubmit,
+		formState: { errors },
+		reset,
+	} = form;
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault()
-        onSubmit(formData)
-    }
+	return (
+		<form
+			onSubmit={handleSubmit(onSubmit)}
+			className='space-y-4'
+		>
+			{/* Organization Name */}
+			<div className='space-y-2'>
+				<Label htmlFor='name'>Organization Name *</Label>
+				<Input
+					id='name'
+					{...register('name')}
+					placeholder='e.g. Catholic Women Organization (CWO)'
+					disabled={isLoading}
+					aria-invalid={!!errors.name}
+					aria-describedby={errors.name ? 'name-error' : undefined}
+				/>
+				{errors.name && (
+					<p
+						id='name-error'
+						className='text-sm text-destructive'
+					>
+						{errors.name.message}
+					</p>
+				)}
+			</div>
 
-    return (
-        <form onSubmit={handleSubmit} className="space-y-4">
-            <Input
-                label="Organization Name"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-                placeholder="e.g. Catholic Women Organization (CWO)"
-                required
-            />
+			{/* Description */}
+			<div className='space-y-2'>
+				<Label htmlFor='description'>Description (Optional)</Label>
+				<Textarea
+					id='description'
+					{...register('description')}
+					placeholder="Describe the organization's purpose and activities..."
+					rows={4}
+					disabled={isLoading}
+				/>
+				{errors.description && (
+					<p className='text-sm text-destructive'>
+						{errors.description.message}
+					</p>
+				)}
+			</div>
 
-            <div className="pt-2">
-                <label className="block text-sm font-medium mb-1.5">Description</label>
-                <textarea
-                    name="description"
-                    value={formData.description}
-                    onChange={handleChange}
-                    className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 min-h-[100px]"
-                    placeholder="Describe the organization's purpose and activities..."
-                />
-            </div>
+			{/* Leaders */}
+			<div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
+				<div className='space-y-2'>
+					<Label htmlFor='presidentName'>
+						President Name (Optional)
+					</Label>
+					<Input
+						id='presidentName'
+						{...register('presidentName')}
+						placeholder='Current leader'
+						disabled={isLoading}
+					/>
+					{errors.presidentName && (
+						<p className='text-sm text-destructive'>
+							{errors.presidentName.message}
+						</p>
+					)}
+				</div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-                <Input
-                    label="President Name"
-                    name="presidentName"
-                    value={formData.presidentName}
-                    onChange={handleChange}
-                    placeholder="Current leader"
-                />
-                <Input
-                    label="Secretary Name"
-                    name="secretaryName"
-                    value={formData.secretaryName}
-                    onChange={handleChange}
-                    placeholder="Administrative lead"
-                />
-            </div>
+				<div className='space-y-2'>
+					<Label htmlFor='secretaryName'>
+						Secretary Name (Optional)
+					</Label>
+					<Input
+						id='secretaryName'
+						{...register('secretaryName')}
+						placeholder='Administrative lead'
+						disabled={isLoading}
+					/>
+					{errors.secretaryName && (
+						<p className='text-sm text-destructive'>
+							{errors.secretaryName.message}
+						</p>
+					)}
+				</div>
+			</div>
 
-            <div className="flex justify-end gap-3 pt-4 border-t border-border">
-                <Button type="submit" isLoading={isLoading} className="w-full sm:w-auto">
-                    {initialData ? 'Update Organization' : 'Create Organization'}
-                </Button>
-            </div>
-        </form>
-    )
+			{/* Submit Button */}
+			<div className='flex justify-end gap-3 pt-4 border-t'>
+				<Button
+					type='button'
+					variant='outline'
+					onClick={() => reset()}
+					disabled={isLoading}
+				>
+					Reset
+				</Button>
+				<Button
+					type='submit'
+					disabled={isLoading}
+				>
+					{isLoading
+						? 'Saving...'
+						: initialData
+						? 'Update Organization'
+						: 'Create Organization'}
+				</Button>
+			</div>
+		</form>
+	);
 }

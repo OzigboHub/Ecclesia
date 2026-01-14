@@ -309,6 +309,7 @@ model MassIntention {
   contactPhone   String?
   massDate       DateTime
   stipend        Float?
+  notes          String?
   parishionerId  String?
   parishioner    Parishioner?   @relation(fields: [parishionerId], references: [id])
   organizationId String
@@ -375,6 +376,7 @@ enum PaymentPurpose {
 }
 
 enum PaymentMethod {
+  CASH
   BANK_TRANSFER
   CARD
   MOBILE_MONEY

@@ -1,146 +1,304 @@
-'use client'
+'use client';
 
-import * as React from 'react'
-import { Input } from '@/components/ui/input'
-import { Select } from '@/components/ui/select'
-import { Button } from '@/components/ui/button'
+import { useTransition } from 'react';
+import { useRouter } from 'next/navigation';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import {
+	createPaymentSchema,
+	type CreatePaymentInput,
+} from '@/lib/validators/payment.schema';
+import { createPayment } from '@/app/actions/payment.actions';
+import { toast } from 'sonner';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 
 interface PaymentFormProps {
-    onSubmit: (data: any) => void
-    isLoading?: boolean
+	onSuccess?: () => void;
 }
 
-const PURPOSE_OPTIONS = [
-    { label: 'Offering', value: 'OFFERING' },
-    { label: 'Tithe', value: 'TITHE' },
-    { label: 'Mass Intention', value: 'MASS_INTENTION' },
-    { label: 'Donation Campaign', value: 'DONATION_CAMPAIGN' },
-    { label: 'Building Fund', value: 'BUILDING_FUND' },
-    { label: 'Other', value: 'OTHER' },
-]
+export function PaymentForm({ onSuccess }: PaymentFormProps) {
+	const [isPending, startTransition] = useTransition();
+	const router = useRouter();
 
-const METHOD_OPTIONS = [
-    { label: 'Cash', value: 'CASH' },
-    { label: 'Bank Transfer', value: 'BANK_TRANSFER' },
-    { label: 'Card', value: 'CARD' },
-    { label: 'Mobile Money', value: 'MOBILE_MONEY' },
-    { label: 'Check', value: 'CHECK' },
-]
+	const form = useForm<CreatePaymentInput>({
+		resolver: zodResolver(createPaymentSchema),
+		defaultValues: {
+			amount: 0,
+			purpose: undefined,
+			paymentMethod: undefined,
+			payerName: '',
+			payerEmail: '',
+			payerPhone: '',
+			notes: '',
+		},
+	});
 
-export function PaymentForm({ onSubmit, isLoading }: PaymentFormProps) {
-    const [formData, setFormData] = React.useState({
-        amount: '',
-        purpose: '',
-        paymentMethod: 'CASH',
-        payerName: '',
-        onBehalfOf: '',
-        payerEmail: '',
-        payerPhone: '',
-        notes: '',
-        date: new Date().toISOString().split('T')[0],
-    })
+	const {
+		register,
+		handleSubmit,
+		control,
+		formState: { errors },
+		setError,
+		reset,
+		watch,
+	} = form;
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-        const { name, value } = e.target
-        setFormData(prev => ({ ...prev, [name]: value }))
-    }
+	const onSubmit = (data: CreatePaymentInput) => {
+		startTransition(async () => {
+			const result = await createPayment(data);
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault()
-        onSubmit(formData)
-    }
+			if (result.success) {
+				toast.success(result.message);
+				reset();
+				router.refresh();
+				onSuccess?.();
+			} else {
+				toast.error(result.message);
 
-    return (
-        <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Input
-                    label="Amount (₦)"
-                    type="number"
-                    name="amount"
-                    value={formData.amount}
-                    onChange={handleChange}
-                    placeholder="0.00"
-                    required
-                />
-                <Select
-                    label="Purpose"
-                    name="purpose"
-                    options={PURPOSE_OPTIONS}
-                    value={formData.purpose}
-                    onChange={handleChange}
-                    required
-                />
-            </div>
+				if (result.errors) {
+					Object.entries(result.errors).forEach(
+						([field, messages]) => {
+							setError(field as keyof CreatePaymentInput, {
+								type: 'server',
+								message: messages[0],
+							});
+						}
+					);
+				}
+			}
+		});
+	};
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Input
-                    label="Payer Name"
-                    name="payerName"
-                    value={formData.payerName}
-                    onChange={handleChange}
-                    placeholder="Who is paying?"
-                    required
-                />
-                <Input
-                    label="On Behalf Of (Optional)"
-                    name="onBehalfOf"
-                    value={formData.onBehalfOf}
-                    onChange={handleChange}
-                    placeholder="e.g. The Doe Family"
-                />
-            </div>
+	return (
+		<form
+			onSubmit={handleSubmit(onSubmit)}
+			className='space-y-4'
+		>
+			{/* Amount in Nigerian Naira */}
+			<div className='space-y-2'>
+				<Label htmlFor='amount'>Amount (₦) *</Label>
+				<div className='relative'>
+					<span className='absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground'>
+						₦
+					</span>
+					<Input
+						id='amount'
+						type='number'
+						step='0.01'
+						min='0'
+						{...register('amount', { valueAsNumber: true })}
+						className='pl-8'
+						placeholder='0.00'
+						disabled={isPending}
+						aria-invalid={!!errors.amount}
+						aria-describedby={
+							errors.amount ? 'amount-error' : undefined
+						}
+					/>
+				</div>
+				{errors.amount && (
+					<p
+						id='amount-error'
+						className='text-sm text-destructive'
+					>
+						{errors.amount.message}
+					</p>
+				)}
+				{watch('amount') > 0 && (
+					<p className='text-sm text-muted-foreground'>
+						{new Intl.NumberFormat('en-NG', {
+							style: 'currency',
+							currency: 'NGN',
+						}).format(watch('amount'))}
+					</p>
+				)}
+			</div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Select
-                    label="Payment Method"
-                    name="paymentMethod"
-                    options={METHOD_OPTIONS}
-                    value={formData.paymentMethod}
-                    onChange={handleChange}
-                    required
-                />
-                <Input
-                    label="Payment Date"
-                    type="date"
-                    name="date"
-                    value={formData.date}
-                    onChange={handleChange}
-                    required
-                />
-            </div>
+			{/* Purpose */}
+			<div className='space-y-2'>
+				<Label htmlFor='purpose'>Purpose *</Label>
+				<Controller
+					name='purpose'
+					control={control}
+					render={({ field }) => (
+						<Select
+							onValueChange={field.onChange}
+							value={field.value}
+							disabled={isPending}
+						>
+							<SelectTrigger
+								id='purpose'
+								aria-invalid={!!errors.purpose}
+							>
+								<SelectValue placeholder='Select purpose' />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value='OFFERING'>
+									Offering
+								</SelectItem>
+								<SelectItem value='TITHE'>Tithe</SelectItem>
+								<SelectItem value='MASS_INTENTION'>
+									Mass Intention
+								</SelectItem>
+								<SelectItem value='DONATION_CAMPAIGN'>
+									Donation Campaign
+								</SelectItem>
+								<SelectItem value='CUSTOM_DONATION'>
+									Custom Donation
+								</SelectItem>
+								<SelectItem value='OTHER'>Other</SelectItem>
+							</SelectContent>
+						</Select>
+					)}
+				/>
+				{errors.purpose && (
+					<p className='text-sm text-destructive'>
+						{errors.purpose.message}
+					</p>
+				)}
+			</div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Input
-                    label="Email (Optional)"
-                    type="email"
-                    name="payerEmail"
-                    value={formData.payerEmail}
-                    onChange={handleChange}
-                />
-                <Input
-                    label="Phone (Optional)"
-                    name="payerPhone"
-                    value={formData.payerPhone}
-                    onChange={handleChange}
-                />
-            </div>
+			{/* Payment Method */}
+			<div className='space-y-2'>
+				<Label htmlFor='paymentMethod'>Payment Method *</Label>
+				<Controller
+					name='paymentMethod'
+					control={control}
+					render={({ field }) => (
+						<Select
+							onValueChange={field.onChange}
+							value={field.value}
+							disabled={isPending}
+						>
+							<SelectTrigger
+								id='paymentMethod'
+								aria-invalid={!!errors.paymentMethod}
+							>
+								<SelectValue placeholder='Select method' />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value='CASH'>Cash</SelectItem>
+								<SelectItem value='BANK_TRANSFER'>
+									Bank Transfer
+								</SelectItem>
+								<SelectItem value='CARD'>Card</SelectItem>
+								<SelectItem value='MOBILE_MONEY'>
+									Mobile Money
+								</SelectItem>
+								<SelectItem value='CHECK'>Check</SelectItem>
+							</SelectContent>
+						</Select>
+					)}
+				/>
+				{errors.paymentMethod && (
+					<p className='text-sm text-destructive'>
+						{errors.paymentMethod.message}
+					</p>
+				)}
+			</div>
 
-            <div className="pt-2">
-                <label className="block text-sm font-medium mb-1.5">Notes (Optional)</label>
-                <textarea
-                    name="notes"
-                    value={formData.notes}
-                    onChange={(e: any) => handleChange(e)}
-                    className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 min-h-[100px]"
-                    placeholder="Any additional details..."
-                />
-            </div>
+			{/* Payer Name */}
+			<div className='space-y-2'>
+				<Label htmlFor='payerName'>Payer Name *</Label>
+				<Input
+					id='payerName'
+					{...register('payerName')}
+					placeholder='Who is making the payment?'
+					disabled={isPending}
+					aria-invalid={!!errors.payerName}
+					aria-describedby={
+						errors.payerName ? 'payerName-error' : undefined
+					}
+				/>
+				{errors.payerName && (
+					<p
+						id='payerName-error'
+						className='text-sm text-destructive'
+					>
+						{errors.payerName.message}
+					</p>
+				)}
+			</div>
 
-            <div className="flex justify-end gap-3 pt-4 border-t border-border">
-                <Button type="submit" isLoading={isLoading} className="w-full sm:w-auto">
-                    Record Payment
-                </Button>
-            </div>
-        </form>
-    )
+			{/* Contact Information */}
+			<div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+				<div className='space-y-2'>
+					<Label htmlFor='payerEmail'>Email (Optional)</Label>
+					<Input
+						id='payerEmail'
+						type='email'
+						{...register('payerEmail')}
+						placeholder='email@example.com'
+						disabled={isPending}
+					/>
+					{errors.payerEmail && (
+						<p className='text-sm text-destructive'>
+							{errors.payerEmail.message}
+						</p>
+					)}
+				</div>
+
+				<div className='space-y-2'>
+					<Label htmlFor='payerPhone'>Phone (Optional)</Label>
+					<Input
+						id='payerPhone'
+						type='tel'
+						{...register('payerPhone')}
+						placeholder='08012345678'
+						disabled={isPending}
+					/>
+					{errors.payerPhone && (
+						<p className='text-sm text-destructive'>
+							{errors.payerPhone.message}
+						</p>
+					)}
+				</div>
+			</div>
+
+			{/* Notes */}
+			<div className='space-y-2'>
+				<Label htmlFor='notes'>Notes (Optional)</Label>
+				<Textarea
+					id='notes'
+					{...register('notes')}
+					placeholder='Any additional details about this payment...'
+					rows={3}
+					disabled={isPending}
+				/>
+				{errors.notes && (
+					<p className='text-sm text-destructive'>
+						{errors.notes.message}
+					</p>
+				)}
+			</div>
+
+			{/* Submit Buttons */}
+			<div className='flex justify-end gap-3 pt-4'>
+				<Button
+					type='button'
+					variant='outline'
+					onClick={() => reset()}
+					disabled={isPending}
+				>
+					Reset
+				</Button>
+				<Button
+					type='submit'
+					disabled={isPending}
+				>
+					{isPending ? 'Recording...' : 'Record Payment'}
+				</Button>
+			</div>
+		</form>
+	);
 }
