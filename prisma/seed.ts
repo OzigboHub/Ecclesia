@@ -1,4 +1,10 @@
-import { PrismaClient, UserRole, HierarchyLevel, Gender, MaritalStatus } from '@prisma/client';
+import {
+	PrismaClient,
+	UserRole,
+	HierarchyLevel,
+	Gender,
+	MaritalStatus,
+} from '@prisma/client';
 import { PrismaNeon } from '@prisma/adapter-neon';
 import { neonConfig } from '@neondatabase/serverless';
 import bcrypt from 'bcryptjs';
