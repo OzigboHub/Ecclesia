@@ -570,25 +570,25 @@ SUPER_ADMIN (Platform Level)
 | Edit Parish | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Create Outstation | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Edit Outstation | ✅ | ✅ | ❌ | ❌ | ✅ (own) | ❌ | ❌ | ❌ |
-| Set Parishioner Limits | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Set Parishioner Limits | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | **Users** |
-| Create Super Admin | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Create Super Admin | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Create Parish Admin | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Create Other Users | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Block/Unblock Users | ✅ | ✅ (parish) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Assign Org Leaders | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | **Features** |
-| Enable/Disable Features | ✅ | ✅ (parish) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Enable/Disable Features | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Set Feature Limits | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | **Parishioners** |
-| Create Parishioner | ✅ | ✅ | ✅ | ✅ | ✅ (outstation) | ❌ | ❌ | ❌ |
-| Edit Parishioner | ✅ | ✅ | ✅ | ✅ (limited) | ✅ (own) | ❌ | ❌ | ✅ (self) |
+| Create Parishioner | ✅ | ✅ | ❌ | ❌ | ✅ (outstation) | ❌ | ❌ | ✅ (self) |
+| Edit Parishioner | ✅ | ✅ | ❌ | ❌ | ✅ (own) | ❌ | ❌ | ✅ (self) |
 | Delete Parishioner | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| View All Parishioners | ✅ | ✅ (parish) | ✅ (parish) | ✅ (parish) | ✅ (outstation) | ✅ (parish) | ✅ (parish) | ❌ |
+| View All Parishioners | ✅ | ✅ (parish) | ✅ (parish) | ❌ | ✅ (outstation) | ❌ | ❌ | ❌ |
 | **Financials** |
-| Record Payment | ✅ | ✅ | ✅ | ✅ | ✅ (outstation) | ✅ (org) | ✅ (org) | ✅ (self) |
+| Record Payment | ✅ | ✅ | ✅ | ❌ | ✅ (outstation) | ✅ (org) | ✅ (org) | ✅ (self) |
 | Create Campaign | ✅ | ✅ | ✅ (approval) | ❌ | ❌ | ✅ (org) | ❌ | ❌ |
-| View Financial Reports | ✅ (all) | ✅ (parish) | ✅ (parish) | ✅ (limited) | ✅ (outstation) | ✅ (org) | ✅ (org) | ✅ (self) |
+| View Financial Reports | ✅ (all) | ✅ (parish) | ✅ (parish) | ❌ | ✅ (outstation) | ✅ (org) | ✅ (org) | ✅ (self) |
 | Delete Transaction | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Issue Refund | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | **Mass Intentions** |
