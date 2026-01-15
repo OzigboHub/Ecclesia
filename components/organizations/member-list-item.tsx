@@ -1,0 +1,118 @@
+'use client';
+
+import { useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Trash2, Loader2 } from 'lucide-react';
+import { removeMember } from '@/app/actions/organizations';
+import { toast } from 'sonner';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+
+interface MemberListItemProps {
+    organizationId: string;
+    membership: {
+        parishionerId: string;
+        joinedAt: Date;
+        role: string; // Using string to match the Prisma return type inference or enum
+        parishioner: {
+            id: string;
+            firstName: string;
+            lastName: string;
+            phone: string | null;
+        };
+    };
+}
+
+export function MemberListItem({ organizationId, membership }: MemberListItemProps) {
+    const [isPending, startTransition] = useTransition();
+    const router = useRouter();
+
+    const handleRemove = () => {
+        startTransition(async () => {
+            try {
+                await removeMember(organizationId, membership.parishionerId);
+                toast.success('Member removed successfully');
+                router.refresh();
+            } catch (error) {
+                toast.error('Failed to remove member');
+            }
+        });
+    };
+
+    const getRoleBadgeVariant = (role: string) => {
+        switch (role) {
+            case 'PRESIDENT':
+            case 'VICE_PRESIDENT':
+            case 'SECRETARY':
+            case 'TREASURER':
+                return 'default';
+            case 'PRO':
+            case 'OTHER':
+                return 'secondary';
+            default:
+                return 'outline';
+        }
+    };
+
+    const formatRole = (role: string) => {
+        return role.replace('_', ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
+    };
+
+    return (
+        <li className="py-3 flex justify-between items-center">
+            <div>
+                <p className="font-medium">
+                    {membership.parishioner.firstName} {membership.parishioner.lastName}
+                </p>
+                <div className="flex gap-2 items-center">
+                    <p className="text-xs text-muted-foreground">
+                        {membership.parishioner.phone || 'No phone'}
+                    </p>
+                    <span className="text-xs text-muted-foreground">•</span>
+                    <p className="text-xs text-muted-foreground">
+                        Joined {new Date(membership.joinedAt).toLocaleDateString()}
+                    </p>
+                </div>
+            </div>
+            <div className="flex items-center gap-2">
+                <Badge variant={getRoleBadgeVariant(membership.role)}>
+                    {formatRole(membership.role)}
+                </Badge>
+
+                <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive/90">
+                            {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                        </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Remove Member?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                Are you sure you want to remove {membership.parishioner.firstName} from this organization?
+                                This action cannot be undone.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleRemove} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                Remove
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+            </div>
+        </li>
+    );
+}
