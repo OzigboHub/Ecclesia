@@ -75,9 +75,35 @@ export type CreateAppointmentInput = z.infer<typeof createAppointmentSchema>;
 // UPDATE APPOINTMENT SCHEMA
 // ============================================
 
-export const updateAppointmentSchema = createAppointmentSchema
-	.partial()
-	.extend({
+export const updateAppointmentSchema = z
+	.object({
+		title: z
+			.string()
+			.min(3, 'Title must be at least 3 characters')
+			.max(100, 'Title must not exceed 100 characters')
+			.trim()
+			.optional(),
+		description: z
+			.string()
+			.max(500, 'Description must not exceed 500 characters')
+			.optional(),
+		type: appointmentTypeEnum.optional(),
+		startTime: z.string().min(1, 'Start time is required').optional(),
+		endTime: z.string().min(1, 'End time is required').optional(),
+		assignedToId: z
+			.string()
+			.uuid('Invalid staff member selected')
+			.optional()
+			.nullable(),
+		parishionerId: z
+			.string()
+			.min(1, 'Please select a parishioner')
+			.uuid('Invalid parishioner selected')
+			.optional(),
+		notes: z
+			.string()
+			.max(1000, 'Notes must not exceed 1000 characters')
+			.optional(),
 		status: appointmentStatusEnum.optional(),
 	})
 	.refine(
@@ -103,7 +129,7 @@ export type UpdateAppointmentInput = z.infer<typeof updateAppointmentSchema>;
 
 export const appointmentFilterSchema = z.object({
 	page: z.coerce.number().int().positive().default(1),
-	limit: z.coerce.number().int().min(1).max(100).default(20),
+	limit: z.coerce.number().int().min(1).max(500).default(20), // Increased max for calendar views
 	search: z.string().optional(),
 	type: appointmentTypeEnum.optional(),
 	status: appointmentStatusEnum.optional(),

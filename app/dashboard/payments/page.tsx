@@ -6,6 +6,7 @@ import { DataTable } from '@/components/ui/data-table';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
+import PaymentsListClient from './payments-list-client';
 
 export default async function PaymentsPage({
 	searchParams: searchParamsPromise,
@@ -18,17 +19,18 @@ export default async function PaymentsPage({
 	// Await searchParams in Next.js 16
 	const searchParams = await searchParamsPromise;
 
-	// Fetch payments and stats
-	const [paymentsResult, statsResult] = await Promise.all([
-		getPayments({
-			page: searchParams.page ? parseInt(searchParams.page) : 1,
-			limit: 20,
-			search: searchParams.search,
-			purpose: searchParams.purpose as any,
-			status: searchParams.status as any,
-		}),
-		getPaymentStats(),
-	]);
+		// Fetch payments and stats
+		const [paymentsResult, statsResult] = await Promise.all([
+			getPayments({
+				page: searchParams.page ? parseInt(searchParams.page) : 1,
+				limit: 20,
+				search: searchParams.search,
+				purpose: searchParams.purpose as any,
+				status: searchParams.status as any,
+				method: searchParams.method as any,
+			}),
+			getPaymentStats(),
+		]);
 
 	if (!paymentsResult.success || !statsResult.success) {
 		return (
@@ -223,6 +225,9 @@ export default async function PaymentsPage({
 					</p>
 				</div>
 			</div>
+
+			{/* Filters */}
+			<PaymentsListClient searchParams={searchParams} />
 
 			{/* Table Section */}
 			<div className='bg-background border border-border rounded-lg shadow-sm p-6'>

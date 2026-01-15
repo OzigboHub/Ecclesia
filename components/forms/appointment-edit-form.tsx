@@ -5,10 +5,10 @@ import { useRouter } from "next/navigation";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
-  createAppointmentSchema,
-  type CreateAppointmentInput,
+  updateAppointmentSchema,
+  type UpdateAppointmentInput,
 } from "@/lib/validators/appointment.schema";
-import { createAppointment } from "@/app/actions/appointment.actions";
+import { updateAppointment } from "@/app/actions/appointment.actions";
 import { getParishioners } from "@/app/actions/parishioner.actions";
 import { getStaffMembers, createUser } from "@/app/actions/user.actions";
 import { toast } from "sonner";
@@ -24,16 +24,27 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Modal } from "@/components/ui/modal";
-import { Plus, UserPlus } from "lucide-react";
+import { UserPlus, Loader2 } from "lucide-react";
 import {
   createUserSchema,
   type CreateUserInput,
 } from "@/lib/validators/user.schema";
 import { useForm as useStaffForm } from "react-hook-form";
 import { zodResolver as zodStaffResolver } from "@hookform/resolvers/zod";
+import { format } from "date-fns";
 
-interface AppointmentFormProps {
-  onSuccess?: () => void;
+interface AppointmentEditFormProps {
+  appointment: {
+    id: string;
+    title: string;
+    description: string | null;
+    startTime: Date | string;
+    endTime: Date | string;
+    type: string;
+    status: string;
+    parishionerId: string;
+    assignedToId: string | null;
+  };
 }
 
 interface Parishioner {
@@ -52,7 +63,7 @@ interface StaffMember {
   role: string;
 }
 
-export function AppointmentForm({ onSuccess }: AppointmentFormProps) {
+export function AppointmentEditForm({ appointment }: AppointmentEditFormProps) {
   const [isPending, startTransition] = useTransition();
   const [parishioners, setParishioners] = useState<Parishioner[]>([]);
   const [staffMembers, setStaffMembers] = useState<StaffMember[]>([]);
@@ -62,17 +73,46 @@ export function AppointmentForm({ onSuccess }: AppointmentFormProps) {
   const [isCreatingStaff, setIsCreatingStaff] = useState(false);
   const router = useRouter();
 
-  const form = useForm<CreateAppointmentInput>({
-    resolver: zodResolver(createAppointmentSchema),
+  // Format datetime-local input value
+  const formatDateTimeLocal = (date: Date | string) => {
+    const d = new Date(date);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    const hours = String(d.getHours()).padStart(2, "0");
+    const minutes = String(d.getMinutes()).padStart(2, "0");
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
+
+  // Extract notes from description if it contains "Additional Notes:"
+  const extractNotes = (description: string | null): string => {
+    if (!description) return "";
+    // Only match "Additional Notes:" at the end, non-greedy, without using /s flag for max compatibility
+    const notesMatch = description.match(/Additional Notes:\s*([\s\S]+)$/);
+    return notesMatch ? notesMatch[1].trim() : "";
+  };
+
+  const extractDescription = (description: string | null): string => {
+    if (!description) return "";
+    const notesMatch = description.match(/Additional Notes:/);
+    if (notesMatch) {
+      return description.substring(0, notesMatch.index).trim();
+    }
+    return description;
+  };
+
+  const form = useForm<UpdateAppointmentInput>({
+    resolver: zodResolver(updateAppointmentSchema),
     defaultValues: {
-      title: "",
-      description: "",
-      type: "MEETING",
-      startTime: "",
-      endTime: "",
-      assignedToId: "",
-      parishionerId: "",
-      notes: "",
+      title: appointment.title,
+      description: extractDescription(appointment.description),
+      type: appointment.type as any,
+      startTime: formatDateTimeLocal(appointment.startTime),
+      endTime: formatDateTimeLocal(appointment.endTime),
+      assignedToId: appointment.assignedToId || undefined,
+      parishionerId: appointment.parishionerId,
+      notes: extractNotes(appointment.description),
+      status: appointment.status as any,
     },
   });
 
@@ -93,47 +133,48 @@ export function AppointmentForm({ onSuccess }: AppointmentFormProps) {
     control,
     formState: { errors },
     setError,
-    reset,
     setValue,
   } = form;
 
   // Load parishioners and staff
   useEffect(() => {
     async function loadData() {
-      const [parishionersResult, staffResult] = await Promise.all([
-        getParishioners(),
-        getStaffMembers(),
-      ]);
+      try {
+        const [parishionersResult, staffResult] = await Promise.all([
+          getParishioners(),
+          getStaffMembers(),
+        ]);
 
-      if (parishionersResult.success && parishionersResult.data) {
-        setParishioners(parishionersResult.data);
+        if (parishionersResult.success && parishionersResult.data) {
+          setParishioners(parishionersResult.data);
+        }
+        if (staffResult.success && staffResult.data) {
+          setStaffMembers(staffResult.data);
+        }
+      } catch (error) {
+        console.error("Failed to load data:", error);
+      } finally {
+        setIsLoadingParishioners(false);
+        setIsLoadingStaff(false);
       }
-      setIsLoadingParishioners(false);
-
-      if (staffResult.success && staffResult.data) {
-        setStaffMembers(staffResult.data);
-      }
-      setIsLoadingStaff(false);
     }
     loadData();
   }, []);
 
-  const onSubmit = (data: CreateAppointmentInput) => {
+  const onSubmit = (data: UpdateAppointmentInput) => {
     startTransition(async () => {
-      const result = await createAppointment(data);
+      const result = await updateAppointment(appointment.id, data);
 
       if (result.success) {
-        toast.success(result.message);
-        reset();
+        toast.success("Appointment updated successfully");
+        router.push(`/dashboard/appointments/${appointment.id}`);
         router.refresh();
-        onSuccess?.();
       } else {
         toast.error(result.message);
 
-        // Set server-side validation errors on fields
         if (result.errors) {
           Object.entries(result.errors).forEach(([field, messages]) => {
-            setError(field as keyof CreateAppointmentInput, {
+            setError(field as keyof UpdateAppointmentInput, {
               type: "server",
               message: messages[0],
             });
@@ -147,26 +188,14 @@ export function AppointmentForm({ onSuccess }: AppointmentFormProps) {
     setIsCreatingStaff(true);
     try {
       const result = await createUser(data);
-
       if (result.success && result.data) {
         toast.success("Staff member created successfully");
-        // Add new staff to the list
         setStaffMembers((prev) => [...prev, result.data!]);
-        // Select the newly created staff member
         setValue("assignedToId", result.data.id);
-        // Close modal and reset form
         setIsCreateStaffModalOpen(false);
         staffForm.reset();
       } else {
         toast.error(result.message);
-        if (result.errors) {
-          Object.entries(result.errors).forEach(([field, messages]) => {
-            staffForm.setError(field as keyof CreateUserInput, {
-              type: "server",
-              message: messages[0],
-            });
-          });
-        }
       }
     } catch (error) {
       toast.error("Failed to create staff member");
@@ -177,22 +206,19 @@ export function AppointmentForm({ onSuccess }: AppointmentFormProps) {
 
   return (
     <>
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        {/* Appointment Title */}
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        {/* Title */}
         <div className="space-y-2">
-          <Label htmlFor="title">Appointment Title *</Label>
+          <Label htmlFor="title">Title *</Label>
           <Input
             id="title"
             {...register("title")}
-            placeholder="e.g., Wedding Counseling"
+            placeholder="e.g., Wedding Counseling Session"
             disabled={isPending}
             aria-invalid={!!errors.title}
-            aria-describedby={errors.title ? "title-error" : undefined}
           />
           {errors.title && (
-            <p id="title-error" className="text-sm text-destructive">
-              {errors.title.message}
-            </p>
+            <p className="text-sm text-destructive">{errors.title.message}</p>
           )}
         </div>
 
@@ -202,7 +228,7 @@ export function AppointmentForm({ onSuccess }: AppointmentFormProps) {
           <Textarea
             id="description"
             {...register("description")}
-            placeholder="Briefly describe the purpose of the meeting..."
+            placeholder="Brief description of the appointment..."
             rows={3}
             disabled={isPending}
           />
@@ -213,77 +239,101 @@ export function AppointmentForm({ onSuccess }: AppointmentFormProps) {
           )}
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {/* Appointment Type */}
-          <div className="space-y-2">
-            <Label htmlFor="type">Appointment Type *</Label>
-            <Controller
-              name="type"
-              control={control}
-              render={({ field }) => (
-                <Select
-                  value={field.value}
-                  onValueChange={field.onChange}
-                  disabled={isPending}>
-                  <SelectTrigger id="type">
-                    <SelectValue placeholder="Select type" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-accent">
-                    <SelectItem value="CONFESSION">Confession</SelectItem>
-                    <SelectItem value="COUNSELING">Counseling</SelectItem>
-                    <SelectItem value="MEETING">
-                      Meeting with Parish Priest
-                    </SelectItem>
-                    <SelectItem value="OTHER">Other</SelectItem>
-                  </SelectContent>
-                </Select>
-              )}
-            />
-            {errors.type && (
-              <p className="text-sm text-destructive">{errors.type.message}</p>
+        {/* Type */}
+        <div className="space-y-2">
+          <Label htmlFor="type">Type *</Label>
+          <Controller
+            name="type"
+            control={control}
+            render={({ field }) => (
+              <Select
+                value={field.value}
+                onValueChange={field.onChange}
+                disabled={isPending}>
+                <SelectTrigger id="type">
+                  <SelectValue placeholder="Select appointment type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="CONFESSION">Confession</SelectItem>
+                  <SelectItem value="COUNSELING">Counseling</SelectItem>
+                  <SelectItem value="MEETING">Meeting</SelectItem>
+                  <SelectItem value="OTHER">Other</SelectItem>
+                </SelectContent>
+              </Select>
             )}
-          </div>
-
-          {/* Parishioner Selection */}
-          <div className="space-y-2">
-            <Label htmlFor="parishionerId">Parishioner *</Label>
-            <Controller
-              name="parishionerId"
-              control={control}
-              render={({ field }) => (
-                <Select
-                  value={field.value}
-                  onValueChange={field.onChange}
-                  disabled={isPending || isLoadingParishioners}>
-                  <SelectTrigger id="parishionerId">
-                    <SelectValue
-                      placeholder={
-                        isLoadingParishioners
-                          ? "Loading..."
-                          : "Select parishioner"
-                      }
-                    />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {parishioners.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>
-                        {p.firstName} {p.lastName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            />
-            {errors.parishionerId && (
-              <p className="text-sm text-destructive">
-                {errors.parishionerId.message}
-              </p>
-            )}
-          </div>
+          />
+          {errors.type && (
+            <p className="text-sm text-destructive">{errors.type.message}</p>
+          )}
         </div>
 
+        {/* Status */}
+        <div className="space-y-2">
+          <Label htmlFor="status">Status</Label>
+          <Controller
+            name="status"
+            control={control}
+            render={({ field }) => (
+              <Select
+                value={field.value}
+                onValueChange={field.onChange}
+                disabled={isPending}>
+                <SelectTrigger id="status">
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="PENDING">Pending</SelectItem>
+                  <SelectItem value="CONFIRMED">Confirmed</SelectItem>
+                  <SelectItem value="COMPLETED">Completed</SelectItem>
+                  <SelectItem value="CANCELLED">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
+          />
+          {errors.status && (
+            <p className="text-sm text-destructive">{errors.status.message}</p>
+          )}
+        </div>
+
+        {/* Parishioner */}
+        <div className="space-y-2">
+          <Label htmlFor="parishionerId">Parishioner *</Label>
+          <Controller
+            name="parishionerId"
+            control={control}
+            render={({ field }) => (
+              <Select
+                value={field.value}
+                onValueChange={field.onChange}
+                disabled={isPending || isLoadingParishioners}>
+                <SelectTrigger id="parishionerId">
+                  <SelectValue
+                    placeholder={
+                      isLoadingParishioners
+                        ? "Loading..."
+                        : "Select parishioner"
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {parishioners.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.firstName} {p.lastName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          />
+          {errors.parishionerId && (
+            <p className="text-sm text-destructive">
+              {errors.parishionerId.message}
+            </p>
+          )}
+        </div>
+
+        {/* Date & Time */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {/* Start Time */}
           <div className="space-y-2">
             <Label htmlFor="startTime">Start Date & Time *</Label>
             <Input
@@ -300,7 +350,6 @@ export function AppointmentForm({ onSuccess }: AppointmentFormProps) {
             )}
           </div>
 
-          {/* End Time */}
           <div className="space-y-2">
             <Label htmlFor="endTime">End Date & Time *</Label>
             <Input
@@ -318,7 +367,7 @@ export function AppointmentForm({ onSuccess }: AppointmentFormProps) {
           </div>
         </div>
 
-        {/* Assigned To - Staff Selection */}
+        {/* Assigned To */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <Label htmlFor="assignedToId">
@@ -354,9 +403,9 @@ export function AppointmentForm({ onSuccess }: AppointmentFormProps) {
                     }
                   />
                 </SelectTrigger>
-                <SelectContent className="bg-muted hover:bg-none">
+                <SelectContent>
                   {staffMembers.map((staff) => (
-                    <SelectItem key={staff.id} value={staff.id} className="">
+                    <SelectItem key={staff.id} value={staff.id}>
                       {staff.firstName} {staff.lastName}
                       {staff.email && (
                         <span className="text-muted-foreground ml-2 text-xs">
@@ -382,8 +431,8 @@ export function AppointmentForm({ onSuccess }: AppointmentFormProps) {
           <Textarea
             id="notes"
             {...register("notes")}
-            placeholder="Any special requirements or notes..."
-            rows={2}
+            placeholder="Any additional notes or comments..."
+            rows={3}
             disabled={isPending}
           />
           {errors.notes && (
@@ -391,20 +440,18 @@ export function AppointmentForm({ onSuccess }: AppointmentFormProps) {
           )}
         </div>
 
-        <div className="flex flex-col sm:flex-row justify-end gap-3 pt-4 border-t border-border">
+        {/* Submit Button */}
+        <div className="flex gap-2 justify-end">
           <Button
             type="button"
             variant="outline"
-            onClick={() => reset()}
-            disabled={isPending}
-            className="w-full sm:w-auto">
-            Reset
+            onClick={() => router.back()}
+            disabled={isPending}>
+            Cancel
           </Button>
-          <Button
-            type="submit"
-            disabled={isPending}
-            className="w-full sm:w-auto">
-            {isPending ? "Scheduling..." : "Schedule Appointment"}
+          <Button type="submit" disabled={isPending}>
+            {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Update Appointment
           </Button>
         </div>
       </form>
@@ -412,19 +459,16 @@ export function AppointmentForm({ onSuccess }: AppointmentFormProps) {
       {/* Create Staff Modal */}
       <Modal
         isOpen={isCreateStaffModalOpen}
-        onClose={() => {
-          setIsCreateStaffModalOpen(false);
-          staffForm.reset();
-        }}
+        onClose={() => setIsCreateStaffModalOpen(false)}
         title="Create New Staff Member">
         <form
           onSubmit={staffForm.handleSubmit(handleCreateStaff)}
           className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="staff-firstName">First Name *</Label>
+              <Label htmlFor="staffFirstName">First Name *</Label>
               <Input
-                id="staff-firstName"
+                id="staffFirstName"
                 {...staffForm.register("firstName")}
                 disabled={isCreatingStaff}
               />
@@ -434,11 +478,10 @@ export function AppointmentForm({ onSuccess }: AppointmentFormProps) {
                 </p>
               )}
             </div>
-
             <div className="space-y-2">
-              <Label htmlFor="staff-lastName">Last Name *</Label>
+              <Label htmlFor="staffLastName">Last Name *</Label>
               <Input
-                id="staff-lastName"
+                id="staffLastName"
                 {...staffForm.register("lastName")}
                 disabled={isCreatingStaff}
               />
@@ -449,11 +492,10 @@ export function AppointmentForm({ onSuccess }: AppointmentFormProps) {
               )}
             </div>
           </div>
-
           <div className="space-y-2">
-            <Label htmlFor="staff-email">Email *</Label>
+            <Label htmlFor="staffEmail">Email *</Label>
             <Input
-              id="staff-email"
+              id="staffEmail"
               type="email"
               {...staffForm.register("email")}
               disabled={isCreatingStaff}
@@ -464,15 +506,13 @@ export function AppointmentForm({ onSuccess }: AppointmentFormProps) {
               </p>
             )}
           </div>
-
           <div className="space-y-2">
-            <Label htmlFor="staff-password">Password *</Label>
+            <Label htmlFor="staffPassword">Password *</Label>
             <Input
-              id="staff-password"
+              id="staffPassword"
               type="password"
               {...staffForm.register("password")}
               disabled={isCreatingStaff}
-              placeholder="Minimum 8 characters"
             />
             {staffForm.formState.errors.password && (
               <p className="text-sm text-destructive">
@@ -480,9 +520,8 @@ export function AppointmentForm({ onSuccess }: AppointmentFormProps) {
               </p>
             )}
           </div>
-
           <div className="space-y-2">
-            <Label htmlFor="staff-role">Role *</Label>
+            <Label htmlFor="staffRole">Role *</Label>
             <Controller
               name="role"
               control={staffForm.control}
@@ -491,7 +530,7 @@ export function AppointmentForm({ onSuccess }: AppointmentFormProps) {
                   value={field.value}
                   onValueChange={field.onChange}
                   disabled={isCreatingStaff}>
-                  <SelectTrigger id="staff-role">
+                  <SelectTrigger id="staffRole">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -503,30 +542,20 @@ export function AppointmentForm({ onSuccess }: AppointmentFormProps) {
                 </Select>
               )}
             />
-            {staffForm.formState.errors.role && (
-              <p className="text-sm text-destructive">
-                {staffForm.formState.errors.role.message}
-              </p>
-            )}
           </div>
-
-          <div className="flex flex-col sm:flex-row justify-end gap-3 pt-4 border-t border-border">
+          <div className="flex gap-2 justify-end pt-4">
             <Button
               type="button"
               variant="outline"
-              onClick={() => {
-                setIsCreateStaffModalOpen(false);
-                staffForm.reset();
-              }}
-              disabled={isCreatingStaff}
-              className="w-full sm:w-auto">
+              onClick={() => setIsCreateStaffModalOpen(false)}
+              disabled={isCreatingStaff}>
               Cancel
             </Button>
-            <Button
-              type="submit"
-              disabled={isCreatingStaff}
-              className="w-full sm:w-auto">
-              {isCreatingStaff ? "Creating..." : "Create Staff"}
+            <Button type="submit" disabled={isCreatingStaff}>
+              {isCreatingStaff && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              Create Staff
             </Button>
           </div>
         </form>
