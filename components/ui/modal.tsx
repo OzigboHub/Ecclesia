@@ -34,7 +34,6 @@ export function Modal({ isOpen, onClose, title, children, className }: ModalProp
             {/* Backdrop */}
             <div
                 className="absolute inset-0 bg-background/80 backdrop-blur-sm transition-opacity"
-                onClick={onClose}
             />
 
             {/* Modal Content */}

@@ -90,6 +90,48 @@ export async function getUsers(): Promise<ActionResponse<SafeUser[]>> {
 }
 
 /**
+ * Get staff members (users who can be assigned to appointments)
+ */
+export async function getStaffMembers(): Promise<ActionResponse<SafeUser[]>> {
+	try {
+		const session = await auth();
+		if (!session?.user) {
+			return { success: false, message: 'Unauthorized' };
+		}
+
+		// Staff roles that can be assigned to appointments
+		const staffRoles = [
+			'SUPER_ADMIN',
+			'PARISH_ADMIN',
+			'PARISH_SECRETARY',
+			'PARISH_STAFF',
+			'OUTSTATION_ADMIN',
+		];
+
+		const staff = await db.user.findMany({
+			where: {
+				organizationId: session.user.organizationId,
+				role: { in: staffRoles },
+				isActive: true,
+			},
+			orderBy: [
+				{ lastName: 'asc' },
+				{ firstName: 'asc' },
+			],
+		});
+
+		return {
+			success: true,
+			message: 'Staff members retrieved successfully',
+			data: staff.map(omitPassword),
+		};
+	} catch (error) {
+		console.error('Failed to get staff members:', error);
+		return { success: false, message: 'Failed to retrieve staff members' };
+	}
+}
+
+/**
  * Get a single user by ID
  */
 export async function getUser(

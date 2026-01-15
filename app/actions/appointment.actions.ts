@@ -6,6 +6,8 @@ import db from '@/lib/db';
 import {
 	createAppointmentSchema,
 	updateAppointmentSchema,
+	appointmentFilterSchema,
+	type AppointmentFilter,
 } from '@/lib/validators/appointment.schema';
 import type { ActionResponse } from '@/types';
 import { Prisma } from '@prisma/client';
@@ -102,6 +104,135 @@ export async function getAppointments(): Promise<
 			success: true,
 			message: 'Appointments retrieved successfully',
 			data: appointments,
+		};
+	} catch (error) {
+		console.error('Failed to get appointments:', error);
+		return { success: false, message: 'Failed to retrieve appointments' };
+	}
+}
+
+/**
+ * Get appointments with filters and pagination
+ */
+export async function getAppointmentsFiltered(
+	query?: Partial<AppointmentFilter>
+): Promise<
+	ActionResponse<{ appointments: AppointmentWithRelations[]; total: number }>
+> {
+	try {
+		const session = await auth();
+		if (!session) {
+			return { success: false, message: 'Unauthorized' };
+		}
+
+		// Check feature toggle
+		const enabled = await isFeatureEnabled(
+			session.user.organizationId,
+			'enableAppointments'
+		);
+		if (!enabled) {
+			return {
+				success: false,
+				message: 'Appointments feature is not enabled',
+			};
+		}
+
+		// Parse and validate query
+		const parsed = appointmentFilterSchema.parse(query || {});
+		const {
+			page,
+			limit,
+			search,
+			type,
+			status,
+			assignedToId,
+			dateFrom,
+			dateTo,
+			sortBy,
+			sortOrder,
+		} = parsed;
+
+		// Build where clause
+		const where: Prisma.AppointmentWhereInput = {
+			organizationId: session.user.organizationId,
+			...(type && { type }),
+			...(status && { status }),
+			...(assignedToId && { assignedToId }),
+			...(search && {
+				OR: [
+					{ title: { contains: search, mode: 'insensitive' } },
+					{ description: { contains: search, mode: 'insensitive' } },
+					{
+						parishioner: {
+							OR: [
+								{
+									firstName: {
+										contains: search,
+										mode: 'insensitive',
+									},
+								},
+								{
+									lastName: {
+										contains: search,
+										mode: 'insensitive',
+									},
+								},
+							],
+						},
+					},
+				],
+			}),
+			...(dateFrom &&
+				dateTo && {
+					startTime: {
+						gte: dateFrom,
+						lte: dateTo,
+					},
+				}),
+		};
+
+		// Execute queries in parallel
+		const [appointments, total] = await Promise.all([
+			db.appointment.findMany({
+				where,
+				include: {
+					assignedTo: {
+						select: {
+							id: true,
+							firstName: true,
+							lastName: true,
+							email: true,
+						},
+					},
+					parishioner: {
+						select: {
+							id: true,
+							firstName: true,
+							lastName: true,
+							email: true,
+							phone: true,
+						},
+					},
+					requestedBy: {
+						select: {
+							id: true,
+							firstName: true,
+							lastName: true,
+							email: true,
+						},
+					},
+				},
+				orderBy: { [sortBy]: sortOrder },
+				skip: (page - 1) * limit,
+				take: limit,
+			}),
+			db.appointment.count({ where }),
+		]);
+
+		return {
+			success: true,
+			message: 'Appointments retrieved successfully',
+			data: { appointments, total },
 		};
 	} catch (error) {
 		console.error('Failed to get appointments:', error);
@@ -218,12 +349,21 @@ export async function createAppointment(
 			};
 		}
 
-		const { startTime, endTime, ...rest } = parsed.data;
+		const { startTime, endTime, notes, ...rest } = parsed.data;
+
+		// Combine description and notes if both exist
+		let finalDescription = rest.description || '';
+		if (notes) {
+			finalDescription = finalDescription
+				? `${finalDescription}\n\nAdditional Notes: ${notes}`
+				: notes;
+		}
 
 		// Create appointment
 		const appointment = await db.appointment.create({
 			data: {
 				...rest,
+				description: finalDescription || null,
 				startTime: new Date(startTime),
 				endTime: new Date(endTime),
 				organizationId: session.user.organizationId,
@@ -324,8 +464,18 @@ export async function updateAppointment(
 
 		if (parsed.data.title !== undefined)
 			updateData.title = parsed.data.title;
-		if (parsed.data.description !== undefined)
-			updateData.description = parsed.data.description;
+		
+		// Handle description and notes - combine them if notes is provided
+		if (parsed.data.description !== undefined || parsed.data.notes !== undefined) {
+			let finalDescription = parsed.data.description ?? existing.description ?? '';
+			if (parsed.data.notes) {
+				finalDescription = finalDescription
+					? `${finalDescription}\n\nAdditional Notes: ${parsed.data.notes}`
+					: parsed.data.notes;
+			}
+			updateData.description = finalDescription || null;
+		}
+		
 		if (parsed.data.type !== undefined) updateData.type = parsed.data.type;
 		if (parsed.data.status !== undefined)
 			updateData.status = parsed.data.status;
