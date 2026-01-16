@@ -349,14 +349,14 @@ export default async function PaymentDetailPage({ params }: PageProps) {
 											</p>
 										</div>
 									)}
-									{payment.massIntention.massDate && (
+									{payment.massIntention.mass && (
 										<div>
 											<p className='text-sm font-medium text-muted-foreground'>
 												Mass Date
 											</p>
 											<p className='text-base'>
 												{new Date(
-													payment.massIntention.massDate
+													payment.massIntention.mass.date
 												).toLocaleDateString('en-NG')}
 											</p>
 										</div>

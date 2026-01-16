@@ -18,7 +18,11 @@ type PaymentWithRelations = Prisma.PaymentGetPayload<{
 		parishioner: true;
 		organization: true;
 		recordedBy: true;
-		massIntention: true;
+		massIntention: {
+			include: {
+				mass: true;
+			};
+		};
 		donationCampaign: true;
 	};
 }>;
@@ -186,7 +190,11 @@ export async function getPayments(
 					parishioner: true,
 					organization: true,
 					recordedBy: true,
-					massIntention: true,
+					massIntention: {
+						include: {
+							mass: true,
+						},
+					},
 					donationCampaign: true,
 				},
 				orderBy: { [sortBy]: sortOrder },
@@ -231,7 +239,11 @@ export async function getPayment(
 				parishioner: true,
 				organization: true,
 				recordedBy: true,
-				massIntention: true,
+				massIntention: {
+					include: {
+						mass: true,
+					},
+				},
 				donationCampaign: true,
 			},
 		});
@@ -311,7 +323,11 @@ export async function getPaymentStats(): Promise<
 						parishioner: true,
 						organization: true,
 						recordedBy: true,
-						massIntention: true,
+						massIntention: {
+							include: {
+								mass: true,
+							},
+						},
 						donationCampaign: true,
 					},
 					orderBy: { createdAt: 'desc' },
@@ -415,7 +431,11 @@ export async function createPayment(
 				parishioner: true,
 				organization: true,
 				recordedBy: true,
-				massIntention: true,
+				massIntention: {
+					include: {
+						mass: true,
+					},
+				},
 				donationCampaign: true,
 			},
 		});
@@ -504,7 +524,11 @@ export async function updatePayment(
 				parishioner: true,
 				organization: true,
 				recordedBy: true,
-				massIntention: true,
+				massIntention: {
+					include: {
+						mass: true,
+					},
+				},
 				donationCampaign: true,
 			},
 		});
@@ -566,7 +590,11 @@ export async function completePayment(
 				parishioner: true,
 				organization: true,
 				recordedBy: true,
-				massIntention: true,
+				massIntention: {
+					include: {
+						mass: true,
+					},
+				},
 				donationCampaign: true,
 			},
 		});

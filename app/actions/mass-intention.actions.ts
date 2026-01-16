@@ -15,6 +15,7 @@ type MassIntentionWithRelations = Prisma.MassIntentionGetPayload<{
 	include: {
 		parishioner: true;
 		organization: true;
+		mass: true;
 	};
 }>;
 
@@ -41,7 +42,7 @@ export async function getMassIntentions(): Promise<
 				success: false,
 				message: 'Mass intentions feature is not enabled',
 			};
-		} 
+		}
 
 		const massIntentions = await db.massIntention.findMany({
 			where: { organizationId: session.user.organizationId },
@@ -84,6 +85,7 @@ export async function getMassIntention(
 			include: {
 				parishioner: true,
 				organization: true,
+				mass: true,
 			},
 		});
 
@@ -138,12 +140,12 @@ export async function createMassIntention(
 			};
 		}
 
-		const { massId, parishionerId, ...rest } = parsed.data;
+		const { massId, parishionerId, stipend, ...rest } = parsed.data;
 
 		// Verify Mass exists and belongs to organization
 		const mass = await db.mass.findUnique({
 			where: { id: massId },
-			include: { _count: { select: { intentions: true } } }
+			include: { _count: { select: { intentions: true } } },
 		});
 
 		if (!mass || mass.organizationId !== session.user.organizationId) {
@@ -151,7 +153,10 @@ export async function createMassIntention(
 		}
 
 		if (mass.status === 'CANCELLED') {
-			return { success: false, message: 'Selected Mass has been cancelled' };
+			return {
+				success: false,
+				message: 'Selected Mass has been cancelled',
+			};
 		}
 
 		// Check capacity
@@ -159,26 +164,49 @@ export async function createMassIntention(
 			return { success: false, message: 'Mass is fully booked' };
 		}
 
-		// Create mass intention
-		const massIntention = await db.massIntention.create({
-			data: {
-				...rest,
-				massId, // Link to Mass
-				organizationId: session.user.organizationId,
-				...(parishionerId && { parishionerId }),
-				status: 'PENDING',
-			},
-			include: {
-				parishioner: true,
-				organization: true,
-				mass: true,
-			},
-		});
+		// Create mass intention with optional payment
+		const result = await db.$transaction(async (tx) => {
+			// Create mass intention
+			const massIntention = await tx.massIntention.create({
+				data: {
+					...rest,
+					massId, // Link to Mass
+					organizationId: session.user.organizationId,
+					...(parishionerId && { parishionerId }),
+					status: 'PENDING',
+				},
+				include: {
+					parishioner: true,
+					organization: true,
+					mass: true,
+				},
+			});
 
-		// OPTIONAL: Update mass booked count if we were storing it denormalized on Mass (we are storing bookedIntentions? yes in schema)
-		await db.mass.update({
-			where: { id: massId },
-			data: { bookedIntentions: { increment: 1 } }
+			// Create payment record if stipend provided
+			if (stipend && stipend > 0) {
+				await tx.payment.create({
+					data: {
+						amount: stipend,
+						purpose: 'MASS_INTENTION',
+						paymentMethod: 'CASH',
+						paymentStatus: 'COMPLETED',
+						payerName: rest.requestedBy || 'Anonymous',
+						organizationId: session.user.organizationId,
+						recordedById: session.user.id,
+						...(parishionerId && { parishionerId }),
+						massIntentionId: massIntention.id,
+						notes: `Stipend for mass intention: ${rest.intention}`,
+					},
+				});
+			}
+
+			// Update mass booked count
+			await tx.mass.update({
+				where: { id: massId },
+				data: { bookedIntentions: { increment: 1 } },
+			});
+
+			return massIntention;
 		});
 
 		revalidatePath('/dashboard/mass-intentions');
@@ -193,7 +221,7 @@ export async function createMassIntention(
 							'en-NG'
 					  )})`
 					: ''),
-			data: massIntention,
+			data: result,
 		};
 	} catch (error) {
 		console.error('Failed to create mass intention:', error);
@@ -268,7 +296,9 @@ export async function updateMassIntention(
 		// Handle mass relationship
 		if (parsed.data.massId) {
 			// Validate new mass if changing
-			const mass = await db.mass.findUnique({ where: { id: parsed.data.massId } });
+			const mass = await db.mass.findUnique({
+				where: { id: parsed.data.massId },
+			});
 			if (!mass) return { success: false, message: 'Invalid Mass' };
 			updateData.mass = { connect: { id: parsed.data.massId } };
 		}
@@ -291,6 +321,7 @@ export async function updateMassIntention(
 			include: {
 				parishioner: true,
 				organization: true,
+				mass: true,
 			},
 		});
 
