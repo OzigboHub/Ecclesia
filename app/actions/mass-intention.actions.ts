@@ -41,7 +41,7 @@ export async function getMassIntentions(): Promise<
 				success: false,
 				message: 'Mass intentions feature is not enabled',
 			};
-		}
+		} 
 
 		const massIntentions = await db.massIntention.findMany({
 			where: { organizationId: session.user.organizationId },
