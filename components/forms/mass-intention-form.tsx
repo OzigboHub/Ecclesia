@@ -10,6 +10,7 @@ import {
 } from '@/lib/validators/mass-intention.schema';
 import { createMassIntention } from '@/app/actions/mass-intention.actions';
 import { getParishioners } from '@/app/actions/parishioner.actions';
+import { getMasses } from '@/app/actions/mass.actions';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,9 +26,11 @@ import { Textarea } from '@/components/ui/textarea';
 
 interface MassIntentionFormProps {
 	onSuccess?: () => void;
+	organizationId?: string; // Selected organization from calendar
 	defaultValues?: {
 		massDate?: Date;
 		timeSlot?: string;
+		massId?: string; // Pre-selected mass from calendar
 	};
 }
 
@@ -41,11 +44,17 @@ type Parishioner = {
 
 export function MassIntentionForm({
 	onSuccess,
+	organizationId,
 	defaultValues: calendarDefaults,
 }: MassIntentionFormProps) {
 	const [isPending, startTransition] = useTransition();
 	const [parishioners, setParishioners] = useState<Parishioner[]>([]);
 	const [isLoadingParishioners, setIsLoadingParishioners] = useState(true);
+	const [availableMasses, setAvailableMasses] = useState<any[]>([]);
+	const [isLoadingMasses, setIsLoadingMasses] = useState(false);
+	const [selectedDate, setSelectedDate] = useState<string>(
+		new Date().toISOString().split('T')[0]
+	);
 	const router = useRouter();
 
 	// Format date with time slot if provided from calendar
@@ -67,7 +76,7 @@ export function MassIntentionForm({
 			requestedBy: '',
 			contactEmail: '',
 			contactPhone: '',
-			massDate: getInitialDate(),
+			massId: calendarDefaults?.massId || '',
 			stipend: undefined,
 			parishionerId: '',
 			notes: calendarDefaults?.timeSlot
@@ -97,6 +106,26 @@ export function MassIntentionForm({
 		}
 		loadParishioners();
 	}, []);
+
+	// Load available masses when date changes
+	useEffect(() => {
+		async function loadMasses() {
+			setIsLoadingMasses(true);
+			form.setValue('massId', ''); // Reset mass selection when date changes
+			const result = await getMasses(selectedDate);
+			if (result.success && result.data) {
+				setAvailableMasses(
+					result.data.filter(
+						(m: any) =>
+							m.status === 'SCHEDULED' ||
+							m.status === 'RESCHEDULED'
+					)
+				);
+			}
+			setIsLoadingMasses(false);
+		}
+		loadMasses();
+	}, [selectedDate, form]);
 
 	const onSubmit = (data: CreateMassIntentionInput) => {
 		startTransition(async () => {
@@ -216,25 +245,58 @@ export function MassIntentionForm({
 			</div>
 
 			<div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
-				{/* Mass Date */}
+				{/* Mass Date Filter */}
 				<div className='space-y-2'>
-					<Label htmlFor='massDate'>Mass Date *</Label>
+					<Label htmlFor='massDate'>Preferred Date *</Label>
 					<Input
 						id='massDate'
 						type='date'
-						{...register('massDate')}
+						value={selectedDate}
+						onChange={(e) => setSelectedDate(e.target.value)}
 						disabled={isPending}
-						aria-invalid={!!errors.massDate}
-						aria-describedby={
-							errors.massDate ? 'massDate-error' : undefined
-						}
 					/>
-					{errors.massDate && (
-						<p
-							id='massDate-error'
-							className='text-sm text-destructive'
-						>
-							{errors.massDate.message}
+				</div>
+
+				{/* Mass Selection */}
+				<div className='space-y-2'>
+					<Label htmlFor='massId'>Select Mass *</Label>
+					<Controller
+						name='massId'
+						control={control}
+						render={({ field }) => (
+							<Select
+								value={field.value}
+								onValueChange={field.onChange}
+								disabled={isPending || isLoadingMasses}
+							>
+								<SelectTrigger id='massId'>
+									<SelectValue
+										placeholder={
+											isLoadingMasses
+												? 'Loading masses...'
+												: availableMasses.length === 0
+												? 'No masses available'
+												: 'Select a mass'
+										}
+									/>
+								</SelectTrigger>
+								<SelectContent>
+									{availableMasses.map((mass) => (
+										<SelectItem
+											key={mass.id}
+											value={mass.id}
+										>
+											{mass.time} -{' '}
+											{mass.massType.replace('_', ' ')}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						)}
+					/>
+					{errors.massId && (
+						<p className='text-sm text-destructive'>
+							{errors.massId.message}
 						</p>
 					)}
 				</div>
@@ -325,8 +387,10 @@ export function MassIntentionForm({
 					control={control}
 					render={({ field }) => (
 						<Select
-							value={field.value}
-							onValueChange={field.onChange}
+							value={field.value || 'none'}
+							onValueChange={(val) =>
+								field.onChange(val === 'none' ? '' : val)
+							}
 							disabled={isPending || isLoadingParishioners}
 						>
 							<SelectTrigger id='parishionerId'>
@@ -339,7 +403,7 @@ export function MassIntentionForm({
 								/>
 							</SelectTrigger>
 							<SelectContent>
-								<SelectItem value=''>None</SelectItem>
+								<SelectItem value='none'>None</SelectItem>
 								{parishioners.map((parishioner) => (
 									<SelectItem
 										key={parishioner.id}

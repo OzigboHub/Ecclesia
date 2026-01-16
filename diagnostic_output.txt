@@ -1,0 +1,36 @@
+C:\Users\USER\ecclesia\node_modules\.pnpm\@prisma+client@7.2.0_prisma_cc6a828049883b98ef5d9d9c4971082c\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:259
+        throw new PrismaClientInitializationError(
+              ^
+
+PrismaClientInitializationError: `PrismaClient` needs to be constructed with a non-empty, valid `PrismaClientOptions`:
+
+```
+new PrismaClient({
+  ...
+})
+```
+
+or
+
+```
+constructor() {
+  super({ ... });
+}
+```
+          
+    at new t (C:\Users\USER\ecclesia\node_modules\.pnpm\@prisma+client@7.2.0_prisma_cc6a828049883b98ef5d9d9c4971082c\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:259:15)
+    at main (C:\Users\USER\ecclesia\scripts\db-check.ts:4:20)
+    at <anonymous> (C:\Users\USER\ecclesia\scripts\db-check.ts:28:1)
+    at Object.<anonymous> (C:\Users\USER\ecclesia\scripts\db-check.ts:28:6)
+    at Module._compile (node:internal/modules/cjs/loader:1706:14)
+    at Object.transformer (C:\Users\USER\AppData\Local\npm-cache\_npx\fd45a72a545557e9\node_modules\tsx\dist\register-D46fvsV_.cjs:3:1104)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:237:24) {
+  clientVersion: '7.2.0',
+  errorCode: undefined,
+  retryable: undefined
+}
+
+Node.js v22.21.1

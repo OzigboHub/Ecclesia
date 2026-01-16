@@ -26,7 +26,11 @@ export async function getPaymentReceiptData(
 				organization: true,
 				parishioner: true,
 				recordedBy: true,
-				massIntention: true,
+				massIntention: {
+					include: {
+						mass: true,
+					},
+				},
 				donationCampaign: true,
 			},
 		});
@@ -77,9 +81,11 @@ export async function getPaymentReceiptData(
 				? {
 						type: payment.massIntention.intentionType,
 						intention: payment.massIntention.intention,
-						requestedDate: new Date(
-							payment.massIntention.massDate
-						).toLocaleDateString('en-NG'),
+						requestedDate: payment.massIntention.mass
+							? new Date(
+									payment.massIntention.mass.date
+							  ).toLocaleDateString('en-NG')
+							: 'Not scheduled',
 				  }
 				: null,
 			campaignName: payment.donationCampaign?.name || null,

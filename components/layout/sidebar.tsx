@@ -2,11 +2,10 @@
 
 import { ADMIN_EXTENDED, SIDEBAR } from "@/lib/const";
 import { LogOut } from "lucide-react";
-import { useSession } from "next-auth/react";
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Separator } from "../ui/separator";
+import Image from "next/image";
 
 export default function Sidebar() {
 	const pathName = usePathname();
