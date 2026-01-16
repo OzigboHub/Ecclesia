@@ -12,7 +12,6 @@ import { createMassIntention } from '@/app/actions/mass-intention.actions';
 import { getParishioners } from '@/app/actions/parishioner.actions';
 import { getMasses } from '@/app/actions/mass.actions';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -27,9 +26,11 @@ import { Textarea } from '@/components/ui/textarea';
 
 interface MassIntentionFormProps {
 	onSuccess?: () => void;
+	organizationId?: string; // Selected organization from calendar
 	defaultValues?: {
 		massDate?: Date;
 		timeSlot?: string;
+		massId?: string; // Pre-selected mass from calendar
 	};
 }
 
@@ -43,6 +44,7 @@ type Parishioner = {
 
 export function MassIntentionForm({
 	onSuccess,
+	organizationId,
 	defaultValues: calendarDefaults,
 }: MassIntentionFormProps) {
 	const [isPending, startTransition] = useTransition();
@@ -50,7 +52,9 @@ export function MassIntentionForm({
 	const [isLoadingParishioners, setIsLoadingParishioners] = useState(true);
 	const [availableMasses, setAvailableMasses] = useState<any[]>([]);
 	const [isLoadingMasses, setIsLoadingMasses] = useState(false);
-	const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
+	const [selectedDate, setSelectedDate] = useState<string>(
+		new Date().toISOString().split('T')[0]
+	);
 	const router = useRouter();
 
 	// Format date with time slot if provided from calendar
@@ -72,7 +76,7 @@ export function MassIntentionForm({
 			requestedBy: '',
 			contactEmail: '',
 			contactPhone: '',
-			massId: '',
+			massId: calendarDefaults?.massId || '',
 			stipend: undefined,
 			parishionerId: '',
 			notes: calendarDefaults?.timeSlot
@@ -110,7 +114,13 @@ export function MassIntentionForm({
 			form.setValue('massId', ''); // Reset mass selection when date changes
 			const result = await getMasses(selectedDate);
 			if (result.success && result.data) {
-				setAvailableMasses(result.data.filter((m: any) => m.status === 'SCHEDULED' || m.status === 'RESCHEDULED'));
+				setAvailableMasses(
+					result.data.filter(
+						(m: any) =>
+							m.status === 'SCHEDULED' ||
+							m.status === 'RESCHEDULED'
+					)
+				);
 			}
 			setIsLoadingMasses(false);
 		}
@@ -265,8 +275,8 @@ export function MassIntentionForm({
 											isLoadingMasses
 												? 'Loading masses...'
 												: availableMasses.length === 0
-													? 'No masses available'
-													: 'Select a mass'
+												? 'No masses available'
+												: 'Select a mass'
 										}
 									/>
 								</SelectTrigger>
@@ -276,7 +286,8 @@ export function MassIntentionForm({
 											key={mass.id}
 											value={mass.id}
 										>
-											{mass.time} - {mass.massType.replace('_', ' ')}
+											{mass.time} -{' '}
+											{mass.massType.replace('_', ' ')}
 										</SelectItem>
 									))}
 								</SelectContent>
@@ -377,7 +388,9 @@ export function MassIntentionForm({
 					render={({ field }) => (
 						<Select
 							value={field.value || 'none'}
-							onValueChange={(val) => field.onChange(val === 'none' ? '' : val)}
+							onValueChange={(val) =>
+								field.onChange(val === 'none' ? '' : val)
+							}
 							disabled={isPending || isLoadingParishioners}
 						>
 							<SelectTrigger id='parishionerId'>

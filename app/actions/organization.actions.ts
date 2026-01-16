@@ -756,3 +756,57 @@ export async function getSystemMetrics(): Promise<
 		return { success: false, message: 'Failed to retrieve metrics' };
 	}
 }
+
+/**
+ * Get user's organization and child organizations (outstations)
+ * Used for organization selector in calendar and mass creation
+ */
+export async function getUserOrganizationHierarchy(): Promise<
+	ActionResponse<{
+		myOrganization: { id: string; name: string; level: string };
+		outstations: { id: string; name: string; level: string }[];
+	}>
+> {
+	try {
+		const session = await auth();
+		if (!session?.user?.organizationId) {
+			return { success: false, message: 'Unauthorized' };
+		}
+
+		const org = await db.organization.findUnique({
+			where: { id: session.user.organizationId },
+			select: {
+				id: true,
+				name: true,
+				level: true,
+				children: {
+					select: { id: true, name: true, level: true },
+					orderBy: { name: 'asc' },
+				},
+			},
+		});
+
+		if (!org) {
+			return { success: false, message: 'Organization not found' };
+		}
+
+		return {
+			success: true,
+			message: 'Organization hierarchy retrieved',
+			data: {
+				myOrganization: {
+					id: org.id,
+					name: org.name,
+					level: org.level,
+				},
+				outstations: org.children,
+			},
+		};
+	} catch (error) {
+		console.error('Failed to get organization hierarchy:', error);
+		return {
+			success: false,
+			message: 'Failed to retrieve organization hierarchy',
+		};
+	}
+}

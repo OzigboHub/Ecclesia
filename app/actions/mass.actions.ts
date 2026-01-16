@@ -8,103 +8,209 @@ import type { ActionResponse } from '@/types';
 import { startOfDay, endOfDay } from 'date-fns';
 import { generateMassesForPeriod } from '@/lib/services/mass.service';
 
-export async function getMasses(date: Date | string): Promise<ActionResponse<any>> {
-    try {
-        const session = await auth();
-        if (!session) return { success: false, message: 'Unauthorized' };
+export async function getMasses(
+	date: Date | string,
+	organizationId?: string
+): Promise<ActionResponse<any>> {
+	try {
+		const session = await auth();
+		if (!session) return { success: false, message: 'Unauthorized' };
 
-        const searchDate = new Date(date);
-        const masses = await db.mass.findMany({
-            where: {
-                organizationId: session.user.organizationId,
-                date: {
-                    gte: startOfDay(searchDate),
-                    lte: endOfDay(searchDate),
-                },
-            },
-            orderBy: { time: 'asc' },
-            include: {
-                _count: {
-                    select: { intentions: true }
-                }
-            }
-        });
+		// Use provided organizationId or default to user's organization
+		const targetOrgId = organizationId || session.user.organizationId;
 
-        return { success: true, message: 'Masses retrieved', data: masses };
-    } catch (error) {
-        console.error('Failed to get masses:', error);
-        return { success: false, message: 'Failed to get masses' };
-    }
+		// Verify user can access this organization
+		if (organizationId && organizationId !== session.user.organizationId) {
+			const org = await db.organization.findUnique({
+				where: { id: organizationId },
+				select: { parentId: true },
+			});
+
+			if (!org || org.parentId !== session.user.organizationId) {
+				return {
+					success: false,
+					message: 'You do not have access to this organization',
+				};
+			}
+		}
+
+		const searchDate = new Date(date);
+		const masses = await db.mass.findMany({
+			where: {
+				organizationId: targetOrgId,
+				date: {
+					gte: startOfDay(searchDate),
+					lte: endOfDay(searchDate),
+				},
+			},
+			orderBy: { time: 'asc' },
+			include: {
+				_count: {
+					select: { intentions: true },
+				},
+				intentions: {
+					include: {
+						parishioner: true,
+					},
+				},
+			},
+		});
+
+		return { success: true, message: 'Masses retrieved', data: masses };
+	} catch (error) {
+		console.error('Failed to get masses:', error);
+		return { success: false, message: 'Failed to get masses' };
+	}
+}
+
+export async function getMassesInRange(
+	startDate: Date | string,
+	endDate: Date | string,
+	organizationId?: string
+): Promise<ActionResponse<any>> {
+	try {
+		const session = await auth();
+		if (!session) return { success: false, message: 'Unauthorized' };
+
+		// Use provided organizationId or default to user's organization
+		const targetOrgId = organizationId || session.user.organizationId;
+
+		// Verify user can access this organization
+		// (user can access their own org or child orgs if they're a priest)
+		if (organizationId && organizationId !== session.user.organizationId) {
+			// Check if this is a child organization (outstation)
+			const org = await db.organization.findUnique({
+				where: { id: organizationId },
+				select: { parentId: true },
+			});
+
+			if (!org || org.parentId !== session.user.organizationId) {
+				return {
+					success: false,
+					message: 'You do not have access to this organization',
+				};
+			}
+		}
+
+		const start = new Date(startDate);
+		const end = new Date(endDate);
+
+		const masses = await db.mass.findMany({
+			where: {
+				organizationId: targetOrgId,
+				date: {
+					gte: startOfDay(start),
+					lte: endOfDay(end),
+				},
+			},
+			orderBy: [{ date: 'asc' }, { time: 'asc' }],
+			include: {
+				intentions: {
+					include: {
+						parishioner: true,
+					},
+				},
+			},
+		});
+
+		return { success: true, message: 'Masses retrieved', data: masses };
+	} catch (error) {
+		console.error('Failed to get masses in range:', error);
+		return { success: false, message: 'Failed to get masses' };
+	}
 }
 
 export async function createMass(data: any): Promise<ActionResponse> {
-    try {
-        const session = await auth();
-        if (!session || !['SUPER_ADMIN', 'PARISH_ADMIN', 'PARISH_SECRETARY'].includes(session.user.role)) {
-            return { success: false, message: 'Unauthorized' };
-        }
+	try {
+		const session = await auth();
+		if (
+			!session ||
+			!['SUPER_ADMIN', 'PARISH_ADMIN', 'PARISH_SECRETARY'].includes(
+				session.user.role
+			)
+		) {
+			return { success: false, message: 'Unauthorized' };
+		}
 
-        const date = new Date(data.date);
-        const org = await db.organization.findUnique({
-            where: { id: session.user.organizationId },
-            select: { maxMassesPerDay: true }
-        });
+		const date = new Date(data.date);
+		const org = await db.organization.findUnique({
+			where: { id: session.user.organizationId },
+			select: { maxMassesPerDay: true },
+		});
 
-        if (!org) return { success: false, message: 'Organization not found' };
+		if (!org) return { success: false, message: 'Organization not found' };
 
-        const count = await db.mass.count({
-            where: {
-                organizationId: session.user.organizationId,
-                date: {
-                    gte: startOfDay(date),
-                    lte: endOfDay(date)
-                },
-                status: { not: 'CANCELLED' }
-            }
-        });
+		const count = await db.mass.count({
+			where: {
+				organizationId: session.user.organizationId,
+				date: {
+					gte: startOfDay(date),
+					lte: endOfDay(date),
+				},
+				status: { not: 'CANCELLED' },
+			},
+		});
 
-        if (count >= org.maxMassesPerDay) {
-            return { success: false, message: `Maximum of ${org.maxMassesPerDay} masses allowed per day.` };
-        }
+		if (count >= org.maxMassesPerDay) {
+			return {
+				success: false,
+				message: `Maximum of ${org.maxMassesPerDay} masses allowed per day.`,
+			};
+		}
 
-        const mass = await db.mass.create({
-            data: {
-                organizationId: session.user.organizationId,
-                date: date,
-                time: data.time,
-                massType: data.massType as MassType,
-                language: data.language,
-                location: data.location,
-                celebrant: data.celebrant,
-                maxIntentions: data.maxIntentions || 1,
-                isAutoGenerated: false,
-            },
-        });
+		const mass = await db.mass.create({
+			data: {
+				organizationId: session.user.organizationId,
+				date: date,
+				time: data.time,
+				massType: data.massType as MassType,
+				language: data.language,
+				location: data.location,
+				celebrant: data.celebrant,
+				maxIntentions: data.maxIntentions || 1,
+				isAutoGenerated: false,
+			},
+		});
 
-        revalidatePath('/dashboard/mass-schedule');
-        return { success: true, message: 'Mass created', data: mass };
-    } catch (error) {
-        console.error('Failed to create mass:', error);
-        return { success: false, message: 'Failed to create mass' };
-    }
+		revalidatePath('/dashboard/mass-schedule');
+		return { success: true, message: 'Mass created', data: mass };
+	} catch (error) {
+		console.error('Failed to create mass:', error);
+		return { success: false, message: 'Failed to create mass' };
+	}
 }
 
-export async function runMassGeneration(orgId?: string): Promise<ActionResponse> {
-    try {
-        const session = await auth();
-        if (!session) return { success: false, message: 'Unauthorized' };
+export async function runMassGeneration(
+	orgId?: string
+): Promise<ActionResponse> {
+	try {
+		const session = await auth();
+		if (!session) return { success: false, message: 'Unauthorized' };
 
-        console.log('Running mass generation for org:', session.user.organizationId);
-        const count = await generateMassesForPeriod(session.user.organizationId, 30);
-        console.log('Generated masses count:', count);
+		console.log(
+			'Running mass generation for org:',
+			session.user.organizationId
+		);
+		const count = await generateMassesForPeriod(
+			session.user.organizationId,
+			30
+		);
+		console.log('Generated masses count:', count);
 
-        if (count === 0) {
-            return { success: true, message: 'No new masses generated. Check if you have active templates or if the limit is reached.' };
-        }
+		if (count === 0) {
+			return {
+				success: true,
+				message:
+					'No new masses generated. Check if you have active templates or if the limit is reached.',
+			};
+		}
 
-        return { success: true, message: `Successfully generated ${count} masses.` };
-    } catch (e) {
-        console.error('Mass generation failed:', e);
-        return { success: false, message: 'Generation failed' };
-    }
+		return {
+			success: true,
+			message: `Successfully generated ${count} masses.`,
+		};
+	} catch (e) {
+		console.error('Mass generation failed:', e);
+		return { success: false, message: 'Generation failed' };
+	}
 }
