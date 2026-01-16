@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import Link from 'next/link';
 import { Plus, Calendar, CheckCircle2, Clock } from 'lucide-react';
 import { DataTable } from '@/components/ui/data-table';
 import { Button } from '@/components/ui/button';
@@ -143,9 +144,16 @@ export default function MassIntentionsPage() {
 						Schedule and manage mass offerings.
 					</p>
 				</div>
-				<Button onClick={() => setIsBookModalOpen(true)}>
-					<Plus className='mr-2 h-4 w-4' /> Book Intention
-				</Button>
+				<div className='flex gap-2'>
+					<Link href='/dashboard/mass-intentions/calendar'>
+						<Button variant='outline'>
+							<Calendar className='mr-2 h-4 w-4' /> View Calendar
+						</Button>
+					</Link>
+					<Button onClick={() => setIsBookModalOpen(true)}>
+						<Plus className='mr-2 h-4 w-4' /> Book Intention
+					</Button>
+				</div>
 			</div>
 
 			{/* Quick Summary Cards */}

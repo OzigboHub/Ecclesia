@@ -25,6 +25,10 @@ import { Textarea } from '@/components/ui/textarea';
 
 interface MassIntentionFormProps {
 	onSuccess?: () => void;
+	defaultValues?: {
+		massDate?: Date;
+		timeSlot?: string;
+	};
 }
 
 type Parishioner = {
@@ -35,11 +39,25 @@ type Parishioner = {
 	phone: string | null;
 };
 
-export function MassIntentionForm({ onSuccess }: MassIntentionFormProps) {
+export function MassIntentionForm({
+	onSuccess,
+	defaultValues: calendarDefaults,
+}: MassIntentionFormProps) {
 	const [isPending, startTransition] = useTransition();
 	const [parishioners, setParishioners] = useState<Parishioner[]>([]);
 	const [isLoadingParishioners, setIsLoadingParishioners] = useState(true);
 	const router = useRouter();
+
+	// Format date with time slot if provided from calendar
+	const getInitialDate = () => {
+		if (calendarDefaults?.massDate && calendarDefaults?.timeSlot) {
+			const date = new Date(calendarDefaults.massDate);
+			const [hours, minutes] = calendarDefaults.timeSlot.split(':');
+			date.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
+			return date.toISOString();
+		}
+		return new Date().toISOString();
+	};
 
 	const form = useForm<CreateMassIntentionInput>({
 		resolver: zodResolver(createMassIntentionSchema),
@@ -49,10 +67,12 @@ export function MassIntentionForm({ onSuccess }: MassIntentionFormProps) {
 			requestedBy: '',
 			contactEmail: '',
 			contactPhone: '',
-			massDate: new Date().toISOString().split('T')[0],
+			massDate: getInitialDate(),
 			stipend: undefined,
 			parishionerId: '',
-			notes: '',
+			notes: calendarDefaults?.timeSlot
+				? `Booked for ${calendarDefaults.timeSlot} mass`
+				: '',
 		},
 	});
 
@@ -221,7 +241,13 @@ export function MassIntentionForm({ onSuccess }: MassIntentionFormProps) {
 
 				{/* Stipend */}
 				<div className='space-y-2'>
-					<Label htmlFor='stipend'>Stipend Amount (Optional)</Label>
+					<Label htmlFor='stipend'>
+						Stipend Amount (Optional) — Auto-creates Payment
+					</Label>
+					<p className='text-xs text-muted-foreground'>
+						If provided, a payment record will be automatically
+						created and linked to this intention
+					</p>
 					<div className='relative'>
 						<span className='absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground'>
 							₦
@@ -235,8 +261,16 @@ export function MassIntentionForm({ onSuccess }: MassIntentionFormProps) {
 							className='pl-8'
 							placeholder='0.00'
 							disabled={isPending}
+							aria-describedby='stipend-helper'
 						/>
 					</div>
+					<p
+						id='stipend-helper'
+						className='text-xs text-muted-foreground'
+					>
+						Payment will be recorded with receipt number
+						automatically.
+					</p>
 					{errors.stipend && (
 						<p className='text-sm text-destructive'>
 							{errors.stipend.message}

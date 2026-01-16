@@ -137,27 +137,101 @@ export async function createMassIntention(
 			};
 		}
 
-		const { massDate, parishionerId, ...rest } = parsed.data;
+		const {
+			intention,
+			intentionType,
+			massDate,
+			parishionerId,
+			stipend,
+			requestedBy,
+			contactEmail,
+			contactPhone,
+			notes,
+		} = parsed.data;
 
-		// Create mass intention
-		const massIntention = await db.massIntention.create({
-			data: {
-				...rest,
-				massDate: new Date(massDate),
-				organizationId: session.user.organizationId,
-				...(parishionerId && { parishionerId }),
-			},
-			include: {
-				parishioner: true,
-				organization: true,
-			},
+		// Use transaction to create both intention and optional payment
+		const massIntention = await db.$transaction(async (tx) => {
+			// 1. Create mass intention
+			const createdIntention = await tx.massIntention.create({
+				data: {
+					intention,
+					intentionType,
+					massDate: new Date(massDate),
+					organizationId: session.user.organizationId,
+					requestedBy,
+					contactEmail: contactEmail || null,
+					contactPhone: contactPhone || null,
+					notes: notes || null,
+					...(parishionerId && { parishionerId }),
+				},
+				include: {
+					parishioner: true,
+					organization: true,
+				},
+			});
+
+			// 2. Auto-create payment if stipend provided (MAS-004: Payment Integration)
+			if (stipend && stipend > 0) {
+				// Generate receipt number
+				const year = new Date().getFullYear();
+				const prefix = `RCP-${year}`;
+				const lastPayment = await tx.payment.findFirst({
+					where: {
+						organizationId: session.user.organizationId,
+						receiptNumber: { startsWith: prefix },
+					},
+					orderBy: { receiptNumber: 'desc' },
+					select: { receiptNumber: true },
+				});
+
+				let nextNumber = 1;
+				if (lastPayment?.receiptNumber) {
+					const lastNum = parseInt(
+						lastPayment.receiptNumber.split('-').pop() || '0'
+					);
+					nextNumber = lastNum + 1;
+				}
+				const receiptNumber = `${prefix}-${nextNumber
+					.toString()
+					.padStart(6, '0')}`;
+
+				// Create payment record linked to intention
+				await tx.payment.create({
+					data: {
+						amount: stipend,
+						currency: 'NGN',
+						purpose: 'MASS_INTENTION',
+						paymentMethod: 'CASH', // Default to cash for mass stipends
+						paymentStatus: 'COMPLETED',
+						receiptNumber,
+						payerName: requestedBy,
+						...(contactEmail && { payerEmail: contactEmail }),
+						massIntentionId: createdIntention.id,
+						organizationId: session.user.organizationId,
+						recordedById: session.user.id,
+						notes: `Stipend for mass intention: ${intention.substring(
+							0,
+							50
+						)}...`,
+					},
+				});
+			}
+
+			return createdIntention;
 		});
 
 		revalidatePath('/dashboard/mass-intentions');
+		revalidatePath('/dashboard/payments');
 
 		return {
 			success: true,
-			message: 'Mass intention scheduled successfully',
+			message:
+				'Mass intention scheduled successfully' +
+				(stipend && stipend > 0
+					? ` and payment recorded (₦${stipend.toLocaleString(
+							'en-NG'
+					  )})`
+					: ''),
 			data: massIntention,
 		};
 	} catch (error) {
