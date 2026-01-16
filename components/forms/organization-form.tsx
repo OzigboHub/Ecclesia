@@ -1,119 +1,312 @@
 'use client';
 
-import { useFormState, useFormStatus } from 'react-dom';
-import { OrganizationFormState } from '@/app/actions/organizations';
+import { useTransition, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import {
+	createPiousOrganizationSchema,
+	type CreatePiousOrganizationInput,
+} from '@/lib/validators/pious-organization.schema';
+import {
+	createPiousOrganization,
+	updatePiousOrganization,
+} from '@/app/actions/pious-organization.actions';
+import { getParishioners } from '@/app/actions/parishioner.actions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
 } from '@/components/ui/select';
-import { User } from '@prisma/client';
-
-// Simple Submit Button
-function SubmitButton() {
-    const { pending } = useFormStatus();
-    return (
-        <Button type="submit" disabled={pending}>
-            {pending ? 'Saving...' : 'Save Organization'}
-        </Button>
-    );
-}
+import { toast } from 'sonner';
+import type { Parishioner } from '@prisma/client';
 
 interface OrganizationFormProps {
-    action: (state: OrganizationFormState, formData: FormData) => Promise<OrganizationFormState>;
-    initialData?: {
-        name: string;
-        description?: string | null;
-        presidentId?: string | null;
-        secretaryId?: string | null;
-    };
-    users: Partial<User>[]; // Pass potential leaders
+	initialData?: {
+		id: string;
+		name: string;
+		description?: string | null;
+		patronSaint?: string | null;
+		presidentId?: string | null;
+		secretaryId?: string | null;
+		meetingSchedule?: string | null;
+	};
+	onSuccess?: () => void;
 }
 
-export function OrganizationForm({ action, initialData, users }: OrganizationFormProps) {
-    const initialState: OrganizationFormState = { message: '', errors: {} };
-    const [state, formAction] = useFormState(action, initialState);
+export function OrganizationForm({
+	initialData,
+	onSuccess,
+}: OrganizationFormProps) {
+	const [isPending, startTransition] = useTransition();
+	const [parishioners, setParishioners] = useState<Parishioner[]>([]);
+	const router = useRouter();
 
-    return (
-        <form action={formAction} className="space-y-6 max-w-2xl bg-white p-6 rounded-lg shadow-sm border">
-            <div className="space-y-2">
-                <Label htmlFor="name">Organization Name</Label>
-                <Input
-                    id="name"
-                    name="name"
-                    defaultValue={initialData?.name}
-                    placeholder="e.g. Catholic Women Organization"
-                    required
-                />
-                {state.errors?.name && (
-                    <p className="text-sm text-red-500">{state.errors.name.join(', ')}</p>
-                )}
-            </div>
+	const form = useForm<CreatePiousOrganizationInput>({
+		resolver: zodResolver(createPiousOrganizationSchema),
+		defaultValues: {
+			name: initialData?.name ?? '',
+			description: initialData?.description ?? '',
+			patronSaint: initialData?.patronSaint ?? '',
+			presidentId: initialData?.presidentId ?? '',
+			secretaryId: initialData?.secretaryId ?? '',
+			meetingSchedule: initialData?.meetingSchedule ?? '',
+		},
+	});
 
-            <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                    id="description"
-                    name="description"
-                    defaultValue={initialData?.description || ''}
-                    placeholder="Brief description of the organization..."
-                />
-                {state.errors?.description && (
-                    <p className="text-sm text-red-500">{state.errors.description.join(', ')}</p>
-                )}
-            </div>
+	const {
+		register,
+		handleSubmit,
+		control,
+		formState: { errors },
+		setError,
+		reset,
+	} = form;
 
+	// Fetch parishioners for president/secretary selection
+	useEffect(() => {
+		async function fetchParishioners() {
+			const result = await getParishioners();
+			if (result.success && result.data) {
+				setParishioners(result.data);
+			}
+		}
+		fetchParishioners();
+	}, []);
 
+	const onSubmit = (data: CreatePiousOrganizationInput) => {
+		startTransition(async () => {
+			const result = initialData?.id
+				? await updatePiousOrganization(initialData.id, data)
+				: await createPiousOrganization(data);
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                    <Label htmlFor="presidentId">President</Label>
-                    <Select name="presidentId" defaultValue={initialData?.presidentId || undefined}>
-                        <SelectTrigger>
-                            <SelectValue placeholder="Select President" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {users.map((user) => (
-                                <SelectItem key={user.id} value={user.id || ''}>
-                                    {user.firstName} {user.lastName}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </div>
+			if (result.success) {
+				toast.success(result.message);
+				reset();
+				router.refresh();
+				onSuccess?.();
+			} else {
+				toast.error(result.message);
 
-                <div className="space-y-2">
-                    <Label htmlFor="secretaryId">Secretary</Label>
-                    <Select name="secretaryId" defaultValue={initialData?.secretaryId || undefined}>
-                        <SelectTrigger>
-                            <SelectValue placeholder="Select Secretary" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="none">None</SelectItem>
-                            {users.map((user) => (
-                                <SelectItem key={user.id} value={user.id || ''}>
-                                    {user.firstName} {user.lastName}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </div>
-            </div>
+				// Set server-side validation errors on fields
+				if (result.errors) {
+					Object.entries(result.errors).forEach(
+						([field, messages]) => {
+							if (
+								Array.isArray(messages) &&
+								messages.length > 0
+							) {
+								setError(
+									field as keyof CreatePiousOrganizationInput,
+									{
+										type: 'server',
+										message: messages[0],
+									}
+								);
+							}
+						}
+					);
+				}
+			}
+		});
+	};
 
-            <div className="pt-4">
-                {state.message && (
-                    <div className={`p-3 rounded mb-4 ${state.message === 'Success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                        {state.message}
-                    </div>
-                )}
-                <SubmitButton />
-            </div>
-        </form>
-    );
+	return (
+		<form
+			onSubmit={handleSubmit(onSubmit)}
+			className='space-y-6'
+		>
+			{/* Organization Name */}
+			<div className='space-y-2'>
+				<Label htmlFor='name'>Organization Name *</Label>
+				<Input
+					id='name'
+					{...register('name')}
+					placeholder='e.g., Catholic Women Organization'
+					disabled={isPending}
+					aria-invalid={!!errors.name}
+					aria-describedby={errors.name ? 'name-error' : undefined}
+				/>
+				{errors.name && (
+					<p
+						id='name-error'
+						className='text-sm text-destructive'
+						role='alert'
+					>
+						{errors.name.message}
+					</p>
+				)}
+			</div>
+
+			{/* Patron Saint */}
+			<div className='space-y-2'>
+				<Label htmlFor='patronSaint'>Patron Saint</Label>
+				<Input
+					id='patronSaint'
+					{...register('patronSaint')}
+					placeholder='e.g., St. Monica'
+					disabled={isPending}
+					aria-invalid={!!errors.patronSaint}
+				/>
+				{errors.patronSaint && (
+					<p
+						className='text-sm text-destructive'
+						role='alert'
+					>
+						{errors.patronSaint.message}
+					</p>
+				)}
+			</div>
+
+			{/* Description */}
+			<div className='space-y-2'>
+				<Label htmlFor='description'>Description</Label>
+				<Textarea
+					id='description'
+					{...register('description')}
+					placeholder="Describe the organization's purpose and activities..."
+					rows={4}
+					disabled={isPending}
+					aria-invalid={!!errors.description}
+				/>
+				{errors.description && (
+					<p
+						className='text-sm text-destructive'
+						role='alert'
+					>
+						{errors.description.message}
+					</p>
+				)}
+			</div>
+
+			{/* Leaders */}
+			<div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+				{/* President */}
+				<div className='space-y-2'>
+					<Label htmlFor='presidentId'>President</Label>
+					<Controller
+						name='presidentId'
+						control={control}
+						render={({ field }) => (
+							<Select
+								value={field.value ?? ''}
+								onValueChange={field.onChange}
+								disabled={isPending}
+							>
+								<SelectTrigger id='presidentId'>
+									<SelectValue placeholder='Select President' />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value=''>None</SelectItem>
+									{parishioners.map((p) => (
+										<SelectItem
+											key={p.id}
+											value={p.id}
+										>
+											{p.firstName} {p.lastName}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						)}
+					/>
+					{errors.presidentId && (
+						<p
+							className='text-sm text-destructive'
+							role='alert'
+						>
+							{errors.presidentId.message}
+						</p>
+					)}
+				</div>
+
+				{/* Secretary */}
+				<div className='space-y-2'>
+					<Label htmlFor='secretaryId'>Secretary</Label>
+					<Controller
+						name='secretaryId'
+						control={control}
+						render={({ field }) => (
+							<Select
+								value={field.value ?? ''}
+								onValueChange={field.onChange}
+								disabled={isPending}
+							>
+								<SelectTrigger id='secretaryId'>
+									<SelectValue placeholder='Select Secretary' />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value=''>None</SelectItem>
+									{parishioners.map((p) => (
+										<SelectItem
+											key={p.id}
+											value={p.id}
+										>
+											{p.firstName} {p.lastName}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						)}
+					/>
+					{errors.secretaryId && (
+						<p
+							className='text-sm text-destructive'
+							role='alert'
+						>
+							{errors.secretaryId.message}
+						</p>
+					)}
+				</div>
+			</div>
+
+			{/* Meeting Schedule */}
+			<div className='space-y-2'>
+				<Label htmlFor='meetingSchedule'>Meeting Schedule</Label>
+				<Input
+					id='meetingSchedule'
+					{...register('meetingSchedule')}
+					placeholder='e.g., Every 2nd Sunday after Mass'
+					disabled={isPending}
+					aria-invalid={!!errors.meetingSchedule}
+				/>
+				{errors.meetingSchedule && (
+					<p
+						className='text-sm text-destructive'
+						role='alert'
+					>
+						{errors.meetingSchedule.message}
+					</p>
+				)}
+			</div>
+
+			{/* Submit Button */}
+			<div className='flex justify-end gap-3 pt-4 border-t'>
+				<Button
+					type='button'
+					variant='outline'
+					onClick={() => reset()}
+					disabled={isPending}
+				>
+					Reset
+				</Button>
+				<Button
+					type='submit'
+					disabled={isPending}
+				>
+					{isPending
+						? 'Saving...'
+						: initialData
+						? 'Update Organization'
+						: 'Create Organization'}
+				</Button>
+			</div>
+		</form>
+	);
 }

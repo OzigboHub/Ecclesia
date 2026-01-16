@@ -1,27 +1,23 @@
 import { z } from 'zod';
 
 // ============================================
-// CREATE SCHEMA
+// CREATE PIOUS ORGANIZATION SCHEMA
 // ============================================
 
 export const createPiousOrganizationSchema = z.object({
 	name: z
 		.string()
-		.min(3, 'Organization name must be at least 3 characters')
-		.max(100, 'Organization name must not exceed 100 characters')
+		.min(2, 'Name must be at least 2 characters')
+		.max(100, 'Name must not exceed 100 characters')
 		.trim(),
 	description: z
 		.string()
 		.max(500, 'Description must not exceed 500 characters')
 		.optional(),
-	presidentName: z
-		.string()
-		.max(100, 'President name must not exceed 100 characters')
-		.optional(),
-	secretaryName: z
-		.string()
-		.max(100, 'Secretary name must not exceed 100 characters')
-		.optional(),
+	patronSaint: z.string().max(100).optional(),
+	presidentId: z.string().uuid('Invalid user selected').optional().nullable(),
+	secretaryId: z.string().uuid('Invalid user selected').optional().nullable(),
+	meetingSchedule: z.string().max(200).optional(),
 });
 
 export type CreatePiousOrganizationInput = z.infer<
@@ -29,7 +25,7 @@ export type CreatePiousOrganizationInput = z.infer<
 >;
 
 // ============================================
-// UPDATE SCHEMA
+// UPDATE PIOUS ORGANIZATION SCHEMA
 // ============================================
 
 export const updatePiousOrganizationSchema =
@@ -38,3 +34,50 @@ export const updatePiousOrganizationSchema =
 export type UpdatePiousOrganizationInput = z.infer<
 	typeof updatePiousOrganizationSchema
 >;
+
+// ============================================
+// ADD MEMBER SCHEMA
+// ============================================
+
+export const addMemberSchema = z.object({
+	parishionerId: z.string().uuid('Invalid parishioner selected'),
+	role: z.enum(
+		[
+			'MEMBER',
+			'PRESIDENT',
+			'VICE_PRESIDENT',
+			'SECRETARY',
+			'TREASURER',
+			'PRO',
+			'OTHER',
+		],
+		{
+			errorMap: () => ({ message: 'Please select a valid role' }),
+		}
+	),
+});
+
+export type AddMemberInput = z.infer<typeof addMemberSchema>;
+
+// ============================================
+// CREATE MEETING SCHEMA
+// ============================================
+
+export const createMeetingSchema = z
+	.object({
+		title: z
+			.string()
+			.min(3, 'Title must be at least 3 characters')
+			.max(100, 'Title must not exceed 100 characters')
+			.trim(),
+		startTime: z.coerce.date(),
+		endTime: z.coerce.date(),
+		description: z.string().max(500).optional(),
+		location: z.string().max(200).optional(),
+	})
+	.refine((data) => data.endTime > data.startTime, {
+		message: 'End time must be after start time',
+		path: ['endTime'],
+	});
+
+export type CreateMeetingInput = z.infer<typeof createMeetingSchema>;
