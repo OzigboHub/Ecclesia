@@ -36,7 +36,7 @@ export const createMassIntentionSchema = z.object({
 		)
 		.optional()
 		.or(z.literal('')),
-	massDate: z.string().min(1, 'Mass date is required'),
+	massId: z.string().uuid('Mass is required'),
 	stipend: z
 		.number()
 		.positive('Stipend must be positive')
