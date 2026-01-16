@@ -77,17 +77,30 @@ export function Sidebar() {
 		<div className='hidden md:flex md:w-64 md:flex-col'>
 			<div className='flex flex-col flex-grow border-r border-border bg-background pt-5 pb-4 overflow-y-auto'>
 				<div className='flex items-center flex-shrink-0 px-4 mb-6'>
-					<h1 className='text-2xl font-bold text-primary'>
-						Ecclesia
-					</h1>
+					<Link
+						href='/dashboard'
+						className='flex items-center gap-3 hover:opacity-80 transition-opacity'
+					>
+						<img
+							src='/logo-golden-yellow-on-black.png'
+							alt='Ecclesia Logo'
+							className='h-8 w-8'
+						/>
+						<h1 className='text-xl font-bold text-primary'>
+							Ecclesia
+						</h1>
+					</Link>
 				</div>
 
 				<div className='mt-5 flex-grow flex flex-col'>
 					<nav className='flex-1 px-2 space-y-1'>
 						{visibleNavigation.map((item) => {
+							// Dashboard should only match exactly, not sub-routes
 							const isActive =
-								pathname === item.href ||
-								pathname.startsWith(item.href + '/');
+								item.href === '/dashboard'
+									? pathname === '/dashboard'
+									: pathname === item.href ||
+									  pathname.startsWith(item.href + '/');
 							return (
 								<Link
 									key={item.name}

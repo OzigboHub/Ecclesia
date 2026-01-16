@@ -37,8 +37,11 @@ export default async function OrganizationDetailPage({
 		redirect('/dashboard');
 	}
 
+	// Next.js 16: params is now a Promise
+	const { id } = await params;
+
 	const organization = await db.organization.findUnique({
-		where: { id: params.id },
+		where: { id },
 		include: {
 			users: {
 				select: {
