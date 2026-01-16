@@ -26,6 +26,13 @@ const navigation = [
 		href: '/dashboard/mass-intentions',
 		icon: Church,
 	},
+	{ name: 'Mass Calendar', href: '/dashboard/masses', icon: Calendar },
+	{
+		name: 'Mass Schedule',
+		href: '/dashboard/mass-schedule',
+		icon: Calendar,
+		roles: ['SUPER_ADMIN', 'PARISH_ADMIN'],
+	},
 	{ name: 'Appointments', href: '/dashboard/appointments', icon: Calendar },
 	{
 		name: 'Organizations',

@@ -48,8 +48,9 @@ export async function getMassIntentions(): Promise<
 			include: {
 				parishioner: true,
 				organization: true,
+				mass: true, // Include Mass details
 			},
-			orderBy: { massDate: 'asc' },
+			orderBy: { mass: { date: 'asc' } }, // Sort by related Mass date
 		});
 
 		return {
@@ -137,20 +138,47 @@ export async function createMassIntention(
 			};
 		}
 
-		const { massDate, parishionerId, ...rest } = parsed.data;
+		const { massId, parishionerId, ...rest } = parsed.data;
+
+		// Verify Mass exists and belongs to organization
+		const mass = await db.mass.findUnique({
+			where: { id: massId },
+			include: { _count: { select: { intentions: true } } }
+		});
+
+		if (!mass || mass.organizationId !== session.user.organizationId) {
+			return { success: false, message: 'Invalid Mass selected' };
+		}
+
+		if (mass.status === 'CANCELLED') {
+			return { success: false, message: 'Selected Mass has been cancelled' };
+		}
+
+		// Check capacity
+		if (mass._count.intentions >= mass.maxIntentions) {
+			return { success: false, message: 'Mass is fully booked' };
+		}
 
 		// Create mass intention
 		const massIntention = await db.massIntention.create({
 			data: {
 				...rest,
-				massDate: new Date(massDate),
+				massId, // Link to Mass
 				organizationId: session.user.organizationId,
 				...(parishionerId && { parishionerId }),
+				status: 'PENDING',
 			},
 			include: {
 				parishioner: true,
 				organization: true,
+				mass: true,
 			},
+		});
+
+		// OPTIONAL: Update mass booked count if we were storing it denormalized on Mass (we are storing bookedIntentions? yes in schema)
+		await db.mass.update({
+			where: { id: massId },
+			data: { bookedIntentions: { increment: 1 } }
 		});
 
 		revalidatePath('/dashboard/mass-intentions');
@@ -230,9 +258,12 @@ export async function updateMassIntention(
 		if (parsed.data.notes !== undefined)
 			updateData.notes = parsed.data.notes;
 
-		// Handle date field
-		if (parsed.data.massDate) {
-			updateData.massDate = new Date(parsed.data.massDate);
+		// Handle mass relationship
+		if (parsed.data.massId) {
+			// Validate new mass if changing
+			const mass = await db.mass.findUnique({ where: { id: parsed.data.massId } });
+			if (!mass) return { success: false, message: 'Invalid Mass' };
+			updateData.mass = { connect: { id: parsed.data.massId } };
 		}
 
 		// Handle parishioner relation
