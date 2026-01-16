@@ -13,6 +13,7 @@ import {
 	Church,
 	LogOut,
 	UserCog,
+	Building2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -28,17 +29,27 @@ const navigation = [
 	},
 	{ name: 'Appointments', href: '/dashboard/appointments', icon: Calendar },
 	{
-		name: 'Organizations',
+		name: 'Pious Organizations',
 		href: '/dashboard/organizations',
 		icon: MessageSquare,
+	},
+	{ name: 'Settings', href: '/dashboard/settings', icon: Settings },
+] as const;
+
+// Admin-only navigation items
+const adminNavigation = [
+	{
+		name: 'Manage Organizations',
+		href: '/dashboard/admin/organizations',
+		icon: Building2,
+		roles: ['SUPER_ADMIN'], // Only super admin
 	},
 	{
 		name: 'Users',
 		href: '/dashboard/users',
 		icon: UserCog,
-		roles: ['SUPER_ADMIN', 'PARISH_ADMIN'], // Only admins can see this
+		roles: ['SUPER_ADMIN', 'PARISH_ADMIN'], // Both admins
 	},
-	{ name: 'Settings', href: '/dashboard/settings', icon: Settings },
 ] as const;
 
 export function Sidebar() {
@@ -47,14 +58,18 @@ export function Sidebar() {
 
 	// Filter navigation items based on user role
 	const visibleNavigation = navigation.filter((item) => {
-		// If no role restriction, show to everyone
-		if (!('roles' in item) || !item.roles) return true;
+		// All regular navigation is visible to all
+		return true;
+	});
+
+	// Filter admin navigation items based on user role
+	const visibleAdminNavigation = adminNavigation.filter((item) => {
+		// All admin items require roles
+		if (!('roles' in item) || !item.roles) return false;
 		// Check if user's role is in the allowed roles
 		return (
 			session?.user?.role &&
-			item.roles.includes(
-				session.user.role as 'SUPER_ADMIN' | 'PARISH_ADMIN'
-			)
+			(item.roles as readonly string[]).includes(session.user.role)
 		);
 	});
 
@@ -97,6 +112,44 @@ export function Sidebar() {
 							);
 						})}
 					</nav>
+
+					{/* Admin Section */}
+					{visibleAdminNavigation.length > 0 && (
+						<div className='border-t border-border mt-4 pt-4'>
+							<p className='px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2'>
+								Administration
+							</p>
+							<nav className='px-2 space-y-1'>
+								{visibleAdminNavigation.map((item) => {
+									const isActive =
+										pathname === item.href ||
+										pathname.startsWith(item.href + '/');
+									return (
+										<Link
+											key={item.name}
+											href={item.href}
+											className={cn(
+												'group flex items-center px-3 py-2.5 text-sm font-medium rounded-md transition-colors',
+												isActive
+													? 'bg-primary text-primary-foreground'
+													: 'text-foreground hover:bg-accent hover:text-accent-foreground'
+											)}
+										>
+											<item.icon
+												className={cn(
+													'mr-3 flex-shrink-0 h-5 w-5',
+													isActive
+														? 'text-primary-foreground'
+														: 'text-muted-foreground'
+												)}
+											/>
+											{item.name}
+										</Link>
+									);
+								})}
+							</nav>
+						</div>
+					)}
 				</div>
 
 				{/* User Profile */}

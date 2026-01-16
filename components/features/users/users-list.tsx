@@ -62,12 +62,15 @@ import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
 
 // Safe user type (without password)
-type SafeUser = Omit<User, 'password'>;
+type SafeUser = Omit<User, 'password'> & {
+	organization?: { id: string; name: string } | null;
+};
 
 interface UsersListProps {
 	users: SafeUser[];
 	currentUserId: string;
 	currentUserRole: string;
+	isSuperAdmin?: boolean;
 }
 
 // Role badge variant mapping
@@ -89,6 +92,7 @@ export function UsersList({
 	users: initialUsers,
 	currentUserId,
 	currentUserRole,
+	isSuperAdmin = false,
 }: UsersListProps) {
 	const router = useRouter();
 	const [searchTerm, setSearchTerm] = useState('');
@@ -288,6 +292,9 @@ export function UsersList({
 						<TableHeader>
 							<TableRow>
 								<TableHead>User</TableHead>
+								{isSuperAdmin && (
+									<TableHead>Organization</TableHead>
+								)}
 								<TableHead>Role</TableHead>
 								<TableHead>Status</TableHead>
 								<TableHead className='hidden md:table-cell'>
@@ -328,6 +335,14 @@ export function UsersList({
 											</div>
 										</div>
 									</TableCell>
+									{isSuperAdmin && (
+										<TableCell>
+											<p className='text-sm'>
+												{user.organization?.name ||
+													'No organization'}
+											</p>
+										</TableCell>
+									)}
 									<TableCell>
 										<Badge
 											variant={

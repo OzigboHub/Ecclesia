@@ -84,6 +84,139 @@ This document provides a prioritized implementation plan with dependency managem
 
 ---
 
+## Role-Based Access Control (RBAC) & Permissions Hierarchy
+
+### Role Hierarchy
+
+```
+SUPER_ADMIN (Platform Level)
+    └── PARISH_ADMIN (Parish Level)
+            ├── PARISH_SECRETARY (Parish Level)
+            ├── PARISH_STAFF (Parish Level)
+            ├── OUTSTATION_ADMIN (Outstation Level)
+            ├── ORGANIZATION_PRESIDENT (Organization Level)
+            ├── ORGANIZATION_SECRETARY (Organization Level)
+            └── PARISHIONER (Member Level)
+```
+
+### Key Permissions by Role
+
+#### SUPER_ADMIN (Platform Administrator)
+
+-   **Scope**: Entire platform - all parishes, outstations, and users
+-   **Organizations**: Create/edit/delete parishes, outstations, transfer between parishes
+-   **Users**: Create/edit/delete users with any role, block/unblock, reset passwords
+-   **Features**: Enable/disable/override features for any organization
+-   **Parishioners**: View/edit all parishioners, merge duplicates, set limits
+-   **Financial**: View all transactions, generate platform-wide reports, manage payment gateways, issue refunds
+-   **Data & Security**: Access audit logs, perform backups/restores, manage API keys
+
+#### PARISH_ADMIN (Parish Priest/Administrator)
+
+-   **Scope**: Their parish and all its outstations
+-   **Organizations**: View/edit parish & outstation details, create outstations, configure features
+-   **Users**: Create users for parish (except SUPER_ADMIN), edit/block/unblock within parish
+-   **Parishioners**: Create/edit/delete in parish, import/export, manage sacramental records
+-   **Pious Organizations**: Create/edit organizations, assign presidents/secretaries
+-   **Financial**: View/record payments, create campaigns, generate reports, configure methods
+-   **Mass Intentions**: Approve/reject requests, assign to masses
+-   **Appointments**: Manage staff availability, assign appointments
+-   **Events & Communication**: Create events, manage live streams, send announcements
+-   **Reports & Analytics**: Access all parish reports, view dashboard
+
+#### PARISH_SECRETARY (Administrative Assistant)
+
+-   **Scope**: Assigned parish (may include outstations)
+-   **Parishioners**: Create/edit records, view all, import/export, manage sacraments
+-   **Pious Organizations**: View organizations & members, add members with approval
+-   **Financial**: Record payments, generate receipts, view history, create campaigns (with approval)
+-   **Mass Intentions**: Book intentions, view all, update details
+-   **Appointments**: Schedule appointments, view all, send reminders
+-   **Events & Communication**: Create events (with approval), manage RSVPs, send announcements
+-   **Reports**: Generate member, financial, sacramental reports
+
+#### PARISH_STAFF (General Staff/Volunteers)
+
+-   **Scope**: Limited access to specific functional areas
+-   **Parishioners**: View list, search, create new, edit basic details (name, contact)
+-   **Financial**: Record cash/check donations & offerings, generate receipts, view history
+-   **Mass Intentions**: Book intentions, view own
+-   **Appointments**: Schedule appointments, view own
+-   **Events & Communication**: View events, manage check-ins, view announcements
+-   **Reports**: View basic reports only
+
+#### OUTSTATION_ADMIN (Outstation Coordinator)
+
+-   **Scope**: Their assigned outstation only
+-   **Organizations**: View/edit outstation details, manage membership
+-   **Parishioners**: Create/edit for outstation, view outstation only, manage sacraments
+-   **Financial**: Record collections/donations, generate receipts, view outstation reports
+-   **Mass Intentions**: Book intentions for outstation
+-   **Appointments**: Book/view/manage for outstation
+-   **Events & Communication**: Create outstation events, send outstation announcements
+-   **Reports**: Generate outstation-specific reports, export outstation data
+
+#### ORGANIZATION_PRESIDENT (Pious Organization Leader)
+
+-   **Scope**: Their specific organization within the parish
+-   **Organization Management**: View/edit organization, update meeting schedules
+-   **Membership**: Add/remove members, view list, export, track attendance
+-   **Financial**: Record dues/contributions, view organization reports, create campaigns
+-   **Events & Communication**: Create organization events, send announcements to members
+-   **Reports**: Generate membership, activity, financial reports
+
+#### ORGANIZATION_SECRETARY (Pious Organization Secretary)
+
+-   **Scope**: Their specific organization within the parish
+-   **Organization Management**: View organization, update meeting minutes
+-   **Membership**: Add/remove (with approval), view list, update contact info, track attendance
+-   **Financial**: Record contributions, view organization reports
+-   **Events & Communication**: Create organization events, send announcements, manage RSVPs
+-   **Reports**: Generate membership and activity reports
+
+#### PARISHIONER (Regular Member)
+
+-   **Scope**: Their own personal account and data
+-   **Personal Account**: View/update own profile, change password, view own history
+-   **Pious Organizations**: View available organizations, request to join, view own memberships
+-   **Financial**: View own donation history, download receipts, make online donations
+-   **Mass Intentions**: Book intentions, view own, pay stipends online
+-   **Appointments**: Book/view/reschedule/cancel own appointments
+-   **Events & Communication**: View public events, RSVP, view announcements, watch live streams
+-   **Reports**: View own contribution statements and tax receipts
+
+### Permission Matrix Summary
+
+| Feature                | Super Admin | Parish Admin | Secretary | Staff | Outstation Admin | Org President | Org Secretary | Parishioner |
+| ---------------------- | :---------: | :----------: | :-------: | :---: | :--------------: | :-----------: | :-----------: | :---------: |
+| Create Parish          |     ✅      |      ❌      |    ❌     |  ❌   |        ❌        |      ❌       |      ❌       |     ❌      |
+| Edit Parish            |     ✅      |      ✅      |    ❌     |  ❌   |        ❌        |      ❌       |      ❌       |     ❌      |
+| Create Outstation      |     ✅      |      ✅      |    ❌     |  ❌   |        ❌        |      ❌       |      ❌       |     ❌      |
+| Create Users           |     ✅      |      ✅      |    ❌     |  ❌   |        ❌        |      ❌       |      ❌       |     ❌      |
+| Manage Features        |     ✅      |      ❌      |    ❌     |  ❌   |        ❌        |      ❌       |      ❌       |     ❌      |
+| Create Parishioner     |     ✅      |      ✅      |    ✅     |  ✅   |        ✅        |      ❌       |      ❌       |  ✅ (self)  |
+| Delete Parishioner     |     ✅      |      ✅      |    ❌     |  ❌   |        ❌        |      ❌       |      ❌       |     ❌      |
+| View All Parishioners  |     ✅      |      ✅      |    ✅     |  ❌   |        ✅        |      ❌       |      ❌       |     ❌      |
+| Record Payment         |     ✅      |      ✅      |    ✅     |  ✅   |        ✅        |      ✅       |      ✅       |  ✅ (self)  |
+| View Financial Reports |     ✅      |      ✅      |    ✅     |  ❌   |        ✅        |      ✅       |      ✅       |  ✅ (self)  |
+| Delete Transaction     |     ✅      |      ❌      |    ❌     |  ❌   |        ❌        |      ❌       |      ❌       |     ❌      |
+| Issue Refund           |     ✅      |      ✅      |    ❌     |  ❌   |        ❌        |      ❌       |      ❌       |     ❌      |
+| Book Mass Intention    |     ✅      |      ✅      |    ✅     |  ✅   |        ✅        |      ❌       |      ❌       |     ✅      |
+| Assign Mass to Mass    |     ✅      |      ✅      |    ❌     |  ❌   |        ❌        |      ❌       |      ❌       |     ❌      |
+| Book Appointment       |     ✅      |      ✅      |    ✅     |  ✅   |        ✅        |      ❌       |      ❌       |     ✅      |
+| Assign to Staff        |     ✅      |      ✅      |    ✅     |  ❌   |        ❌        |      ❌       |      ❌       |     ❌      |
+| Create Organization    |     ✅      |      ✅      |    ❌     |  ❌   |        ❌        |      ❌       |      ❌       |     ❌      |
+| Manage Org Members     |     ✅      |      ✅      |    ❌     |  ❌   |        ❌        |      ✅       |      ✅       |  ✅ (join)  |
+| Create Events          |     ✅      |      ✅      |    ✅     |  ❌   |        ✅        |      ✅       |      ✅       |     ❌      |
+| Send Announcements     |     ✅      |      ✅      |    ✅     |  ❌   |        ✅        |      ✅       |      ✅       |     ❌      |
+
+### Implementation Status
+
+✅ **Role-Based Authorization** - All Server Actions check `session.user.role` and return `ActionResponse`
+✅ **Organization Scoping** - All queries filter by `session.user.organizationId`
+✅ **Client-Side Guards** - `<ProtectedRoute>` and `useRole()` hook for UI visibility
+✅ **Permission Matrix** - Fully documented in `/docs/user_flow.md`
+
 ---
 
 ## Dependency Graph

@@ -44,6 +44,24 @@ const schema = z.object({
 });
 ```
 
+**For enum fields**, use the `message` parameter (not `errorMap`):
+
+```tsx
+// ❌ WRONG (Zod v3 pattern with errorMap)
+const schema = z.object({
+	role: z.enum(['ADMIN', 'USER'], {
+		errorMap: () => ({ message: 'Please select a role' }),
+	}),
+});
+
+// ✅ CORRECT (Zod v4 pattern)
+const schema = z.object({
+	role: z.enum(['ADMIN', 'USER'], {
+		message: 'Please select a role',
+	}),
+});
+```
+
 ## File Structure
 
 ```

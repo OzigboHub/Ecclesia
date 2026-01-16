@@ -27,7 +27,8 @@ export default async function UsersPage() {
 
 	// Fetch users and stats in parallel
 	const [usersResult, statsResult] = await Promise.all([
-		getUsers(),
+		// Include organization info for SUPER_ADMIN, exclude for others
+		getUsers(session.user.role === 'SUPER_ADMIN'),
 		getUserStats(),
 	]);
 
@@ -136,6 +137,7 @@ export default async function UsersPage() {
 				users={users}
 				currentUserId={session.user.id}
 				currentUserRole={session.user.role}
+				isSuperAdmin={session.user.role === 'SUPER_ADMIN'}
 			/>
 		</div>
 	);

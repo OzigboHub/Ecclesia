@@ -230,3 +230,529 @@ async function isFeatureCurrentlyEnabled(
 	});
 	return settings?.[feature] ?? false;
 }
+
+// ============================================
+// SUPER ADMIN ORGANIZATION MANAGEMENT
+// ============================================
+
+/**
+ * Get all organizations (parishes and outstations) - SUPER_ADMIN only
+ */
+export async function getAllOrganizations(): Promise<
+	ActionResponse<
+		Array<{
+			id: string;
+			name: string;
+			level: string;
+			parentId: string | null;
+			address: string | null;
+			createdAt: Date;
+			userCount: number;
+		}>
+	>
+> {
+	try {
+		const session = await auth();
+		if (!session?.user) {
+			return { success: false, message: 'Unauthorized' };
+		}
+
+		// Only SUPER_ADMIN can view all organizations
+		if (session.user.role !== 'SUPER_ADMIN') {
+			return {
+				success: false,
+				message: 'Only super admins can view all organizations',
+			};
+		}
+
+		const organizations = await db.organization.findMany({
+			select: {
+				id: true,
+				name: true,
+				level: true,
+				parentId: true,
+				address: true,
+				createdAt: true,
+				_count: {
+					select: { users: true },
+				},
+			},
+			orderBy: { createdAt: 'desc' },
+		});
+
+		// Transform the data
+		const transformed = organizations.map((org) => ({
+			id: org.id,
+			name: org.name,
+			level: org.level,
+			parentId: org.parentId,
+			address: org.address,
+			createdAt: org.createdAt,
+			userCount: org._count.users,
+		}));
+
+		return {
+			success: true,
+			message: 'Organizations retrieved successfully',
+			data: transformed,
+		};
+	} catch (error) {
+		console.error('Failed to get all organizations:', error);
+		return { success: false, message: 'Failed to retrieve organizations' };
+	}
+}
+
+/**
+ * Create a new parish - SUPER_ADMIN only
+ */
+export async function createParish(
+	data: unknown
+): Promise<ActionResponse<{ id: string; name: string }>> {
+	try {
+		const session = await auth();
+		if (!session?.user) {
+			return { success: false, message: 'Unauthorized' };
+		}
+
+		// Only SUPER_ADMIN can create parishes
+		if (session.user.role !== 'SUPER_ADMIN') {
+			return {
+				success: false,
+				message: 'Only super admins can create parishes',
+			};
+		}
+
+		// Import and validate
+		const { createParishSchema } = await import(
+			'@/lib/validators/organization.schema'
+		);
+		const parsed = createParishSchema.safeParse(data);
+
+		if (!parsed.success) {
+			return {
+				success: false,
+				message: 'Validation failed',
+				errors: parsed.error.flatten().fieldErrors,
+			};
+		}
+
+		// Check if name already exists
+		const existing = await db.organization.findUnique({
+			where: { name: parsed.data.name },
+		});
+
+		if (existing) {
+			return {
+				success: false,
+				message: 'Organization with this name already exists',
+			};
+		}
+
+		// Create parish
+		const parish = await db.organization.create({
+			data: {
+				name: parsed.data.name,
+				level: 'PARISH',
+				address: parsed.data.address,
+				contactEmail: parsed.data.contactEmail,
+				contactPhone: parsed.data.contactPhone,
+			},
+		});
+
+		return {
+			success: true,
+			message: 'Parish created successfully',
+			data: { id: parish.id, name: parish.name },
+		};
+	} catch (error) {
+		console.error('Failed to create parish:', error);
+		return { success: false, message: 'Failed to create parish' };
+	}
+}
+
+/**
+ * Create a new outstation under a parish - SUPER_ADMIN only
+ */
+export async function createOutstation(
+	data: unknown
+): Promise<ActionResponse<{ id: string; name: string }>> {
+	try {
+		const session = await auth();
+		if (!session?.user) {
+			return { success: false, message: 'Unauthorized' };
+		}
+
+		// Only SUPER_ADMIN can create outstations
+		if (session.user.role !== 'SUPER_ADMIN') {
+			return {
+				success: false,
+				message: 'Only super admins can create outstations',
+			};
+		}
+
+		// Import and validate
+		const { createOutstationSchema } = await import(
+			'@/lib/validators/organization.schema'
+		);
+		const parsed = createOutstationSchema.safeParse(data);
+
+		if (!parsed.success) {
+			return {
+				success: false,
+				message: 'Validation failed',
+				errors: parsed.error.flatten().fieldErrors,
+			};
+		}
+
+		// Verify parent is a parish
+		const parent = await db.organization.findFirst({
+			where: {
+				id: parsed.data.parentId,
+				level: 'PARISH',
+			},
+		});
+
+		if (!parent) {
+			return {
+				success: false,
+				message: 'Invalid parish selected. Parent must be a parish.',
+			};
+		}
+
+		// Check if name already exists
+		const existing = await db.organization.findUnique({
+			where: { name: parsed.data.name },
+		});
+
+		if (existing) {
+			return {
+				success: false,
+				message: 'Organization with this name already exists',
+			};
+		}
+
+		// Create outstation
+		const outstation = await db.organization.create({
+			data: {
+				name: parsed.data.name,
+				level: 'OUTSTATION',
+				parentId: parsed.data.parentId,
+				address: parsed.data.address,
+				contactEmail: parsed.data.contactEmail,
+				contactPhone: parsed.data.contactPhone,
+			},
+		});
+
+		return {
+			success: true,
+			message: 'Outstation created successfully',
+			data: { id: outstation.id, name: outstation.name },
+		};
+	} catch (error) {
+		console.error('Failed to create outstation:', error);
+		return { success: false, message: 'Failed to create outstation' };
+	}
+}
+
+/**
+ * Update organization details - SUPER_ADMIN only
+ */
+export async function updateOrganizationAdminAction(
+	organizationId: string,
+	data: unknown
+): Promise<ActionResponse> {
+	try {
+		const session = await auth();
+		if (!session?.user) {
+			return { success: false, message: 'Unauthorized' };
+		}
+
+		// Only SUPER_ADMIN can update organizations
+		if (session.user.role !== 'SUPER_ADMIN') {
+			return {
+				success: false,
+				message: 'Only super admins can update organizations',
+			};
+		}
+
+		// Import and validate
+		const { updateOrganizationSchema } = await import(
+			'@/lib/validators/organization.schema'
+		);
+		const parsed = updateOrganizationSchema.safeParse(data);
+
+		if (!parsed.success) {
+			return {
+				success: false,
+				message: 'Validation failed',
+				errors: parsed.error.flatten().fieldErrors,
+			};
+		}
+
+		// Verify organization exists
+		const org = await db.organization.findUnique({
+			where: { id: organizationId },
+		});
+
+		if (!org) {
+			return { success: false, message: 'Organization not found' };
+		}
+
+		// Check name uniqueness if changing
+		if (parsed.data.name && parsed.data.name !== org.name) {
+			const existing = await db.organization.findUnique({
+				where: { name: parsed.data.name },
+			});
+
+			if (existing) {
+				return {
+					success: false,
+					message: 'Organization with this name already exists',
+				};
+			}
+		}
+
+		// Prepare update data
+		const updateData: Record<string, string | undefined> = {};
+		if (parsed.data.name !== undefined) updateData.name = parsed.data.name;
+		if (parsed.data.address !== undefined)
+			updateData.address = parsed.data.address;
+		if (parsed.data.contactEmail !== undefined)
+			updateData.contactEmail = parsed.data.contactEmail;
+		if (parsed.data.contactPhone !== undefined)
+			updateData.contactPhone = parsed.data.contactPhone;
+
+		// Update
+		await db.organization.update({
+			where: { id: organizationId },
+			data: updateData,
+		});
+
+		return {
+			success: true,
+			message: 'Organization updated successfully',
+		};
+	} catch (error) {
+		console.error('Failed to update organization:', error);
+		return { success: false, message: 'Failed to update organization' };
+	}
+}
+
+/**
+ * Delete (soft delete) an organization - SUPER_ADMIN only
+ * Note: Check for dependent data before soft deleting
+ */
+export async function deleteOrganizationAdminAction(
+	organizationId: string
+): Promise<ActionResponse> {
+	try {
+		const session = await auth();
+		if (!session?.user) {
+			return { success: false, message: 'Unauthorized' };
+		}
+
+		// Only SUPER_ADMIN can delete organizations
+		if (session.user.role !== 'SUPER_ADMIN') {
+			return {
+				success: false,
+				message: 'Only super admins can delete organizations',
+			};
+		}
+
+		// Verify organization exists
+		const org = await db.organization.findUnique({
+			where: { id: organizationId },
+			include: {
+				children: true,
+				users: true,
+				parishioners: true,
+			},
+		});
+
+		if (!org) {
+			return { success: false, message: 'Organization not found' };
+		}
+
+		// Prevent deletion of parish with outstations
+		if (org.level === 'PARISH' && org.children.length > 0) {
+			return {
+				success: false,
+				message: `Cannot delete parish with ${org.children.length} outstation(s). Transfer or delete outstations first.`,
+			};
+		}
+
+		// Prevent deletion of organization with users
+		if (org.users.length > 0) {
+			return {
+				success: false,
+				message: `Cannot delete organization with ${org.users.length} user(s). Reassign or deactivate users first.`,
+			};
+		}
+
+		// Prevent deletion of organization with parishioners
+		if (org.parishioners.length > 0) {
+			return {
+				success: false,
+				message: `Cannot delete organization with ${org.parishioners.length} parishioner(s). Archive or reassign parishioners first.`,
+			};
+		}
+
+		// Soft delete by marking as inactive (if your schema supports it)
+		// For now, we'll do a hard delete since schema doesn't have isActive field
+		await db.organization.delete({
+			where: { id: organizationId },
+		});
+
+		return {
+			success: true,
+			message: 'Organization deleted successfully',
+		};
+	} catch (error) {
+		console.error('Failed to delete organization:', error);
+		return { success: false, message: 'Failed to delete organization' };
+	}
+}
+
+/**
+ * Transfer an outstation to a different parish - SUPER_ADMIN only
+ */
+export async function transferOutstationAdminAction(
+	data: unknown
+): Promise<ActionResponse> {
+	try {
+		const session = await auth();
+		if (!session?.user) {
+			return { success: false, message: 'Unauthorized' };
+		}
+
+		// Only SUPER_ADMIN can transfer outstations
+		if (session.user.role !== 'SUPER_ADMIN') {
+			return {
+				success: false,
+				message: 'Only super admins can transfer outstations',
+			};
+		}
+
+		// Import and validate
+		const { transferOutstationSchema } = await import(
+			'@/lib/validators/organization.schema'
+		);
+		const parsed = transferOutstationSchema.safeParse(data);
+
+		if (!parsed.success) {
+			return {
+				success: false,
+				message: 'Validation failed',
+				errors: parsed.error.flatten().fieldErrors,
+			};
+		}
+
+		// Verify outstation exists and is actually an outstation
+		const outstation = await db.organization.findFirst({
+			where: {
+				id: parsed.data.outstationId,
+				level: 'OUTSTATION',
+			},
+		});
+
+		if (!outstation) {
+			return {
+				success: false,
+				message: 'Outstation not found',
+			};
+		}
+
+		// Verify new parent is a parish
+		const newParent = await db.organization.findFirst({
+			where: {
+				id: parsed.data.newParentId,
+				level: 'PARISH',
+			},
+		});
+
+		if (!newParent) {
+			return {
+				success: false,
+				message: 'Invalid parish selected for transfer',
+			};
+		}
+
+		// Update parent
+		await db.organization.update({
+			where: { id: parsed.data.outstationId },
+			data: { parentId: parsed.data.newParentId },
+		});
+
+		return {
+			success: true,
+			message: `Outstation transferred to ${newParent.name}`,
+		};
+	} catch (error) {
+		console.error('Failed to transfer outstation:', error);
+		return { success: false, message: 'Failed to transfer outstation' };
+	}
+}
+
+/**
+ * Get system-wide metrics - SUPER_ADMIN only
+ */
+export async function getSystemMetrics(): Promise<
+	ActionResponse<{
+		totalParishes: number;
+		totalOutstations: number;
+		totalUsers: number;
+		totalParishioners: number;
+		totalPayments: number;
+		totalPaymentAmount: number;
+	}>
+> {
+	try {
+		const session = await auth();
+		if (!session?.user) {
+			return { success: false, message: 'Unauthorized' };
+		}
+
+		// Only SUPER_ADMIN can view system metrics
+		if (session.user.role !== 'SUPER_ADMIN') {
+			return {
+				success: false,
+				message: 'Only super admins can view system metrics',
+			};
+		}
+
+		const [
+			totalParishes,
+			totalOutstations,
+			totalUsers,
+			totalParishioners,
+			totalPayments,
+			paymentStats,
+		] = await Promise.all([
+			db.organization.count({ where: { level: 'PARISH' } }),
+			db.organization.count({ where: { level: 'OUTSTATION' } }),
+			db.user.count(),
+			db.parishioner.count(),
+			db.payment.count(),
+			db.payment.aggregate({
+				_sum: { amount: true },
+				where: { paymentStatus: 'COMPLETED' },
+			}),
+		]);
+
+		return {
+			success: true,
+			message: 'System metrics retrieved',
+			data: {
+				totalParishes,
+				totalOutstations,
+				totalUsers,
+				totalParishioners,
+				totalPayments,
+				totalPaymentAmount: paymentStats._sum.amount ?? 0,
+			},
+		};
+	} catch (error) {
+		console.error('Failed to get system metrics:', error);
+		return { success: false, message: 'Failed to retrieve metrics' };
+	}
+}
