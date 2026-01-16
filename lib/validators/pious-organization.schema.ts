@@ -52,7 +52,7 @@ export const addMemberSchema = z.object({
 			'OTHER',
 		],
 		{
-			errorMap: () => ({ message: 'Please select a valid role' }),
+			message: 'Please select a valid role',
 		}
 	),
 });

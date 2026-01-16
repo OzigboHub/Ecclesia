@@ -11,7 +11,12 @@ import {
 	CardHeader,
 	CardTitle,
 } from '@/components/ui/card';
-import { Empty } from '@/components/ui/empty';
+import {
+	Empty,
+	EmptyHeader,
+	EmptyTitle,
+	EmptyDescription,
+} from '@/components/ui/empty';
 
 export default async function OrganizationsPage() {
 	// Auth check
@@ -55,10 +60,15 @@ export default async function OrganizationsPage() {
 			<div className='grid gap-4 md:grid-cols-2 lg:grid-cols-3'>
 				{organizations.length === 0 ? (
 					<div className='col-span-full'>
-						<Empty
-							title='No organizations found'
-							description='Create your first pious organization to get started.'
-						/>
+						<Empty>
+							<EmptyHeader>
+								<EmptyTitle>No organizations found</EmptyTitle>
+								<EmptyDescription>
+									Create your first pious organization to get
+									started.
+								</EmptyDescription>
+							</EmptyHeader>
+						</Empty>
 					</div>
 				) : (
 					organizations.map((org) => (

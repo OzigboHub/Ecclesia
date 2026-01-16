@@ -145,6 +145,7 @@ model PiousOrganization {
   id              String       @id @default(uuid())
   name            String
   description     String?
+  patronSaint     String?
   organizationId  String
   organization    Organization @relation(fields: [organizationId], references: [id])
   presidentId     String?      @unique
