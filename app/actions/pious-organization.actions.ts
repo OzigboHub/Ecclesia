@@ -87,7 +87,7 @@ export async function getPiousOrganizations(): Promise<
 						lastName: true,
 					},
 				},
-				secretary: {
+				secretary: { 
 					select: {
 						id: true,
 						firstName: true,
