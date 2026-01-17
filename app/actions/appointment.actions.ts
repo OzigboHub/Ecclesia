@@ -118,36 +118,36 @@ export async function getAppointments(): Promise<
 
 		const appointments = await withDbRetry(() =>
 			db.appointment.findMany({
-			where: { organizationId: session.user.organizationId },
-			include: {
-				assignedTo: {
-					select: {
-						id: true,
-						firstName: true,
-						lastName: true,
-						email: true,
+				where: { organizationId: session.user.organizationId },
+				include: {
+					assignedTo: {
+						select: {
+							id: true,
+							firstName: true,
+							lastName: true,
+							email: true,
+						},
+					},
+					parishioner: {
+						select: {
+							id: true,
+							firstName: true,
+							lastName: true,
+							email: true,
+							phone: true,
+						},
+					},
+					requestedBy: {
+						select: {
+							id: true,
+							firstName: true,
+							lastName: true,
+							email: true,
+						},
 					},
 				},
-				parishioner: {
-					select: {
-						id: true,
-						firstName: true,
-						lastName: true,
-						email: true,
-						phone: true,
-					},
-				},
-				requestedBy: {
-					select: {
-						id: true,
-						firstName: true,
-						lastName: true,
-						email: true,
-					},
-				},
-			},
-			orderBy: { startTime: 'asc' },
-		}),
+				orderBy: { startTime: 'asc' },
+			}),
 		);
 
 		return {
@@ -256,38 +256,38 @@ export async function getAppointmentsFiltered(
 		const [appointments, total] = await withDbRetry(() =>
 			Promise.all([
 				db.appointment.findMany({
-				where,
-				include: {
-					assignedTo: {
-						select: {
-							id: true,
-							firstName: true,
-							lastName: true,
-							email: true,
+					where,
+					include: {
+						assignedTo: {
+							select: {
+								id: true,
+								firstName: true,
+								lastName: true,
+								email: true,
+							},
+						},
+						parishioner: {
+							select: {
+								id: true,
+								firstName: true,
+								lastName: true,
+								email: true,
+								phone: true,
+							},
+						},
+						requestedBy: {
+							select: {
+								id: true,
+								firstName: true,
+								lastName: true,
+								email: true,
+							},
 						},
 					},
-					parishioner: {
-						select: {
-							id: true,
-							firstName: true,
-							lastName: true,
-							email: true,
-							phone: true,
-						},
-					},
-					requestedBy: {
-						select: {
-							id: true,
-							firstName: true,
-							lastName: true,
-							email: true,
-						},
-					},
-				},
-				orderBy: { [sortBy]: sortOrder },
-				skip: (page - 1) * limit,
-				take: limit,
-			}),
+					orderBy: { [sortBy]: sortOrder },
+					skip: (page - 1) * limit,
+					take: limit,
+				}),
 				db.appointment.count({ where }),
 			]),
 		);
