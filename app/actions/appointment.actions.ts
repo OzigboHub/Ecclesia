@@ -43,6 +43,54 @@ type AppointmentWithRelations = Prisma.AppointmentGetPayload<{
 	};
 }>;
 
+async function withDbRetry<T>(
+	operation: () => Promise<T>,
+	options?: { attempts?: number; baseDelayMs?: number },
+): Promise<T> {
+	const attempts = options?.attempts ?? 3;
+	const baseDelayMs = options?.baseDelayMs ?? 150;
+
+	let lastError: unknown;
+	for (let attempt = 1; attempt <= attempts; attempt++) {
+		try {
+			return await operation();
+		} catch (error) {
+			lastError = error;
+
+			const maybeAny = error as any;
+			const message =
+				typeof maybeAny?.message === 'string' ? maybeAny.message : '';
+
+			const isTransientPrismaError =
+				error instanceof Prisma.PrismaClientInitializationError ||
+				error instanceof Prisma.PrismaClientRustPanicError ||
+				(error instanceof Prisma.PrismaClientKnownRequestError &&
+					['P1000', 'P1001', 'P1002', 'P1008', 'P1017'].includes(
+						(error as any).code,
+					));
+
+			const isLikelyNetworkError =
+				maybeAny?.name === 'ErrorEvent' ||
+				message.toLowerCase().includes('websocket') ||
+				message.toLowerCase().includes('socket') ||
+				message.toLowerCase().includes('econnreset') ||
+				message.toLowerCase().includes('etimedout') ||
+				message.toLowerCase().includes('timeout') ||
+				message.toLowerCase().includes('network');
+
+			const shouldRetry = isTransientPrismaError || isLikelyNetworkError;
+			if (!shouldRetry || attempt === attempts) {
+				throw error;
+			}
+
+			const delayMs = baseDelayMs * attempt;
+			await new Promise((resolve) => setTimeout(resolve, delayMs));
+		}
+	}
+
+	throw lastError;
+}
+
 // ============================================
 // READ OPERATIONS
 // ============================================
@@ -59,7 +107,7 @@ export async function getAppointments(): Promise<
 		// Check feature toggle
 		const enabled = await isFeatureEnabled(
 			session.user.organizationId,
-			'enableAppointments'
+			'enableAppointments',
 		);
 		if (!enabled) {
 			return {
@@ -68,37 +116,39 @@ export async function getAppointments(): Promise<
 			};
 		}
 
-		const appointments = await db.appointment.findMany({
-			where: { organizationId: session.user.organizationId },
-			include: {
-				assignedTo: {
-					select: {
-						id: true,
-						firstName: true,
-						lastName: true,
-						email: true,
+		const appointments = await withDbRetry(() =>
+			db.appointment.findMany({
+				where: { organizationId: session.user.organizationId },
+				include: {
+					assignedTo: {
+						select: {
+							id: true,
+							firstName: true,
+							lastName: true,
+							email: true,
+						},
+					},
+					parishioner: {
+						select: {
+							id: true,
+							firstName: true,
+							lastName: true,
+							email: true,
+							phone: true,
+						},
+					},
+					requestedBy: {
+						select: {
+							id: true,
+							firstName: true,
+							lastName: true,
+							email: true,
+						},
 					},
 				},
-				parishioner: {
-					select: {
-						id: true,
-						firstName: true,
-						lastName: true,
-						email: true,
-						phone: true,
-					},
-				},
-				requestedBy: {
-					select: {
-						id: true,
-						firstName: true,
-						lastName: true,
-						email: true,
-					},
-				},
-			},
-			orderBy: { startTime: 'asc' },
-		});
+				orderBy: { startTime: 'asc' },
+			}),
+		);
 
 		return {
 			success: true,
@@ -107,7 +157,11 @@ export async function getAppointments(): Promise<
 		};
 	} catch (error) {
 		console.error('Failed to get appointments:', error);
-		return { success: false, message: 'Failed to retrieve appointments' };
+		return {
+			success: false,
+			message:
+				'Failed to retrieve appointments. Please refresh and try again.',
+		};
 	}
 }
 
@@ -115,7 +169,7 @@ export async function getAppointments(): Promise<
  * Get appointments with filters and pagination
  */
 export async function getAppointmentsFiltered(
-	query?: Partial<AppointmentFilter>
+	query?: Partial<AppointmentFilter>,
 ): Promise<
 	ActionResponse<{ appointments: AppointmentWithRelations[]; total: number }>
 > {
@@ -128,7 +182,7 @@ export async function getAppointmentsFiltered(
 		// Check feature toggle
 		const enabled = await isFeatureEnabled(
 			session.user.organizationId,
-			'enableAppointments'
+			'enableAppointments',
 		);
 		if (!enabled) {
 			return {
@@ -137,8 +191,15 @@ export async function getAppointmentsFiltered(
 			};
 		}
 
-		// Parse and validate query
-		const parsed = appointmentFilterSchema.parse(query || {});
+		// Parse and validate query (never throw)
+		const parsedResult = appointmentFilterSchema.safeParse(query || {});
+		if (!parsedResult.success) {
+			return {
+				success: false,
+				message: 'Invalid appointment filters',
+				errors: parsedResult.error.flatten().fieldErrors,
+			};
+		}
 		const {
 			page,
 			limit,
@@ -150,7 +211,7 @@ export async function getAppointmentsFiltered(
 			dateTo,
 			sortBy,
 			sortOrder,
-		} = parsed;
+		} = parsedResult.data;
 
 		// Build where clause
 		const where: Prisma.AppointmentWhereInput = {
@@ -192,42 +253,44 @@ export async function getAppointmentsFiltered(
 		};
 
 		// Execute queries in parallel
-		const [appointments, total] = await Promise.all([
-			db.appointment.findMany({
-				where,
-				include: {
-					assignedTo: {
-						select: {
-							id: true,
-							firstName: true,
-							lastName: true,
-							email: true,
+		const [appointments, total] = await withDbRetry(() =>
+			Promise.all([
+				db.appointment.findMany({
+					where,
+					include: {
+						assignedTo: {
+							select: {
+								id: true,
+								firstName: true,
+								lastName: true,
+								email: true,
+							},
+						},
+						parishioner: {
+							select: {
+								id: true,
+								firstName: true,
+								lastName: true,
+								email: true,
+								phone: true,
+							},
+						},
+						requestedBy: {
+							select: {
+								id: true,
+								firstName: true,
+								lastName: true,
+								email: true,
+							},
 						},
 					},
-					parishioner: {
-						select: {
-							id: true,
-							firstName: true,
-							lastName: true,
-							email: true,
-							phone: true,
-						},
-					},
-					requestedBy: {
-						select: {
-							id: true,
-							firstName: true,
-							lastName: true,
-							email: true,
-						},
-					},
-				},
-				orderBy: { [sortBy]: sortOrder },
-				skip: (page - 1) * limit,
-				take: limit,
-			}),
-			db.appointment.count({ where }),
-		]);
+					orderBy: { [sortBy]: sortOrder },
+					skip: (page - 1) * limit,
+					take: limit,
+				}),
+				db.appointment.count({ where }),
+			]),
+		);
 
 		return {
 			success: true,
@@ -236,12 +299,16 @@ export async function getAppointmentsFiltered(
 		};
 	} catch (error) {
 		console.error('Failed to get appointments:', error);
-		return { success: false, message: 'Failed to retrieve appointments' };
+		return {
+			success: false,
+			message:
+				'Failed to retrieve appointments. Please refresh and try again.',
+		};
 	}
 }
 
 export async function getAppointment(
-	id: string
+	id: string,
 ): Promise<ActionResponse<AppointmentWithRelations>> {
 	try {
 		const session = await auth();
@@ -303,7 +370,7 @@ export async function getAppointment(
 // ============================================
 
 export async function createAppointment(
-	formData: unknown
+	formData: unknown,
 ): Promise<ActionResponse<AppointmentWithRelations>> {
 	try {
 		// Authentication
@@ -330,7 +397,7 @@ export async function createAppointment(
 		// Feature toggle check
 		const enabled = await isFeatureEnabled(
 			session.user.organizationId,
-			'enableAppointments'
+			'enableAppointments',
 		);
 		if (!enabled) {
 			return {
@@ -354,9 +421,10 @@ export async function createAppointment(
 		// Combine description and notes if both exist
 		let finalDescription = rest.description || '';
 		if (notes) {
-			finalDescription = finalDescription
-				? `${finalDescription}\n\nAdditional Notes: ${notes}`
-				: notes;
+			finalDescription =
+				finalDescription ?
+					`${finalDescription}\n\nAdditional Notes: ${notes}`
+				:	notes;
 		}
 
 		// Create appointment
@@ -418,7 +486,7 @@ export async function createAppointment(
 
 export async function updateAppointment(
 	id: string,
-	formData: unknown
+	formData: unknown,
 ): Promise<ActionResponse<AppointmentWithRelations>> {
 	try {
 		const session = await auth();
@@ -464,18 +532,23 @@ export async function updateAppointment(
 
 		if (parsed.data.title !== undefined)
 			updateData.title = parsed.data.title;
-		
+
 		// Handle description and notes - combine them if notes is provided
-		if (parsed.data.description !== undefined || parsed.data.notes !== undefined) {
-			let finalDescription = parsed.data.description ?? existing.description ?? '';
+		if (
+			parsed.data.description !== undefined ||
+			parsed.data.notes !== undefined
+		) {
+			let finalDescription =
+				parsed.data.description ?? existing.description ?? '';
 			if (parsed.data.notes) {
-				finalDescription = finalDescription
-					? `${finalDescription}\n\nAdditional Notes: ${parsed.data.notes}`
-					: parsed.data.notes;
+				finalDescription =
+					finalDescription ?
+						`${finalDescription}\n\nAdditional Notes: ${parsed.data.notes}`
+					:	parsed.data.notes;
 			}
 			updateData.description = finalDescription || null;
 		}
-		
+
 		if (parsed.data.type !== undefined) updateData.type = parsed.data.type;
 		if (parsed.data.status !== undefined)
 			updateData.status = parsed.data.status;

@@ -1,32 +1,38 @@
-import { PrismaClient } from "@prisma/client";
-import { PrismaNeon } from "@prisma/adapter-neon";
-import { neonConfig } from "@neondatabase/serverless";
+import { PrismaClient } from '@prisma/client';
+import { PrismaNeon } from '@prisma/adapter-neon';
+import { neonConfig } from '@neondatabase/serverless';
 
-neonConfig.webSocketConstructor = globalThis.WebSocket;
+import WebSocket from 'ws';
 
 const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined;
+	prisma: PrismaClient | undefined;
 };
 
 function createPrismaClient() {
-  const connectionString = process.env.DATABASE_URL;
-  if (!connectionString) {
-    throw new Error("DATABASE_URL environment variable is not set");
-  }
+	const connectionString = process.env.DATABASE_URL;
+	if (!connectionString) {
+		throw new Error('DATABASE_URL environment variable is not set');
+	}
 
-  const adapter = new PrismaNeon({ connectionString });
+	// Prisma Client is generated to use engine type "client" in this project,
+	// which requires providing a driver adapter.
+	//
+	// Important: this module must NOT be imported by Edge middleware.
+	// Use an Edge-safe auth config for `proxy.ts`.
+	neonConfig.webSocketConstructor = globalThis.WebSocket ?? WebSocket;
 
-  return new PrismaClient({
-    adapter,
-    log:
-      process.env.NODE_ENV === "development"
-        ? ["query", "error", "warn"]
-        : ["error"],
-  });
+	const adapter = new PrismaNeon({ connectionString });
+	return new PrismaClient({
+		adapter,
+		log:
+			process.env.NODE_ENV === 'development' ?
+				['query', 'error', 'warn']
+			:	['error'],
+	});
 }
 
 export const db = globalForPrisma.prisma ?? createPrismaClient();
 
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = db;
+if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = db;
 
 export default db;

@@ -1,12 +1,9 @@
 import { auth } from '@/auth';
 import { redirect } from 'next/navigation';
 import { getAppointmentsFiltered } from '@/app/actions/appointment.actions';
-import { Calendar } from '@/components/ui/calendar';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Calendar as CalendarIcon } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
-import { cn } from '@/lib/utils';
 import AppointmentsCalendarClient from './appointments-calendar-client';
 
 export default async function AppointmentsCalendarPage({
@@ -18,12 +15,21 @@ export default async function AppointmentsCalendarPage({
 	if (!session?.user) redirect('/auth/login');
 
 	const searchParams = await searchParamsPromise;
-	const month = searchParams.month
-		? parseInt(searchParams.month)
-		: new Date().getMonth() + 1;
-	const year = searchParams.year
-		? parseInt(searchParams.year)
-		: new Date().getFullYear();
+	const now = new Date();
+	const parsedMonth = Number.parseInt(searchParams.month ?? '', 10);
+	const parsedYear = Number.parseInt(searchParams.year ?? '', 10);
+	const month =
+		Number.isFinite(parsedMonth) && parsedMonth >= 1 && parsedMonth <= 12 ?
+			parsedMonth
+		:	now.getMonth() + 1;
+	const year =
+		(
+			Number.isFinite(parsedYear) &&
+			parsedYear >= 1970 &&
+			parsedYear <= 2100
+		) ?
+			parsedYear
+		:	now.getFullYear();
 
 	// Get start and end of month
 	const dateFrom = new Date(year, month - 1, 1);
@@ -74,7 +80,10 @@ export default async function AppointmentsCalendarPage({
 						View appointments in calendar format.
 					</p>
 				</div>
-				<Button variant='outline' asChild>
+				<Button
+					variant='outline'
+					asChild
+				>
 					<Link href='/dashboard/appointments'>
 						<ArrowLeft className='mr-2 h-4 w-4' /> Back to List
 					</Link>

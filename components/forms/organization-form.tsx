@@ -82,9 +82,10 @@ export function OrganizationForm({
 
 	const onSubmit = (data: CreatePiousOrganizationInput) => {
 		startTransition(async () => {
-			const result = initialData?.id
-				? await updatePiousOrganization(initialData.id, data)
-				: await createPiousOrganization(data);
+			const result =
+				initialData?.id ?
+					await updatePiousOrganization(initialData.id, data)
+				:	await createPiousOrganization(data);
 
 			if (result.success) {
 				toast.success(result.message);
@@ -107,10 +108,10 @@ export function OrganizationForm({
 									{
 										type: 'server',
 										message: messages[0],
-									}
+									},
 								);
 							}
-						}
+						},
 					);
 				}
 			}
@@ -195,15 +196,21 @@ export function OrganizationForm({
 						control={control}
 						render={({ field }) => (
 							<Select
-								value={field.value ?? ''}
-								onValueChange={field.onChange}
+								value={field.value ?? undefined}
+								onValueChange={(value) =>
+									field.onChange(
+										value === '__none__' ? null : value,
+									)
+								}
 								disabled={isPending}
 							>
 								<SelectTrigger id='presidentId'>
 									<SelectValue placeholder='Select President' />
 								</SelectTrigger>
 								<SelectContent>
-									<SelectItem value=''>None</SelectItem>
+									<SelectItem value='__none__'>
+										None
+									</SelectItem>
 									{parishioners.map((p) => (
 										<SelectItem
 											key={p.id}
@@ -234,15 +241,21 @@ export function OrganizationForm({
 						control={control}
 						render={({ field }) => (
 							<Select
-								value={field.value ?? ''}
-								onValueChange={field.onChange}
+								value={field.value ?? undefined}
+								onValueChange={(value) =>
+									field.onChange(
+										value === '__none__' ? null : value,
+									)
+								}
 								disabled={isPending}
 							>
 								<SelectTrigger id='secretaryId'>
 									<SelectValue placeholder='Select Secretary' />
 								</SelectTrigger>
 								<SelectContent>
-									<SelectItem value=''>None</SelectItem>
+									<SelectItem value='__none__'>
+										None
+									</SelectItem>
 									{parishioners.map((p) => (
 										<SelectItem
 											key={p.id}
@@ -300,11 +313,11 @@ export function OrganizationForm({
 					type='submit'
 					disabled={isPending}
 				>
-					{isPending
-						? 'Saving...'
-						: initialData
-						? 'Update Organization'
-						: 'Create Organization'}
+					{isPending ?
+						'Saving...'
+					: initialData ?
+						'Update Organization'
+					:	'Create Organization'}
 				</Button>
 			</div>
 		</form>
