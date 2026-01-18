@@ -3,16 +3,18 @@
 import { ADMIN_EXTENDED, SIDEBAR } from "@/lib/const";
 import { LogOut } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Separator } from "../ui/separator";
 import Image from "next/image";
+import { logout } from "@/app/actions/auth.actions";
 
 export default function Sidebar() {
+	const router = useRouter();
 	const pathName = usePathname();
 	// const { data: session } = useSession();
 
 	return (
-		<div className=" bg-secondary w-[20%] py-[20px] px-[10px] justify-start items-center  flex flex-col gap-11">
+		<div className=" hidden bg-secondary w-[20%] py-[20px] px-[10px] justify-start items-center  lg:flex flex-col gap-11">
 			<Image
 				src={"/standalone-golden-yellow-logo-typography.png"}
 				width={"1000"}
@@ -64,7 +66,13 @@ export default function Sidebar() {
 							);
 						})}
 						<Separator className="my-[20px]" />
-						<div className=" px-[20px] mt-[20px] text-primary  gap-5 flex flex-row">
+						<div
+							onClick={async () => {
+								logout();
+								router.replace("/auth/login");
+							}}
+							className=" px-[20px] mt-[20px] text-primary cursor-pointer  gap-5 flex flex-row"
+						>
 							<LogOut className=" w-5 h-5" />
 							<p className=" text-[13px] font-extrabold">
 								Logout

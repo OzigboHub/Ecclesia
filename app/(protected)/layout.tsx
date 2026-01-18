@@ -1,5 +1,5 @@
 import { ProtectedRoute } from "@/components/auth/protected-route";
-import Navbar from "@/components/layout/navbar";
+import ProtectedNavbar from "@/components/layout/protected-navbar";
 import Sidebar from "@/components/layout/sidebar";
 
 export default function DashboardLayout({
@@ -8,18 +8,18 @@ export default function DashboardLayout({
 	children: React.ReactNode;
 }) {
 	return (
-		<ProtectedRoute>
-			<div className=" h-screen overflow-hidden   ">
-				<div className=" h-screen flex flex-row">
-					<Sidebar />
-					<div className=" w-full h-screen ">
-						<Navbar />
-						<div className=" h-screen px-[20px] py-[30px]">
-							{children}
-						</div>
+		// <ProtectedRoute>
+		<div className=" lg:h-screen overflow-hidden   ">
+			<div className=" lg:h-screen flex flex-row">
+				<Sidebar />
+				<div className=" w-full lg:h-screen ">
+					<ProtectedNavbar />
+					<div className=" pt-[90px] lg:h-screen px-[20px]">
+						{children}
 					</div>
 				</div>
 			</div>
-		</ProtectedRoute>
+		</div>
+		// </ProtectedRoute>
 	);
 }
