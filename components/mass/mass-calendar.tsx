@@ -2,16 +2,21 @@
 
 import { useState, useEffect } from 'react';
 import { Calendar } from '@/components/ui/calendar';
-import { getMasses } from '@/app/actions/mass.actions'; // Ensure this action handles getting masses by date
-import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
+import { getMasses, getMassDays } from '@/app/actions/mass.actions'; // Ensure this action handles getting masses by date
+import { format, startOfMonth, endOfMonth } from 'date-fns';
+import { MassEditDialog } from './mass-edit-dialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { Clock, MapPin, User, FileText, Calendar as CalendarIcon } from 'lucide-react';
 
 export function MassCalendar() {
     const [date, setDate] = useState<Date | undefined>(new Date());
+    const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
     const [masses, setMasses] = useState<any[]>([]);
+    const [massDays, setMassDays] = useState<Date[]>([]);
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
@@ -19,6 +24,10 @@ export function MassCalendar() {
             loadMasses(date);
         }
     }, [date]);
+
+    useEffect(() => {
+        loadMassDays(currentMonth);
+    }, [currentMonth]);
 
     const loadMasses = async (selectedDate: Date) => {
         setLoading(true);
@@ -31,52 +40,157 @@ export function MassCalendar() {
         setLoading(false);
     };
 
+    const loadMassDays = async (month: Date) => {
+        const start = startOfMonth(month);
+        const end = endOfMonth(month);
+        const res = await getMassDays(start, end);
+        if (res.success && res.data) {
+            setMassDays(res.data.map((d: string) => new Date(d)));
+        }
+    };
+
     return (
-        <div className="grid md:grid-cols-[300px_1fr] gap-6">
-            <Card>
-                <CardContent className="p-3">
+        <div className='grid md:grid-cols-[350px_1fr] gap-8 items-start'>
+            <Card className='shadow-lg border-none bg-secondary/5'>
+                <CardContent className='p-4'>
                     <Calendar
-                        mode="single"
+                        mode='single'
                         selected={date}
                         onSelect={setDate}
-                        className="rounded-md border"
+                        onMonthChange={setCurrentMonth}
+                        className='rounded-xl border shadow-sm bg-background'
+                        modifiers={{
+                            hasMass: massDays,
+                        }}
                     />
                 </CardContent>
             </Card>
 
-            <div className="space-y-4">
-                <h2 className="text-xl font-semibold">
-                    Masses for {date ? format(date, 'MMMM d, yyyy') : 'Selected Date'}
-                </h2>
+            <div className='space-y-6'>
+                <div className='flex items-center justify-between'>
+                    <h2 className='text-2xl font-bold tracking-tight text-primary'>
+                        {date
+                            ? format(date, 'EEEE, MMMM do')
+                            : 'Select a date'}
+                    </h2>
+                    <Badge variant='outline' className='px-3 py-1 text-sm font-medium'>
+                        {masses.length} {masses.length === 1 ? 'Mass' : 'Masses'}
+                    </Badge>
+                </div>
 
                 {loading ? (
-                    <div>Loading...</div>
+                    <div className='flex items-center justify-center h-48'>
+                        <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-primary'></div>
+                    </div>
                 ) : masses.length === 0 ? (
-                    <div className="text-muted-foreground">No masses scheduled for this date.</div>
+                    <Card className='border-dashed bg-secondary/10'>
+                        <CardContent className='flex flex-col items-center justify-center p-12 text-center'>
+                            <div className='bg-background p-4 rounded-full shadow-sm mb-4'>
+                                <CalendarIcon className='h-8 w-8 text-muted-foreground' />
+                            </div>
+                            <p className='text-lg font-medium text-muted-foreground'>
+                                No masses scheduled for this day
+                            </p>
+                            <p className='text-sm text-muted-foreground mt-1'>
+                                Try selecting another date or generate new masses.
+                            </p>
+                        </CardContent>
+                    </Card>
                 ) : (
-                    <div className="grid gap-4">
+                    <div className='grid gap-4'>
                         {masses.map((mass) => (
-                            <Card key={mass.id}>
-                                <CardContent className="p-4 flex items-center justify-between">
-                                    <div>
-                                        <div className="flex items-center gap-2">
-                                            <span className="font-bold text-lg">{mass.time}</span>
-                                            <Badge variant={mass.status === 'CANCELLED' ? 'destructive' : 'default'}>
-                                                {mass.status}
-                                            </Badge>
-                                            <Badge variant="outline">{mass.massType.replace('_', ' ')}</Badge>
+                            <Card
+                                key={mass.id}
+                                className='group hover:shadow-md transition-all border-none shadow-sm bg-secondary/5'
+                            >
+                                <CardContent className='p-6 flex items-start justify-between'>
+                                    <div className='space-y-4 flex-1'>
+                                        <div className='flex items-center gap-3'>
+                                            <div className='bg-primary/10 p-2 rounded-lg'>
+                                                <Clock className='h-5 w-5 text-primary' />
+                                            </div>
+                                            <span className='font-bold text-2xl tracking-tight'>
+                                                {mass.time}
+                                            </span>
+                                            <div className='flex gap-2 ml-2'>
+                                                <Badge
+                                                    variant={
+                                                        mass.status === 'CANCELLED'
+                                                            ? 'destructive'
+                                                            : 'secondary'
+                                                    }
+                                                    className='font-semibold uppercase tracking-wider text-[10px]'
+                                                >
+                                                    {mass.status}
+                                                </Badge>
+                                                <Badge
+                                                    variant='outline'
+                                                    className='font-medium text-[10px] uppercase border-primary/20 bg-primary/5'
+                                                >
+                                                    {mass.massType.replace('_', ' ')}
+                                                </Badge>
+                                            </div>
                                         </div>
-                                        <div className="text-sm text-muted-foreground mt-1">
-                                            {mass.language} • {mass.location || 'Main Church'}
+
+                                        <div className='grid grid-cols-1 md:grid-cols-2 gap-y-2 gap-x-6'>
+                                            <div className='flex items-center gap-2 text-sm text-muted-foreground'>
+                                                <MapPin className='h-4 w-4' />
+                                                <span>
+                                                    {mass.location || 'Main Church'}
+                                                </span>
+                                            </div>
+                                            <div className='flex items-center gap-2 text-sm text-muted-foreground'>
+                                                <FileText className='h-4 w-4' />
+                                                <span>{mass.language}</span>
+                                            </div>
+                                            {mass.celebrant && (
+                                                <div className='flex items-center gap-2 text-sm font-medium text-foreground'>
+                                                    <User className='h-4 w-4 text-primary' />
+                                                    <span>{mass.celebrant}</span>
+                                                </div>
+                                            )}
                                         </div>
-                                        {mass.celebrant && (
-                                            <div className="text-sm mt-1">Celebrant: {mass.celebrant}</div>
-                                        )}
-                                        <div className="text-xs text-muted-foreground mt-2">
-                                            Intentions: {mass._count?.intentions || 0} / {mass.maxIntentions}
+
+                                        <div className='flex items-center gap-4 bg-background/50 p-2 rounded-lg w-fit'>
+                                            <div className='text-xs font-semibold uppercase tracking-tighter text-muted-foreground'>
+                                                Intentions
+                                            </div>
+                                            <div className='flex items-center gap-2'>
+                                                <div className='h-1.5 w-24 bg-secondary rounded-full overflow-hidden'>
+                                                    <div
+                                                        className={cn(
+                                                            'h-full transition-all',
+                                                            mass._count?.intentions >=
+                                                                mass.maxIntentions
+                                                                ? 'bg-destructive'
+                                                                : 'bg-primary'
+                                                        )}
+                                                        style={{
+                                                            width: `${Math.min(
+                                                                ((mass._count?.intentions ||
+                                                                    0) /
+                                                                    mass.maxIntentions) *
+                                                                100,
+                                                                100
+                                                            )}%`,
+                                                        }}
+                                                    />
+                                                </div>
+                                                <span className='text-sm font-bold'>
+                                                    {mass._count?.intentions || 0} /{' '}
+                                                    {mass.maxIntentions}
+                                                </span>
+                                            </div>
                                         </div>
                                     </div>
-                                    {/* Actions like Edit/Cancel could go here */}
+                                    <div className='flex items-center gap-2'>
+                                        <MassEditDialog
+                                            mass={mass}
+                                            onSuccess={() =>
+                                                date && loadMasses(date)
+                                            }
+                                        />
+                                    </div>
                                 </CardContent>
                             </Card>
                         ))}
