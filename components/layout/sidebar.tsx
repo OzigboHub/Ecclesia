@@ -6,7 +6,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Separator } from "../ui/separator";
 import Image from "next/image";
-import { logout } from "@/app/actions/auth.actions";
+import { signOut } from "next-auth/react";
 
 export default function Sidebar() {
 	const router = useRouter();
@@ -14,7 +14,7 @@ export default function Sidebar() {
 	// const { data: session } = useSession();
 
 	return (
-		<div className=" hidden bg-secondary w-[20%] py-[20px] px-[10px] justify-start items-center  lg:flex flex-col gap-11">
+		<div className=" hidden bg-secondary w-[20%] py-[20px] px-[10px] justify-start items-center   lg:flex flex-col gap-11">
 			<Image
 				src={"/standalone-golden-yellow-logo-typography.png"}
 				width={"1000"}
@@ -30,9 +30,9 @@ export default function Sidebar() {
 								href={i.href}
 								key={k}
 								className={` ${
-									pathName === i.href
-										? "text-secondary bg-primary "
-										: " text-white"
+									pathName === i.href ?
+										"text-secondary bg-primary "
+									:	" text-white"
 								}  items-center py-[10px]  flex gap-5 rounded-[10px] px-[20px]`}
 							>
 								<div className="">{i.icon}</div>
@@ -53,9 +53,9 @@ export default function Sidebar() {
 									href={i.href}
 									key={k}
 									className={` ${
-										pathName === i.href
-											? "text-secondary bg-primary "
-											: " text-white"
+										pathName === i.href ?
+											"text-secondary bg-primary "
+										:	" text-white"
 									}  items-center py-[10px]  flex gap-5 rounded-[10px] px-[20px]`}
 								>
 									<div className="">{i.icon}</div>
@@ -68,8 +68,8 @@ export default function Sidebar() {
 						<Separator className="my-[20px]" />
 						<div
 							onClick={async () => {
-								logout();
-								router.replace("/auth/login");
+								await signOut({ redirect: false });
+								router.push("/auth/login");
 							}}
 							className=" px-[20px] mt-[20px] text-primary cursor-pointer  gap-5 flex flex-row"
 						>

@@ -53,6 +53,8 @@ export default function LoginPage() {
 				<Image
 					src="/standalone-golden-yellow-logo-typography.png"
 					alt="Ecclesia"
+					width={"1000"}
+					height={"1000"}
 					className="h-16 w-auto mb-8 drop-shadow-lg"
 				/>
 				<p className="text-lg text-muted-foreground text-center mb-8">
@@ -72,6 +74,8 @@ export default function LoginPage() {
 						<Image
 							src="/logo-golden-yellow-on-black.png"
 							alt="Ecclesia Logo"
+							width={"1000"}
+							height={"1000"}
 							className="h-16 w-auto mx-auto mb-4"
 						/>
 						<h1 className="text-3xl font-bold text-primary">

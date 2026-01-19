@@ -1,10 +1,9 @@
 "use client";
 
-import { logout } from "@/app/actions/auth.actions";
 import { ADMIN_EXTENDED, SIDEBAR } from "@/lib/const";
 import { getInitials } from "@/lib/utils";
 import { LogOut } from "lucide-react";
-import { useSession } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -12,10 +11,11 @@ import { useState } from "react";
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { Badge } from "../ui/badge";
 import { Separator } from "../ui/separator";
+import { User } from "@prisma/client";
 
-export default function ProtectedNavbar() {
+export default function ProtectedNavbar({ user }: { user: any }) {
 	const [open, setOpen] = useState(false);
-	const { data: session } = useSession();
+	// const { data: session, status } = useSession();
 	const router = useRouter();
 	const pathName = usePathname();
 
@@ -25,7 +25,7 @@ export default function ProtectedNavbar() {
 	};
 
 	return (
-		<div className=" bg-secondary fixed w-full lg:w-[84%] py-[10px] px-[10px] lg:px-[60px] ">
+		<div className=" z-50 bg-secondary fixed w-full lg:w-[84%] py-[10px] px-[10px] lg:px-[60px] ">
 			<div className=" w-full flex items-center justify-between">
 				<div className=" lg:hidden inline w-[100px] ">
 					<Image
@@ -36,23 +36,24 @@ export default function ProtectedNavbar() {
 						className=" w-full object-cover"
 					/>
 				</div>
+
 				<div
 					onClick={handleToggleOpen}
 					className="  w-full flex items-center justify-end flex-row gap-3"
 				>
 					<Avatar>
 						<AvatarFallback className=" bg-primary text-secondary font-extrabold">
-							{getInitials(session?.user.name ?? "")}
+							{getInitials(user.name ?? "")}
 						</AvatarFallback>
 					</Avatar>
 					<div className=" flex flex-col items-start text-left">
 						<div className=" flex flex-row-reverse  gap-4">
 							<p className=" text-primary  font-bold">
-								{session?.user.name}
+								{user.name}
 							</p>
 						</div>
 						<Badge className=" text-[10px]">
-							{session?.user.role.replaceAll("_", " ")}
+							{user?.role.replaceAll("_", " ")}
 						</Badge>
 					</div>
 				</div>
@@ -78,17 +79,17 @@ export default function ProtectedNavbar() {
 						>
 							<Avatar>
 								<AvatarFallback className=" bg-primary text-secondary font-extrabold">
-									{getInitials(session?.user.name ?? "")}
+									{getInitials(user.name ?? "")}
 								</AvatarFallback>
 							</Avatar>
 							<div className=" flex flex-col items-start text-left">
 								<div className=" flex flex-row-reverse  gap-4">
 									<p className=" text-primary  font-bold">
-										{session?.user.name}
+										{user.name}
 									</p>
 								</div>
 								<div className=" text-[12px] text-primary">
-									<p>{session?.user.email}</p>
+									<p>{user.email}</p>
 								</div>
 							</div>
 						</div>
@@ -103,9 +104,9 @@ export default function ProtectedNavbar() {
 											onClick={() => setOpen(false)}
 											key={k}
 											className={` ${
-												pathName === i.href
-													? "text-secondary bg-primary "
-													: " text-white"
+												pathName === i.href ?
+													"text-secondary bg-primary "
+												:	" text-white"
 											}  items-center py-[10px]  flex gap-5 rounded-[10px] px-[20px]`}
 										>
 											<div className="">{i.icon}</div>
@@ -129,9 +130,9 @@ export default function ProtectedNavbar() {
 												href={i.href}
 												key={k}
 												className={` ${
-													pathName === i.href
-														? "text-secondary bg-primary "
-														: " text-white"
+													pathName === i.href ?
+														"text-secondary bg-primary "
+													:	" text-white"
 												}  items-center py-[10px]  flex gap-5 rounded-[10px] px-[20px]`}
 											>
 												<div className="">{i.icon}</div>
@@ -144,8 +145,8 @@ export default function ProtectedNavbar() {
 									<Separator className="my-[20px]" />
 									<div
 										onClick={async () => {
-											logout();
-											router.replace("/auth/login");
+											await signOut({ redirect: false });
+											router.push("/auth/login");
 										}}
 										className=" px-[20px] mt-[20px] text-primary cursor-pointer  gap-5 flex flex-row"
 									>

@@ -52,15 +52,16 @@ export async function login(data: {
 /**
  * Logout action - signs out the current user
  */
-export async function logout(): Promise<ActionResponse> {
-	try {
-		await signOut({ redirect: false });
-		return { success: true, message: "Logged out successfully" };
-	} catch (error) {
-		console.error("Logout error:", error);
-		return { success: false, message: "Failed to logout" };
-	}
-}
+// export async function logout(): Promise<ActionResponse> {
+// 	try {
+// 		await signOut({ redirect: false });
+// 		router.push("/auth/login");
+// 		return { success: true, message: "Logged out successfully" };
+// 	} catch (error) {
+// 		console.error("Logout error:", error);
+// 		return { success: false, message: "Failed to logout" };
+// 	}
+// }
 
 /**
  * Register action - creates a new user account
@@ -153,7 +154,7 @@ export async function getOrganizations(): Promise<
  * Request password reset - generates a reset token and sends email
  */
 export async function requestPasswordReset(
-	email: string
+	email: string,
 ): Promise<ActionResponse> {
 	try {
 		// Find user by email
@@ -211,7 +212,7 @@ export async function requestPasswordReset(
  * Validate password reset token
  */
 export async function validateResetToken(
-	token: string
+	token: string,
 ): Promise<ActionResponse> {
 	try {
 		const resetToken = await db.passwordResetToken.findUnique({

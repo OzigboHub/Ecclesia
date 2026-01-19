@@ -1,20 +1,24 @@
-import { ProtectedRoute } from "@/components/auth/protected-route";
+import { auth } from "@/auth";
 import ProtectedNavbar from "@/components/layout/protected-navbar";
 import Sidebar from "@/components/layout/sidebar";
+import { redirect } from "next/navigation";
 
-export default function DashboardLayout({
+export default async function DashboardLayout({
 	children,
 }: {
 	children: React.ReactNode;
 }) {
+	const session = await auth();
+	const user = session?.user;
+
 	return (
 		// <ProtectedRoute>
-		<div className=" lg:h-screen overflow-hidden   ">
-			<div className=" lg:h-screen flex flex-row">
+		<div className=" h-screen overflow-hidden   ">
+			<div className="   flex flex-row">
 				<Sidebar />
-				<div className=" w-full lg:h-screen ">
-					<ProtectedNavbar />
-					<div className=" pt-[90px] lg:h-screen px-[20px]">
+				<div className=" overflow-y-scroll h-screen w-full  ">
+					<ProtectedNavbar user={user} />
+					<div className="pt-[70px] pb-[30px] px-[20px] ">
 						{children}
 					</div>
 				</div>
