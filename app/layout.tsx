@@ -21,7 +21,10 @@ export default function RootLayout({
 }>) {
 	return (
 		<html lang="en">
-			<body className={`${montserrat.className} text-[13px] antialiased`}>
+			<body
+				className={`${montserrat.className} text-[13px] antialiased`}
+				suppressHydrationWarning
+			>
 				<AuthProvider>
 					{children}
 					<Toaster position="top-right" richColors />
