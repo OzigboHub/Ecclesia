@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { auth } from '@/auth';
-import { getPiousOrganizations } from '@/app/actions/pious-organization.actions';
+import { getPiousOrganizations, PiousOrganizationWithRelations } from '@/app/actions/pious-organization.actions';
 import { Button } from '@/components/ui/button';
 import { PlusCircle, Users } from 'lucide-react';
 import {
@@ -35,7 +35,7 @@ export default async function OrganizationsPage() {
 		);
 	}
 
-	const organizations = result.data ?? [];
+	const organizations: PiousOrganizationWithRelations[] = result.data ?? [];
 
 	return (
 		<div className='space-y-6'>
@@ -71,7 +71,7 @@ export default async function OrganizationsPage() {
 						</Empty>
 					</div>
 				) : (
-					organizations.map((org) => (
+					organizations.map((org: PiousOrganizationWithRelations) => (
 						<Card
 							key={org.id}
 							className='hover:shadow-md transition-shadow'

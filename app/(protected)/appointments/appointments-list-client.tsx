@@ -82,7 +82,7 @@ export default function AppointmentsListClient({
 		if (search) newParams.set('search', search);
 		if (statusFilter !== 'all') newParams.set('status', statusFilter);
 		if (typeFilter !== 'all') newParams.set('type', typeFilter);
-		router.push(`/dashboard/appointments?${newParams.toString()}`);
+		router.push(`/appointments?${newParams.toString()}`);
 	}, [search, statusFilter, typeFilter, router]);
 
 	// Debounce search

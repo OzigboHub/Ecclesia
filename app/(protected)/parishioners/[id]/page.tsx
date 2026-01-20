@@ -1,6 +1,7 @@
 import { auth } from '@/auth';
 import { redirect, notFound } from 'next/navigation';
 import { getParishioner } from '@/app/actions/parishioner.actions';
+import type { Sacrament, Payment } from '@prisma/client';
 import { Button } from '@/components/ui/button';
 import {
 	ArrowLeft,
@@ -295,7 +296,7 @@ export default async function ParishionerDetailPage({ params }: PageProps) {
 					{parishioner.sacraments &&
 					parishioner.sacraments.length > 0 ? (
 						<ul className='space-y-2'>
-							{parishioner.sacraments.map((sacrament) => (
+							{parishioner.sacraments.map((sacrament: Sacrament) => (
 								<li
 									key={sacrament.id}
 									className='flex justify-between items-center'
@@ -337,7 +338,7 @@ export default async function ParishionerDetailPage({ params }: PageProps) {
 					</div>
 					{parishioner.payments && parishioner.payments.length > 0 ? (
 						<ul className='space-y-2'>
-							{parishioner.payments.slice(0, 5).map((payment) => (
+							{parishioner.payments.slice(0, 5).map((payment: Payment) => (
 								<li
 									key={payment.id}
 									className='flex justify-between items-center'
