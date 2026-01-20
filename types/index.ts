@@ -24,3 +24,15 @@ export interface PaginationMeta {
 export interface PaginatedResponse<T> extends ActionResponse<T[]> {
 	pagination?: PaginationMeta;
 }
+
+/**
+ * User properties for components
+ */
+export interface UserProps {
+	id: string | undefined | null;
+	email?: string | undefined | null;
+	name: string | undefined;
+	role: string | undefined | null;
+	organizationId: string | undefined | null;
+	organizationName: string | undefined | null;
+}
