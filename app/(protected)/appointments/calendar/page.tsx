@@ -1,10 +1,10 @@
-import { auth } from '@/auth';
-import { redirect } from 'next/navigation';
-import { getAppointmentsFiltered } from '@/app/actions/appointment.actions';
-import { Button } from '@/components/ui/button';
-import { ArrowLeft } from 'lucide-react';
-import Link from 'next/link';
-import AppointmentsCalendarClient from './appointments-calendar-client';
+import { auth } from "@/auth";
+import { redirect } from "next/navigation";
+import { getAppointmentsFiltered } from "@/app/actions/appointment.actions";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft } from "lucide-react";
+import Link from "next/link";
+import AppointmentsCalendarClient from "./appointments-calendar-client";
 
 export default async function AppointmentsCalendarPage({
 	searchParams: searchParamsPromise,
@@ -12,12 +12,12 @@ export default async function AppointmentsCalendarPage({
 	searchParams: Promise<{ [key: string]: string | undefined }>;
 }) {
 	const session = await auth();
-	if (!session?.user) redirect('/auth/login');
+	if (!session?.user) redirect("/auth/login");
 
 	const searchParams = await searchParamsPromise;
 	const now = new Date();
-	const parsedMonth = Number.parseInt(searchParams.month ?? '', 10);
-	const parsedYear = Number.parseInt(searchParams.year ?? '', 10);
+	const parsedMonth = Number.parseInt(searchParams.month ?? "", 10);
+	const parsedYear = Number.parseInt(searchParams.year ?? "", 10);
 	const month =
 		Number.isFinite(parsedMonth) && parsedMonth >= 1 && parsedMonth <= 12 ?
 			parsedMonth
@@ -46,10 +46,10 @@ export default async function AppointmentsCalendarPage({
 
 	if (!appointmentsResult.success) {
 		return (
-			<div className='space-y-6'>
-				<h1 className='text-3xl font-bold'>Appointments Calendar</h1>
-				<div className='rounded-lg border bg-card p-6'>
-					<p className='text-destructive'>
+			<div className="space-y-6">
+				<h1 className="text-3xl font-bold">Appointments Calendar</h1>
+				<div className="rounded-lg border bg-card p-6">
+					<p className="text-destructive">
 						{appointmentsResult.message}
 					</p>
 				</div>
@@ -61,7 +61,7 @@ export default async function AppointmentsCalendarPage({
 
 	// Group appointments by date
 	const appointmentsByDate = new Map<string, typeof appointments>();
-	appointments.forEach((apt) => {
+	appointments.forEach((apt: any) => {
 		const dateKey = new Date(apt.startTime).toDateString();
 		if (!appointmentsByDate.has(dateKey)) {
 			appointmentsByDate.set(dateKey, []);
@@ -70,22 +70,19 @@ export default async function AppointmentsCalendarPage({
 	});
 
 	return (
-		<div className='space-y-6'>
-			<div className='flex flex-col sm:flex-row sm:items-center justify-between gap-4'>
+		<div className="space-y-6">
+			<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
 				<div>
-					<h1 className='text-3xl font-bold text-foreground'>
+					<h1 className="text-3xl font-bold text-foreground">
 						Appointments Calendar
 					</h1>
-					<p className='text-muted-foreground mt-1'>
+					<p className="text-muted-foreground mt-1">
 						View appointments in calendar format.
 					</p>
 				</div>
-				<Button
-					variant='outline'
-					asChild
-				>
-					<Link href='/dashboard/appointments'>
-						<ArrowLeft className='mr-2 h-4 w-4' /> Back to List
+				<Button variant="outline" asChild>
+					<Link href="/dashboard/appointments">
+						<ArrowLeft className="mr-2 h-4 w-4" /> Back to List
 					</Link>
 				</Button>
 			</div>

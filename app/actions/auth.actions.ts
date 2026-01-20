@@ -1,13 +1,13 @@
-'use server';
+"use server";
 
-import { signIn, signOut } from '@/auth';
-import { AuthError } from 'next-auth';
-import bcrypt from 'bcryptjs';
-import crypto from 'crypto';
-import db from '@/lib/db';
-import { loginSchema, resetPasswordSchema } from '@/lib/validators/auth.schema';
-import type { ActionResponse } from '@/types';
-import { UserRole } from '@prisma/client';
+import { signIn, signOut } from "@/auth";
+import { AuthError } from "next-auth";
+import bcrypt from "bcryptjs";
+import crypto from "crypto";
+import db from "@/lib/db";
+import { loginSchema, resetPasswordSchema } from "@/lib/validators/auth.schema";
+import type { ActionResponse } from "@/types";
+import { UserRole } from "@prisma/client";
 
 /**
  * Login action - authenticates user with email and password
@@ -22,27 +22,27 @@ export async function login(data: {
 		if (!parsed.success) {
 			return {
 				success: false,
-				message: 'Invalid email or password format',
+				message: "Invalid email or password format",
 			};
 		}
 
-		await signIn('credentials', {
+		await signIn("credentials", {
 			email: parsed.data.email,
 			password: parsed.data.password,
 			redirect: false,
 		});
 
-		return { success: true, message: 'Login successful' };
+		return { success: true, message: "Login successful" };
 	} catch (error) {
 		if (error instanceof AuthError) {
 			switch (error.type) {
-				case 'CredentialsSignin':
+				case "CredentialsSignin":
 					return {
 						success: false,
-						message: 'Invalid email or password',
+						message: "Invalid email or password",
 					};
 				default:
-					return { success: false, message: 'Something went wrong' };
+					return { success: false, message: "Something went wrong" };
 			}
 		}
 		throw error;
@@ -52,15 +52,16 @@ export async function login(data: {
 /**
  * Logout action - signs out the current user
  */
-export async function logout(): Promise<ActionResponse> {
-	try {
-		await signOut({ redirect: false });
-		return { success: true, message: 'Logged out successfully' };
-	} catch (error) {
-		console.error('Logout error:', error);
-		return { success: false, message: 'Failed to logout' };
-	}
-}
+// export async function logout(): Promise<ActionResponse> {
+// 	try {
+// 		await signOut({ redirect: false });
+// 		router.push("/auth/login");
+// 		return { success: true, message: "Logged out successfully" };
+// 	} catch (error) {
+// 		console.error("Logout error:", error);
+// 		return { success: false, message: "Failed to logout" };
+// 	}
+// }
 
 /**
  * Register action - creates a new user account
@@ -82,7 +83,7 @@ export async function register(data: {
 		if (existingUser) {
 			return {
 				success: false,
-				message: 'A user with this email already exists',
+				message: "A user with this email already exists",
 			};
 		}
 
@@ -92,7 +93,7 @@ export async function register(data: {
 		});
 
 		if (!organization) {
-			return { success: false, message: 'Invalid organization' };
+			return { success: false, message: "Invalid organization" };
 		}
 
 		// Hash password
@@ -106,19 +107,19 @@ export async function register(data: {
 				email: data.email,
 				password: hashedPassword,
 				organizationId: data.organizationId,
-				role: (data.role as unknown as UserRole) || 'PARISHIONER',
+				role: (data.role as unknown as UserRole) || "PARISHIONER",
 				isActive: true,
 			},
 		});
 
 		return {
 			success: true,
-			message: 'Account created successfully',
+			message: "Account created successfully",
 			data: { id: user.id },
 		};
 	} catch (error) {
-		console.error('Registration error:', error);
-		return { success: false, message: 'Failed to create account' };
+		console.error("Registration error:", error);
+		return { success: false, message: "Failed to create account" };
 	}
 }
 
@@ -135,17 +136,17 @@ export async function getOrganizations(): Promise<
 				name: true,
 				level: true,
 			},
-			orderBy: [{ level: 'asc' }, { name: 'asc' }],
+			orderBy: [{ level: "asc" }, { name: "asc" }],
 		});
 
 		return {
 			success: true,
-			message: 'Organizations retrieved successfully',
+			message: "Organizations retrieved successfully",
 			data: organizations,
 		};
 	} catch (error) {
-		console.error('Get organizations error:', error);
-		return { success: false, message: 'Failed to fetch organizations' };
+		console.error("Get organizations error:", error);
+		return { success: false, message: "Failed to fetch organizations" };
 	}
 }
 
@@ -153,7 +154,7 @@ export async function getOrganizations(): Promise<
  * Request password reset - generates a reset token and sends email
  */
 export async function requestPasswordReset(
-	email: string
+	email: string,
 ): Promise<ActionResponse> {
 	try {
 		// Find user by email
@@ -165,7 +166,7 @@ export async function requestPasswordReset(
 		if (!user) {
 			return {
 				success: true,
-				message: 'If an account exists, a reset link will be sent',
+				message: "If an account exists, a reset link will be sent",
 			};
 		}
 
@@ -175,7 +176,7 @@ export async function requestPasswordReset(
 		});
 
 		// Generate reset token
-		const token = crypto.randomBytes(32).toString('hex');
+		const token = crypto.randomBytes(32).toString("hex");
 		const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 
 		// Create password reset token
@@ -190,20 +191,20 @@ export async function requestPasswordReset(
 		// TODO: Send email with reset link
 		// For now, log the token for development
 		const resetUrl = `${
-			process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+			process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
 		}/auth/reset-password?token=${token}`;
-		console.log('Password reset link:', resetUrl);
+		console.log("Password reset link:", resetUrl);
 
 		// In production, you would send an email here:
 		// await sendPasswordResetEmail(user.email, resetUrl);
 
 		return {
 			success: true,
-			message: 'If an account exists, a reset link will be sent',
+			message: "If an account exists, a reset link will be sent",
 		};
 	} catch (error) {
-		console.error('Password reset request error:', error);
-		return { success: false, message: 'Failed to process request' };
+		console.error("Password reset request error:", error);
+		return { success: false, message: "Failed to process request" };
 	}
 }
 
@@ -211,7 +212,7 @@ export async function requestPasswordReset(
  * Validate password reset token
  */
 export async function validateResetToken(
-	token: string
+	token: string,
 ): Promise<ActionResponse> {
 	try {
 		const resetToken = await db.passwordResetToken.findUnique({
@@ -219,21 +220,21 @@ export async function validateResetToken(
 		});
 
 		if (!resetToken) {
-			return { success: false, message: 'Invalid reset token' };
+			return { success: false, message: "Invalid reset token" };
 		}
 
 		if (resetToken.usedAt) {
-			return { success: false, message: 'Token has already been used' };
+			return { success: false, message: "Token has already been used" };
 		}
 
 		if (resetToken.expiresAt < new Date()) {
-			return { success: false, message: 'Token has expired' };
+			return { success: false, message: "Token has expired" };
 		}
 
-		return { success: true, message: 'Token is valid' };
+		return { success: true, message: "Token is valid" };
 	} catch (error) {
-		console.error('Token validation error:', error);
-		return { success: false, message: 'Failed to validate token' };
+		console.error("Token validation error:", error);
+		return { success: false, message: "Failed to validate token" };
 	}
 }
 
@@ -251,7 +252,7 @@ export async function resetPassword(data: {
 		if (!parsed.success) {
 			return {
 				success: false,
-				message: 'Invalid input',
+				message: "Invalid input",
 				errors: parsed.error.flatten().fieldErrors,
 			};
 		}
@@ -263,15 +264,15 @@ export async function resetPassword(data: {
 		});
 
 		if (!resetToken) {
-			return { success: false, message: 'Invalid reset token' };
+			return { success: false, message: "Invalid reset token" };
 		}
 
 		if (resetToken.usedAt) {
-			return { success: false, message: 'Token has already been used' };
+			return { success: false, message: "Token has already been used" };
 		}
 
 		if (resetToken.expiresAt < new Date()) {
-			return { success: false, message: 'Token has expired' };
+			return { success: false, message: "Token has expired" };
 		}
 
 		// Hash new password
@@ -289,9 +290,9 @@ export async function resetPassword(data: {
 			}),
 		]);
 
-		return { success: true, message: 'Password reset successfully' };
+		return { success: true, message: "Password reset successfully" };
 	} catch (error) {
-		console.error('Password reset error:', error);
-		return { success: false, message: 'Failed to reset password' };
+		console.error("Password reset error:", error);
+		return { success: false, message: "Failed to reset password" };
 	}
 }
