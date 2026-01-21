@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 	title: "Ecclesia DPM - Digital Parish Manager",
 	description: "Comprehensive parish management system",
 };
-
+  
 export default function RootLayout({
 	children,
 }: Readonly<{
