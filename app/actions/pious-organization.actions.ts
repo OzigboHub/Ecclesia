@@ -17,7 +17,7 @@ import { isFeatureEnabled } from '@/lib/features';
 // TYPE DEFINITIONS
 // ============================================
 
-type PiousOrganizationWithRelations = Prisma.PiousOrganizationGetPayload<{
+export type PiousOrganizationWithRelations = Prisma.PiousOrganizationGetPayload<{
 	include: {
 		president: {
 			select: {
@@ -39,7 +39,7 @@ type PiousOrganizationWithRelations = Prisma.PiousOrganizationGetPayload<{
 	};
 }>;
 
-type PiousOrganizationWithDetails = Prisma.PiousOrganizationGetPayload<{
+export type PiousOrganizationWithDetails = Prisma.PiousOrganizationGetPayload<{
 	include: {
 		president: true;
 		secretary: true;
@@ -87,7 +87,7 @@ export async function getPiousOrganizations(): Promise<
 						lastName: true,
 					},
 				},
-				secretary: { 
+				secretary: {
 					select: {
 						id: true,
 						firstName: true,

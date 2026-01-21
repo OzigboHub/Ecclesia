@@ -1,22 +1,17 @@
-import type { Metadata } from 'next';
-import { Geist, Geist_Mono } from 'next/font/google';
-import { AuthProvider } from '@/components/providers/auth-provider';
-import { Toaster } from 'sonner';
-import './globals.css';
+import { AuthProvider } from "@/components/providers/auth-provider";
+import type { Metadata } from "next";
+import { Montserrat } from "next/font/google";
+import { Toaster } from "sonner";
+import "./globals.css";
 
-const geistSans = Geist({
-	variable: '--font-geist-sans',
-	subsets: ['latin'],
-});
-
-const geistMono = Geist_Mono({
-	variable: '--font-geist-mono',
-	subsets: ['latin'],
+const montserrat = Montserrat({
+	variable: "--montserrat",
+	weight: ["100", "200", "300", "400", "500", "600", "700", "800", "900"],
 });
 
 export const metadata: Metadata = {
-	title: 'Ecclesia DPM - Digital Parish Manager',
-	description: 'Comprehensive parish management system',
+	title: "Ecclesia DPM - Digital Parish Manager",
+	description: "Comprehensive parish management system",
 };
 
 export default function RootLayout({
@@ -25,16 +20,14 @@ export default function RootLayout({
 	children: React.ReactNode;
 }>) {
 	return (
-		<html lang='en' suppressHydrationWarning>
+		<html lang="en">
 			<body
-				className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+				className={`${montserrat.className} text-[13px] antialiased`}
+				suppressHydrationWarning
 			>
 				<AuthProvider>
 					{children}
-					<Toaster
-						position='top-right'
-						richColors
-					/>
+					<Toaster position="top-right" richColors />
 				</AuthProvider>
 			</body>
 		</html>
