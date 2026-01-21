@@ -50,9 +50,9 @@ export default function LandingPage() {
 		},
 		{
 			icon: Wallet,
-			title: 'Financial Tracking',
+			title: 'Financial Record Keeping',
 			description:
-				'Record offerings, tithes, and donations with multiple payment methods. Track contributions by member and generate receipts for transparency.',
+				'Record offerings, tithes, and donations with multiple payment methods. Monitor contributions by member and generate receipts for transparency.',
 		},
 		{
 			icon: Church,

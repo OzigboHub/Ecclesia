@@ -2,17 +2,22 @@ import { auth } from '@/auth';
 import { redirect } from 'next/navigation';
 import { SuperAdminDashboard } from '@/components/features/dashboard/super-admin-dashboard';
 import { Users, DollarSign, Calendar, Church } from 'lucide-react';
+import { NairaSignIcon } from '@/components/shared/icons';
 
 const stats = [
 	{ name: 'Total Parishioners', value: '1,234', icon: Users, change: '+12%' },
-	{
-		name: 'Monthly Offerings',
-		value: '₦450,000',
-		icon: DollarSign,
-		change: '+8%',
-	},
-	{ name: 'Upcoming Appointments', value: '23', icon: Calendar, change: '' },
-	{ name: 'Mass Intentions', value: '45', icon: Church, change: '+5%' },
+	
+		// NairaSignIcon SVG component
+		
+
+		{
+			name: 'Monthly Offerings',
+			value: '₦450,000',
+			icon: NairaSignIcon,
+			change: '+8%',
+		},
+		{ name: 'Upcoming Appointments', value: '23', icon: Calendar, change: '' },
+		{ name: 'Mass Intentions', value: '45', icon: Church, change: '+5%' },
 ];
 
 export default async function DashboardPage() {
