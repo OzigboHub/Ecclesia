@@ -532,7 +532,7 @@ model Parishioner {
   payments       Payment[]
   massIntentions MassIntention[]
   appointments   Appointment[]
-  memberships    PiousOrganizationMember[]
+  memberships    societyMember[]
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 

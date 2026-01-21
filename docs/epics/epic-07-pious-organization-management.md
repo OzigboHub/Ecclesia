@@ -619,17 +619,17 @@ PENDING → ACTIVE → INACTIVE
 
 ### Feature Toggle Integration
 
--   Check `enablePiousOrganizations` before all operations
+-   Check `enablesocietys` before all operations
 -   Dues tracking depends on `enableFinancialManagement`
 -   Notifications depend on `enableEmailNotifications` / `enableSMSNotifications`
 
 ### Database Schema
 
 ```prisma
-model PiousOrganization {
+model society {
   id                String                  @id @default(uuid())
   name              String
-  type              PiousOrganizationType
+  type              societyType
   description       String?
   mission           String?
   patronSaint       String?
@@ -644,17 +644,17 @@ model PiousOrganization {
   organizationId    String
   organization      Organization            @relation(...)
 
-  memberships       PiousOrganizationMember[]
-  meetings          PiousOrganizationMeeting[]
+  memberships       societyMember[]
+  meetings          societyMeeting[]
 
   createdAt         DateTime                @default(now())
   updatedAt         DateTime                @updatedAt
 }
 
-model PiousOrganizationMember {
+model societyMember {
   id                    String                   @id @default(uuid())
-  piousOrganizationId   String
-  piousOrganization     PiousOrganization        @relation(...)
+  societyId   String
+  society     society        @relation(...)
   parishionerId         String
   parishioner           Parishioner              @relation(...)
 
@@ -665,36 +665,36 @@ model PiousOrganizationMember {
   createdAt             DateTime                 @default(now())
   updatedAt             DateTime                 @updatedAt
 
-  @@unique([piousOrganizationId, parishionerId])
+  @@unique([societyId, parishionerId])
 }
 
-model PiousOrganizationMeeting {
+model societyMeeting {
   id                    String            @id @default(uuid())
-  piousOrganizationId   String
-  piousOrganization     PiousOrganization @relation(...)
+  societyId   String
+  society     society @relation(...)
   date                  DateTime
   location              String?
   agenda                String?
   type                  MeetingType       @default(REGULAR)
 
-  attendance            PiousOrganizationAttendance[]
+  attendance            societyAttendance[]
 
   createdAt             DateTime          @default(now())
 }
 
-model PiousOrganizationAttendance {
+model societyAttendance {
   id           String                    @id @default(uuid())
   meetingId    String
-  meeting      PiousOrganizationMeeting  @relation(...)
+  meeting      societyMeeting  @relation(...)
   memberId     String
-  member       PiousOrganizationMember   @relation(...)
+  member       societyMember   @relation(...)
   present      Boolean
   notes        String?
 
   @@unique([meetingId, memberId])
 }
 
-enum PiousOrganizationType {
+enum societyType {
   SOCIETY
   GUILD
   ASSOCIATION

@@ -3,13 +3,13 @@ import { PrismaClient } from '@prisma/client';
 async function main() {
     const prisma = new PrismaClient();
     try {
-        console.log("Inspecting PiousOrganization table columns...");
+        console.log("Inspecting society table columns...");
         const columns: any[] = await prisma.$queryRaw`
             SELECT column_name, data_type 
             FROM information_schema.columns 
-            WHERE table_name = 'PiousOrganization';
+            WHERE table_name = 'society';
         `;
-        console.log("Columns in PiousOrganization table:");
+        console.log("Columns in society table:");
         console.table(columns);
 
         console.log("\nInspecting Payment table columns...");

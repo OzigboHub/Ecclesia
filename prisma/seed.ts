@@ -58,7 +58,7 @@ async function main() {
 			enableAnnouncements: true,
 			enableSMSNotifications: true,
 			enableEmailNotifications: true,
-			enablePiousOrganizations: true,
+			enablesocietys: true,
 			enableEventManagement: true,
 			enableOnlinePayments: true,
 			enablePublicWebsite: true,

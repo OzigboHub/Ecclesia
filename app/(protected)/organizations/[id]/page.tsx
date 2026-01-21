@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
-import { getPiousOrganization } from "@/app/actions/pious-organization.actions";
+import { getsociety } from "@/app/actions/society.actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -26,7 +26,7 @@ export default async function OrganizationDetailPage({
 	// Await params (Next.js 16 pattern)
 	const { id } = await params;
 
-	const result = await getPiousOrganization(id);
+	const result = await getsociety(id);
 
 	if (!result.success || !result.data) {
 		notFound();
@@ -99,7 +99,7 @@ export default async function OrganizationDetailPage({
 										<div className="text-center py-6 text-muted-foreground">
 											<p>No members registered yet.</p>
 										</div>
-									:	<ul className="divide-y">
+										: <ul className="divide-y">
 											{organization.members.map(
 												(membership: any) => (
 													<MemberListItem
@@ -123,7 +123,7 @@ export default async function OrganizationDetailPage({
 								<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
 									<CardTitle>Upcoming Events</CardTitle>
 									<CreateMeetingDialog
-										piousOrganizationId={organization.id}
+										societyId={organization.id}
 									/>
 								</CardHeader>
 								<CardContent>
@@ -131,7 +131,7 @@ export default async function OrganizationDetailPage({
 										<p className="text-muted-foreground text-sm">
 											No events scheduled.
 										</p>
-									:	<ul className="space-y-2">
+										: <ul className="space-y-2">
 											{organization.events.map(
 												(event: any) => (
 													<li
@@ -175,7 +175,7 @@ export default async function OrganizationDetailPage({
 								<p className="font-medium">
 									{organization.president ?
 										`${organization.president.firstName} ${organization.president.lastName}`
-									:	"Vacant"}
+										: "Vacant"}
 								</p>
 							</div>
 							<div>
@@ -185,7 +185,7 @@ export default async function OrganizationDetailPage({
 								<p className="font-medium">
 									{organization.secretary ?
 										`${organization.secretary.firstName} ${organization.secretary.lastName}`
-									:	"Vacant"}
+										: "Vacant"}
 								</p>
 							</div>
 						</CardContent>

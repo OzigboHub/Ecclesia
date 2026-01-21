@@ -1,6 +1,6 @@
 import { notFound, redirect } from 'next/navigation';
 import { auth } from '@/auth';
-import { getPiousOrganization } from '@/app/actions/pious-organization.actions';
+import { getsociety } from '@/app/actions/society.actions';
 import { OrganizationForm } from '@/components/forms/organization-form';
 
 interface EditOrganizationPageProps {
@@ -19,7 +19,7 @@ export default async function EditOrganizationPage({
 	// Await params (Next.js 16 pattern)
 	const { id } = await params;
 
-	const result = await getPiousOrganization(id);
+	const result = await getsociety(id);
 
 	if (!result.success || !result.data) {
 		notFound();

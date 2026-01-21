@@ -58,7 +58,7 @@ model OrganizationFeatureSettings {
   enableEmailNotifications    Boolean    @default(true)
 
   // Organization Features (default: true)
-  enablePiousOrganizations    Boolean    @default(true)
+  enablesocietys    Boolean    @default(true)
   enableEventManagement       Boolean    @default(true)
 
   // Advanced Features (default: false)
@@ -245,7 +245,7 @@ const allNavigation = [
 		name: 'Organizations',
 		href: '/dashboard/organizations',
 		icon: UsersRound,
-		feature: 'enablePiousOrganizations',
+		feature: 'enablesocietys',
 	},
 	{
 		name: 'Live Streams',

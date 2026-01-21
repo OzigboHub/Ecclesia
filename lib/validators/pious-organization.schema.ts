@@ -4,7 +4,7 @@ import { z } from 'zod';
 // CREATE PIOUS ORGANIZATION SCHEMA
 // ============================================
 
-export const createPiousOrganizationSchema = z.object({
+export const createsocietySchema = z.object({
 	name: z
 		.string()
 		.min(2, 'Name must be at least 2 characters')
@@ -20,19 +20,19 @@ export const createPiousOrganizationSchema = z.object({
 	meetingSchedule: z.string().max(200).optional(),
 });
 
-export type CreatePiousOrganizationInput = z.infer<
-	typeof createPiousOrganizationSchema
+export type CreatesocietyInput = z.infer<
+	typeof createsocietySchema
 >;
 
 // ============================================
 // UPDATE PIOUS ORGANIZATION SCHEMA
 // ============================================
 
-export const updatePiousOrganizationSchema =
-	createPiousOrganizationSchema.partial();
+export const updatesocietySchema =
+	createsocietySchema.partial();
 
-export type UpdatePiousOrganizationInput = z.infer<
-	typeof updatePiousOrganizationSchema
+export type UpdatesocietyInput = z.infer<
+	typeof updatesocietySchema
 >;
 
 // ============================================

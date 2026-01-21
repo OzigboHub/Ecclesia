@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Trash2, Loader2 } from 'lucide-react';
-import { removeMember } from '@/app/actions/pious-organization.actions';
+import { removeMember } from '@/app/actions/society.actions';
 import { toast } from 'sonner';
 import {
 	AlertDialog,

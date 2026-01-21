@@ -56,7 +56,7 @@ export const featureCategories = {
 		label: 'Organization Features',
 		description: 'Groups and events management',
 		features: [
-			'enablePiousOrganizations',
+			'enablesocietys',
 			'enableEventManagement',
 		] as FeatureName[],
 	},
@@ -91,7 +91,7 @@ export const featureLabels: Record<FeatureName, string> = {
 	enableAnnouncements: 'Announcements',
 	enableSMSNotifications: 'SMS Notifications',
 	enableEmailNotifications: 'Email Notifications',
-	enablePiousOrganizations: 'Pious Organizations',
+	enablesocietys: 'Pious Organizations',
 	enableEventManagement: 'Event Management',
 	enableOnlinePayments: 'Online Payments',
 	enableRecurringDonations: 'Recurring Donations',
@@ -118,7 +118,7 @@ export const featureDescriptions: Record<FeatureName, string> = {
 	enableAnnouncements: 'Post announcements for parishioners',
 	enableSMSNotifications: 'Send SMS notifications to members',
 	enableEmailNotifications: 'Send email notifications to members',
-	enablePiousOrganizations: 'Manage parish groups and societies',
+	enablesocietys: 'Manage parish groups and societies',
 	enableEventManagement: 'Create and manage parish events',
 	enableOnlinePayments: 'Accept payments via payment gateway',
 	enableRecurringDonations: 'Set up recurring donation schedules',
@@ -145,7 +145,7 @@ const defaultFeatureValues: Record<FeatureName, boolean> = {
 	enableAnnouncements: true,
 	enableSMSNotifications: false,
 	enableEmailNotifications: true,
-	enablePiousOrganizations: true,
+	enablesocietys: true,
 	enableEventManagement: true,
 	enableOnlinePayments: false,
 	enableRecurringDonations: false,
@@ -157,20 +157,20 @@ const defaultFeatureValues: Record<FeatureName, boolean> = {
  * Feature dependencies - some features require others to be enabled
  */
 export const featureDependencies: Partial<Record<FeatureName, FeatureName[]>> =
-	{
-		enableMassIntentions: ['enableFinancialManagement'],
-		enableOfferings: ['enableFinancialManagement'],
-		enableTithes: ['enableFinancialManagement'],
-		enableDonationCampaigns: ['enableFinancialManagement'],
-		enableCustomDonationTypes: ['enableFinancialManagement'],
-		enableMonthlyTracking: ['enableFinancialManagement'],
-		enableOnlinePayments: ['enableFinancialManagement'],
-		enableRecurringDonations: [
-			'enableFinancialManagement',
-			'enableOnlinePayments',
-		],
-		enableConfessionBooking: ['enableAppointments'],
-	};
+{
+	enableMassIntentions: ['enableFinancialManagement'],
+	enableOfferings: ['enableFinancialManagement'],
+	enableTithes: ['enableFinancialManagement'],
+	enableDonationCampaigns: ['enableFinancialManagement'],
+	enableCustomDonationTypes: ['enableFinancialManagement'],
+	enableMonthlyTracking: ['enableFinancialManagement'],
+	enableOnlinePayments: ['enableFinancialManagement'],
+	enableRecurringDonations: [
+		'enableFinancialManagement',
+		'enableOnlinePayments',
+	],
+	enableConfessionBooking: ['enableAppointments'],
+};
 
 /**
  * Get feature settings for an organization

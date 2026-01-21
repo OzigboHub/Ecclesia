@@ -133,7 +133,7 @@ EPIC-01: User Management
 | `enableMassIntentions`        | EPIC-05                        |
 | `enableAppointments`          | EPIC-06                        |
 | `enableConfessionBooking`     | EPIC-06                        |
-| `enablePiousOrganizations`    | EPIC-07                        |
+| `enablesocietys`    | EPIC-07                        |
 | `enableLiveStreaming`         | EPIC-08                        |
 | `enableEventManagement`       | EPIC-09                        |
 | `enableOnlinePayments`        | EPIC-11 (Paystack/Flutterwave) |

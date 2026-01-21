@@ -1245,7 +1245,7 @@ These features enable deeper parish engagement and service delivery.
     -   [x] Define positions (President, Secretary, etc.)
     -   [x] Assign roles to members
     -   [x] **Acceptance**: Roles assignable
-    -   **Status**: ✅ COMPLETED - PiousOrganizationRole enum with role assignment in form
+    -   **Status**: ✅ COMPLETED - societyRole enum with role assignment in form
 
 -   [x] **PIO-006**: Build member listing (5 SP)
 

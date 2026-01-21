@@ -35,7 +35,7 @@ import {
 import { Check, ChevronsUpDown, Loader2, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { searchParishioners } from '@/app/actions/parishioner.actions';
-import { addMember } from '@/app/actions/pious-organization.actions';
+import { addMember } from '@/app/actions/society.actions';
 import { toast } from 'sonner';
 import { Parishioner } from '@prisma/client';
 

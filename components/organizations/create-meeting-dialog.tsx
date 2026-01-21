@@ -16,13 +16,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Plus } from 'lucide-react';
-import { createMeeting } from '@/app/actions/pious-organization.actions';
+import { createMeeting } from '@/app/actions/society.actions';
 import { toast } from 'sonner';
 
 export function CreateMeetingDialog({
-	piousOrganizationId,
+	societyId,
 }: {
-	piousOrganizationId: string;
+	societyId: string;
 }) {
 	const [open, setOpen] = useState(false);
 	const [title, setTitle] = useState('');
@@ -44,7 +44,7 @@ export function CreateMeetingDialog({
 		const endDateTime = new Date(startDateTime.getTime() + 60 * 60 * 1000);
 
 		startTransition(async () => {
-			const result = await createMeeting(piousOrganizationId, {
+			const result = await createMeeting(societyId, {
 				title,
 				startTime: startDateTime,
 				endTime: endDateTime,

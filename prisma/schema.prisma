@@ -35,7 +35,7 @@ model Organization {
   featureSettings       OrganizationFeatureSettings?
   parishioners          Parishioner[]
   payments              Payment[]
-  piousOrganizations    PiousOrganization[]
+  societys              society[]
   sacraments            Sacrament[]
   users                 User[]
 
@@ -60,7 +60,7 @@ model OrganizationFeatureSettings {
   enableAnnouncements         Boolean      @default(true)
   enableSMSNotifications      Boolean      @default(false)
   enableEmailNotifications    Boolean      @default(true)
-  enablePiousOrganizations    Boolean      @default(true)
+  enablesocietys              Boolean      @default(true)
   enableEventManagement       Boolean      @default(true)
   enableOnlinePayments        Boolean      @default(false)
   enableRecurringDonations    Boolean      @default(false)
@@ -74,24 +74,24 @@ model OrganizationFeatureSettings {
 }
 
 model User {
-  id                        String               @id @default(uuid())
-  email                     String               @unique
-  password                  String
-  firstName                 String
-  lastName                  String
-  role                      UserRole
-  organizationId            String
-  isActive                  Boolean              @default(true)
-  lastLogin                 DateTime?
-  createdAt                 DateTime             @default(now())
-  updatedAt                 DateTime             @updatedAt
-  appointmentsAssigned      Appointment[]        @relation("AppointmentAssignee")
-  appointmentsMade          Appointment[]        @relation("AppointmentCreator")
-  passwordResetTokens       PasswordResetToken[]
-  paymentsRecorded          Payment[]            @relation("PaymentRecorder")
-  piousOrganizationLed      PiousOrganization?   @relation("PiousOrganizationPresident")
-  piousOrganizationAssisted PiousOrganization?   @relation("PiousOrganizationSecretary")
-  organization              Organization         @relation(fields: [organizationId], references: [id])
+  id                   String               @id @default(uuid())
+  email                String               @unique
+  password             String
+  firstName            String
+  lastName             String
+  role                 UserRole
+  organizationId       String
+  isActive             Boolean              @default(true)
+  lastLogin            DateTime?
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+  appointmentsAssigned Appointment[]        @relation("AppointmentAssignee")
+  appointmentsMade     Appointment[]        @relation("AppointmentCreator")
+  passwordResetTokens  PasswordResetToken[]
+  paymentsRecorded     Payment[]            @relation("PaymentRecorder")
+  societyLed           society?             @relation("societyPresident")
+  societyAssisted      society?             @relation("societySecretary")
+  organization         Organization         @relation(fields: [organizationId], references: [id])
 
   @@index([organizationId])
   @@index([email])
@@ -159,23 +159,23 @@ model Mass {
   @@index([massType])
 }
 
-model PiousOrganization {
-  id              String                        @id @default(uuid())
+model society {
+  id              String              @id @default(uuid())
   name            String
   description     String?
   organizationId  String
-  presidentId     String?                       @unique
-  secretaryId     String?                       @unique
-  createdAt       DateTime                      @default(now())
-  updatedAt       DateTime                      @updatedAt
+  presidentId     String?             @unique
+  secretaryId     String?             @unique
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
   meetingSchedule String?
   patronSaint     String?
   events          Event[]
   payments        Payment[]
-  organization    Organization                  @relation(fields: [organizationId], references: [id])
-  president       User?                         @relation("PiousOrganizationPresident", fields: [presidentId], references: [id])
-  secretary       User?                         @relation("PiousOrganizationSecretary", fields: [secretaryId], references: [id])
-  members         PiousOrganizationMembership[]
+  organization    Organization        @relation(fields: [organizationId], references: [id])
+  president       User?               @relation("societyPresident", fields: [presidentId], references: [id])
+  secretary       User?               @relation("societySecretary", fields: [secretaryId], references: [id])
+  members         societyMembership[]
 
   @@unique([name, organizationId])
   @@index([organizationId])
@@ -184,46 +184,46 @@ model PiousOrganization {
 }
 
 model Parishioner {
-  id                           String                        @id @default(uuid())
-  firstName                    String
-  lastName                     String
-  otherNames                   String?
-  email                        String?                       @unique
-  phone                        String?
-  address                      String?
-  dateOfBirth                  DateTime?
-  gender                       Gender?
-  maritalStatus                MaritalStatus?
-  organizationId               String
-  createdAt                    DateTime                      @default(now())
-  updatedAt                    DateTime                      @updatedAt
-  occupation                   String?
-  deletedAt                    DateTime?
-  isActive                     Boolean                       @default(true)
-  photoUrl                     String?
-  appointments                 Appointment[]                 @relation("ParishionerAppointment")
-  eventAttendances             EventAttendance[]
-  massIntentions               MassIntention[]
-  organization                 Organization                  @relation(fields: [organizationId], references: [id])
-  payments                     Payment[]
-  piousOrganizationMemberships PiousOrganizationMembership[]
-  sacraments                   Sacrament[]
+  id                 String              @id @default(uuid())
+  firstName          String
+  lastName           String
+  otherNames         String?
+  email              String?             @unique
+  phone              String?
+  address            String?
+  dateOfBirth        DateTime?
+  gender             Gender?
+  maritalStatus      MaritalStatus?
+  organizationId     String
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  occupation         String?
+  deletedAt          DateTime?
+  isActive           Boolean             @default(true)
+  photoUrl           String?
+  appointments       Appointment[]       @relation("ParishionerAppointment")
+  eventAttendances   EventAttendance[]
+  massIntentions     MassIntention[]
+  organization       Organization        @relation(fields: [organizationId], references: [id])
+  payments           Payment[]
+  societyMemberships societyMembership[]
+  sacraments         Sacrament[]
 
   @@index([organizationId])
   @@index([email])
   @@index([phone])
 }
 
-model PiousOrganizationMembership {
-  parishionerId       String
-  piousOrganizationId String
-  joinedAt            DateTime              @default(now())
-  role                PiousOrganizationRole @default(MEMBER)
-  parishioner         Parishioner           @relation(fields: [parishionerId], references: [id])
-  piousOrganization   PiousOrganization     @relation(fields: [piousOrganizationId], references: [id])
+model societyMembership {
+  parishionerId String
+  societyId     String
+  joinedAt      DateTime    @default(now())
+  role          societyRole @default(MEMBER)
+  parishioner   Parishioner @relation(fields: [parishionerId], references: [id])
+  society       society     @relation(fields: [societyId], references: [id])
 
-  @@id([parishionerId, piousOrganizationId])
-  @@index([piousOrganizationId])
+  @@id([parishionerId, societyId])
+  @@index([societyId])
 }
 
 model Sacrament {
@@ -243,24 +243,24 @@ model Sacrament {
 }
 
 model Event {
-  id                  String             @id @default(uuid())
-  title               String
-  description         String?
-  startTime           DateTime
-  endTime             DateTime
-  location            String?
-  organizationId      String
-  status              EventStatus        @default(SCHEDULED)
-  maxAttendees        Int?
-  createdAt           DateTime           @default(now())
-  updatedAt           DateTime           @updatedAt
-  piousOrganizationId String?
-  minutes             String?
-  type                EventType          @default(MEETING)
-  organization        Organization       @relation(fields: [organizationId], references: [id])
-  piousOrganization   PiousOrganization? @relation(fields: [piousOrganizationId], references: [id])
-  attendance          EventAttendance[]
-  massIntentions      MassIntention[]
+  id             String            @id @default(uuid())
+  title          String
+  description    String?
+  startTime      DateTime
+  endTime        DateTime
+  location       String?
+  organizationId String
+  status         EventStatus       @default(SCHEDULED)
+  maxAttendees   Int?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  societyId      String?
+  minutes        String?
+  type           EventType         @default(MEETING)
+  organization   Organization      @relation(fields: [organizationId], references: [id])
+  society        society?          @relation(fields: [societyId], references: [id])
+  attendance     EventAttendance[]
+  massIntentions MassIntention[]
 
   @@index([organizationId])
   @@index([startTime])
@@ -363,37 +363,37 @@ model Donation {
 }
 
 model Payment {
-  id                  String             @id @default(uuid())
-  amount              Float
-  currency            String             @default("NGN")
-  purpose             PaymentPurpose
-  month               Int?
-  paymentMethod       PaymentMethod
-  paymentStatus       PaymentStatus      @default(PENDING)
-  transactionRef      String?            @unique
-  parishionerId       String?
-  payerName           String
-  onBehalfOf          String?
-  payerEmail          String?
-  payerPhone          String?
-  massIntentionId     String?
-  donationCampaignId  String?
-  donationId          String?
-  organizationId      String
-  recordedById        String
-  notes               String?
-  receiptNumber       String?            @unique
-  paymentDate         DateTime           @default(now())
-  createdAt           DateTime           @default(now())
-  updatedAt           DateTime           @updatedAt
-  piousOrganizationId String?
-  donationCampaign    DonationCampaign?  @relation(fields: [donationCampaignId], references: [id])
-  donation            Donation?          @relation(fields: [donationId], references: [id])
-  massIntention       MassIntention?     @relation(fields: [massIntentionId], references: [id])
-  organization        Organization       @relation(fields: [organizationId], references: [id])
-  parishioner         Parishioner?       @relation(fields: [parishionerId], references: [id])
-  piousOrganization   PiousOrganization? @relation(fields: [piousOrganizationId], references: [id])
-  recordedBy          User               @relation("PaymentRecorder", fields: [recordedById], references: [id])
+  id                 String            @id @default(uuid())
+  amount             Float
+  currency           String            @default("NGN")
+  purpose            PaymentPurpose
+  month              Int?
+  paymentMethod      PaymentMethod
+  paymentStatus      PaymentStatus     @default(PENDING)
+  transactionRef     String?           @unique
+  parishionerId      String?
+  payerName          String
+  onBehalfOf         String?
+  payerEmail         String?
+  payerPhone         String?
+  massIntentionId    String?
+  donationCampaignId String?
+  donationId         String?
+  organizationId     String
+  recordedById       String
+  notes              String?
+  receiptNumber      String?           @unique
+  paymentDate        DateTime          @default(now())
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  societyId          String?
+  donationCampaign   DonationCampaign? @relation(fields: [donationCampaignId], references: [id])
+  donation           Donation?         @relation(fields: [donationId], references: [id])
+  massIntention      MassIntention?    @relation(fields: [massIntentionId], references: [id])
+  organization       Organization      @relation(fields: [organizationId], references: [id])
+  parishioner        Parishioner?      @relation(fields: [parishionerId], references: [id])
+  society            society?          @relation(fields: [societyId], references: [id])
+  recordedBy         User              @relation("PaymentRecorder", fields: [recordedById], references: [id])
 
   @@index([parishionerId])
   @@index([organizationId])
@@ -402,7 +402,7 @@ model Payment {
   @@index([massIntentionId])
   @@index([donationCampaignId])
   @@index([donationId])
-  @@index([piousOrganizationId])
+  @@index([societyId])
   @@index([paymentDate])
   @@index([month])
   @@index([recordedById])
@@ -551,7 +551,7 @@ enum MaritalStatus {
   DIVORCED
 }
 
-enum PiousOrganizationRole {
+enum societyRole {
   MEMBER
   PRESIDENT
   VICE_PRESIDENT

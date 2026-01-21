@@ -333,7 +333,7 @@ Based on the schema, these models MUST be scoped:
 | `Donation`          | `organizationId` |
 | `DonationCampaign`  | `organizationId` |
 | `Sacrament`         | `organizationId` |
-| `PiousOrganization` | `organizationId` |
+| `society` | `organizationId` |
 | `LiveStream`        | `organizationId` |
 | `User`              | `organizationId` |
 

@@ -35,7 +35,7 @@ model Organization {
   donations            Donation[]
   massIntentions       MassIntention[]
   sacraments           Sacrament[]
-  piousOrganizations   PiousOrganization[]
+  societys   society[]
   liveStreams          LiveStream[]
   appointments         Appointment[]
   donationCampaigns    DonationCampaign[]
@@ -75,7 +75,7 @@ model OrganizationFeatureSettings {
   enableEmailNotifications    Boolean    @default(true)
   
   // Organization Features
-  enablePiousOrganizations    Boolean    @default(true)
+  enablesocietys    Boolean    @default(true)
   enableEventManagement       Boolean    @default(true)
   
   // Advanced Features
@@ -116,8 +116,8 @@ model User {
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 
-  piousOrganizationLed      PiousOrganization? @relation("PiousOrganizationPresident")
-  piousOrganizationAssisted PiousOrganization? @relation("PiousOrganizationSecretary")
+  societyLed      society? @relation("societyPresident")
+  societyAssisted society? @relation("societySecretary")
   appointmentsMade          Appointment[]      @relation("AppointmentCreator")
   appointmentsAssigned      Appointment[]      @relation("AppointmentAssignee")
   paymentsRecorded          Payment[]          @relation("PaymentRecorder")
@@ -127,20 +127,20 @@ model User {
 }
 
 // --- Pious Organizations ---
-model PiousOrganization {
+model society {
   id             String       @id @default(uuid())
   name           String
   description    String?
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id])
   presidentId    String?      @unique
-  president      User?        @relation("PiousOrganizationPresident", fields: [presidentId], references: [id])
+  president      User?        @relation("societyPresident", fields: [presidentId], references: [id])
   secretaryId    String?      @unique
-  secretary      User?        @relation("PiousOrganizationSecretary", fields: [secretaryId], references: [id])
+  secretary      User?        @relation("societySecretary", fields: [secretaryId], references: [id])
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
-  members PiousOrganizationMembership[]
+  members societyMembership[]
 
   @@unique([name, organizationId])
   @@index([organizationId])
@@ -180,7 +180,7 @@ model Parishioner {
 
   sacraments                    Sacrament[]
   massIntentions                MassIntention[]
-  piousOrganizationMemberships  PiousOrganizationMembership[]
+  societyMemberships  societyMembership[]
   appointments                  Appointment[]                 @relation("ParishionerAppointment")
   payments                      Payment[]
 
@@ -189,15 +189,15 @@ model Parishioner {
   @@index([phone])
 }
 
-model PiousOrganizationMembership {
+model societyMembership {
   parishionerId       String
   parishioner         Parishioner       @relation(fields: [parishionerId], references: [id])
-  piousOrganizationId String
-  piousOrganization   PiousOrganization @relation(fields: [piousOrganizationId], references: [id])
+  societyId String
+  society   society @relation(fields: [societyId], references: [id])
   joinedAt            DateTime          @default(now())
 
-  @@id([parishionerId, piousOrganizationId])
-  @@index([piousOrganizationId])
+  @@id([parishionerId, societyId])
+  @@index([societyId])
 }
 
 // --- Sacramental Records ---

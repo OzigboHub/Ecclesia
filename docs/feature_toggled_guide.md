@@ -51,7 +51,7 @@ model OrganizationFeatureSettings {
   enableEmailNotifications    Boolean    @default(true)
   
   // Organization Features
-  enablePiousOrganizations    Boolean    @default(true)
+  enablesocietys    Boolean    @default(true)
   enableEventManagement       Boolean    @default(true)
   
   // Advanced Features
@@ -118,7 +118,7 @@ model OrganizationFeatureSettings {
 
 | Feature | Key | Default | Description | Dependencies |
 |---------|-----|---------|-------------|--------------|
-| Pious Organizations | `enablePiousOrganizations` | `true` | CWO, CMO, CYON management | Parishioner Management |
+| Pious Organizations | `enablesocietys` | `true` | CWO, CMO, CYON management | Parishioner Management |
 | Event Management | `enableEventManagement` | `true` | Parish events and RSVP | None |
 
 ### 3.6 Advanced Features (Default: Disabled)
@@ -529,7 +529,7 @@ export function validateFeatureChange(
     if (currentSettings.enableSacramentalRecords) {
       errors.push('Disable Sacramental Records before disabling Parishioner Management');
     }
-    if (currentSettings.enablePiousOrganizations) {
+    if (currentSettings.enablesocietys) {
       errors.push('Disable Pious Organizations before disabling Parishioner Management');
     }
   }
@@ -612,7 +612,7 @@ export const FEATURE_PRESETS = {
     enableCustomDonationTypes: true,
     enableMonthlyTracking: true,
     enableAppointments: true,
-    enablePiousOrganizations: true,
+    enablesocietys: true,
     enableEmailNotifications: true,
   },
   

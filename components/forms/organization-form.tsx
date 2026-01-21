@@ -5,13 +5,13 @@ import { useRouter } from 'next/navigation';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
-	createPiousOrganizationSchema,
-	type CreatePiousOrganizationInput,
+	createsocietySchema,
+	type CreatesocietyInput,
 } from '@/lib/validators/pious-organization.schema';
 import {
-	createPiousOrganization,
-	updatePiousOrganization,
-} from '@/app/actions/pious-organization.actions';
+	createsociety,
+	updatesociety,
+} from '@/app/actions/society.actions';
 import { getParishioners } from '@/app/actions/parishioner.actions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -48,8 +48,8 @@ export function OrganizationForm({
 	const [parishioners, setParishioners] = useState<Parishioner[]>([]);
 	const router = useRouter();
 
-	const form = useForm<CreatePiousOrganizationInput>({
-		resolver: zodResolver(createPiousOrganizationSchema),
+	const form = useForm<CreatesocietyInput>({
+		resolver: zodResolver(createsocietySchema),
 		defaultValues: {
 			name: initialData?.name ?? '',
 			description: initialData?.description ?? '',
@@ -80,12 +80,12 @@ export function OrganizationForm({
 		fetchParishioners();
 	}, []);
 
-	const onSubmit = (data: CreatePiousOrganizationInput) => {
+	const onSubmit = (data: CreatesocietyInput) => {
 		startTransition(async () => {
 			const result =
 				initialData?.id ?
-					await updatePiousOrganization(initialData.id, data)
-				:	await createPiousOrganization(data);
+					await updatesociety(initialData.id, data)
+					: await createsociety(data);
 
 			if (result.success) {
 				toast.success(result.message);
@@ -104,7 +104,7 @@ export function OrganizationForm({
 								messages.length > 0
 							) {
 								setError(
-									field as keyof CreatePiousOrganizationInput,
+									field as keyof CreatesocietyInput,
 									{
 										type: 'server',
 										message: messages[0],
@@ -315,9 +315,9 @@ export function OrganizationForm({
 				>
 					{isPending ?
 						'Saving...'
-					: initialData ?
-						'Update Organization'
-					:	'Create Organization'}
+						: initialData ?
+							'Update Organization'
+							: 'Create Organization'}
 				</Button>
 			</div>
 		</form>

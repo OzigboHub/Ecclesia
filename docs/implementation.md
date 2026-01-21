@@ -292,7 +292,7 @@
 **Objectives**: Organization and event management
 
 **Tasks**:
-- [ ] Implement PiousOrganization APIs
+- [ ] Implement society APIs
 - [ ] Build organization setup UI
 - [ ] Implement membership management
 - [ ] Create member addition/removal flow

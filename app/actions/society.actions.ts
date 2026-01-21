@@ -4,8 +4,8 @@ import { auth } from '@/auth';
 import { revalidatePath } from 'next/cache';
 import db from '@/lib/db';
 import {
-	createPiousOrganizationSchema,
-	updatePiousOrganizationSchema,
+	createsocietySchema,
+	updatesocietySchema,
 	addMemberSchema,
 	createMeetingSchema,
 } from '@/lib/validators/pious-organization.schema';
@@ -17,7 +17,7 @@ import { isFeatureEnabled } from '@/lib/features';
 // TYPE DEFINITIONS
 // ============================================
 
-export type PiousOrganizationWithRelations = Prisma.PiousOrganizationGetPayload<{
+export type societyWithRelations = Prisma.societyGetPayload<{
 	include: {
 		president: {
 			select: {
@@ -39,7 +39,7 @@ export type PiousOrganizationWithRelations = Prisma.PiousOrganizationGetPayload<
 	};
 }>;
 
-export type PiousOrganizationWithDetails = Prisma.PiousOrganizationGetPayload<{
+export type societyWithDetails = Prisma.societyGetPayload<{
 	include: {
 		president: true;
 		secretary: true;
@@ -56,8 +56,8 @@ export type PiousOrganizationWithDetails = Prisma.PiousOrganizationGetPayload<{
 // READ OPERATIONS
 // ============================================
 
-export async function getPiousOrganizations(): Promise<
-	ActionResponse<PiousOrganizationWithRelations[]>
+export async function getsocietys(): Promise<
+	ActionResponse<societyWithRelations[]>
 > {
 	try {
 		const session = await auth();
@@ -68,7 +68,7 @@ export async function getPiousOrganizations(): Promise<
 		// Check feature toggle
 		const enabled = await isFeatureEnabled(
 			session.user.organizationId,
-			'enablePiousOrganizations'
+			'enablesocietys'
 		);
 		if (!enabled) {
 			return {
@@ -77,7 +77,7 @@ export async function getPiousOrganizations(): Promise<
 			};
 		}
 
-		const organizations = await db.piousOrganization.findMany({
+		const organizations = await db.society.findMany({
 			where: { organizationId: session.user.organizationId },
 			include: {
 				president: {
@@ -112,9 +112,9 @@ export async function getPiousOrganizations(): Promise<
 	}
 }
 
-export async function getPiousOrganization(
+export async function getsociety(
 	id: string
-): Promise<ActionResponse<PiousOrganizationWithDetails>> {
+): Promise<ActionResponse<societyWithDetails>> {
 	try {
 		const session = await auth();
 		if (!session) {
@@ -124,7 +124,7 @@ export async function getPiousOrganization(
 		// Check feature toggle
 		const enabled = await isFeatureEnabled(
 			session.user.organizationId,
-			'enablePiousOrganizations'
+			'enablesocietys'
 		);
 		if (!enabled) {
 			return {
@@ -134,7 +134,7 @@ export async function getPiousOrganization(
 		}
 
 		// Verify organization ownership with findFirst
-		const organization = await db.piousOrganization.findFirst({
+		const organization = await db.society.findFirst({
 			where: {
 				id,
 				organizationId: session.user.organizationId, // Organization scoping!
@@ -172,9 +172,9 @@ export async function getPiousOrganization(
 // CREATE OPERATIONS
 // ============================================
 
-export async function createPiousOrganization(
+export async function createsociety(
 	formData: unknown
-): Promise<ActionResponse<PiousOrganizationWithRelations>> {
+): Promise<ActionResponse<societyWithRelations>> {
 	try {
 		const session = await auth();
 		if (!session) {
@@ -195,7 +195,7 @@ export async function createPiousOrganization(
 		// Check feature toggle
 		const enabled = await isFeatureEnabled(
 			session.user.organizationId,
-			'enablePiousOrganizations'
+			'enablesocietys'
 		);
 		if (!enabled) {
 			return {
@@ -205,7 +205,7 @@ export async function createPiousOrganization(
 		}
 
 		// Validation
-		const parsed = createPiousOrganizationSchema.safeParse(formData);
+		const parsed = createsocietySchema.safeParse(formData);
 		if (!parsed.success) {
 			return {
 				success: false,
@@ -214,7 +214,7 @@ export async function createPiousOrganization(
 			};
 		}
 
-		const organization = await db.piousOrganization.create({
+		const organization = await db.society.create({
 			data: {
 				...parsed.data,
 				organizationId: session.user.organizationId,
@@ -257,10 +257,10 @@ export async function createPiousOrganization(
 // UPDATE OPERATIONS
 // ============================================
 
-export async function updatePiousOrganization(
+export async function updatesociety(
 	id: string,
 	formData: unknown
-): Promise<ActionResponse<PiousOrganizationWithRelations>> {
+): Promise<ActionResponse<societyWithRelations>> {
 	try {
 		const session = await auth();
 		if (!session) {
@@ -279,7 +279,7 @@ export async function updatePiousOrganization(
 		}
 
 		// Validation
-		const parsed = updatePiousOrganizationSchema.safeParse(formData);
+		const parsed = updatesocietySchema.safeParse(formData);
 		if (!parsed.success) {
 			return {
 				success: false,
@@ -289,7 +289,7 @@ export async function updatePiousOrganization(
 		}
 
 		// Verify ownership
-		const existing = await db.piousOrganization.findFirst({
+		const existing = await db.society.findFirst({
 			where: {
 				id,
 				organizationId: session.user.organizationId,
@@ -300,7 +300,7 @@ export async function updatePiousOrganization(
 			return { success: false, message: 'Organization not found' };
 		}
 
-		const organization = await db.piousOrganization.update({
+		const organization = await db.society.update({
 			where: { id },
 			data: parsed.data,
 			include: {
@@ -343,7 +343,7 @@ export async function updatePiousOrganization(
 // ============================================
 
 export async function addMember(
-	piousOrganizationId: string,
+	societyId: string,
 	formData: unknown
 ): Promise<ActionResponse> {
 	try {
@@ -363,9 +363,9 @@ export async function addMember(
 		}
 
 		// Verify organization ownership
-		const organization = await db.piousOrganization.findFirst({
+		const organization = await db.society.findFirst({
 			where: {
-				id: piousOrganizationId,
+				id: societyId,
 				organizationId: session.user.organizationId,
 			},
 		});
@@ -375,11 +375,11 @@ export async function addMember(
 		}
 
 		// Check if member already exists
-		const existingMember = await db.piousOrganizationMembership.findUnique({
+		const existingMember = await db.societyMembership.findUnique({
 			where: {
-				parishionerId_piousOrganizationId: {
+				parishionerId_societyId: {
 					parishionerId: parsed.data.parishionerId,
-					piousOrganizationId,
+					societyId,
 				},
 			},
 		});
@@ -391,15 +391,15 @@ export async function addMember(
 			};
 		}
 
-		await db.piousOrganizationMembership.create({
+		await db.societyMembership.create({
 			data: {
-				piousOrganizationId,
+				societyId,
 				parishionerId: parsed.data.parishionerId,
 				role: parsed.data.role,
 			},
 		});
 
-		revalidatePath(`/dashboard/organizations/${piousOrganizationId}`);
+		revalidatePath(`/dashboard/organizations/${societyId}`);
 
 		return {
 			success: true,
@@ -412,7 +412,7 @@ export async function addMember(
 }
 
 export async function removeMember(
-	piousOrganizationId: string,
+	societyId: string,
 	parishionerId: string
 ): Promise<ActionResponse> {
 	try {
@@ -422,9 +422,9 @@ export async function removeMember(
 		}
 
 		// Verify organization ownership
-		const organization = await db.piousOrganization.findFirst({
+		const organization = await db.society.findFirst({
 			where: {
-				id: piousOrganizationId,
+				id: societyId,
 				organizationId: session.user.organizationId,
 			},
 		});
@@ -433,16 +433,16 @@ export async function removeMember(
 			return { success: false, message: 'Organization not found' };
 		}
 
-		await db.piousOrganizationMembership.delete({
+		await db.societyMembership.delete({
 			where: {
-				parishionerId_piousOrganizationId: {
+				parishionerId_societyId: {
 					parishionerId,
-					piousOrganizationId,
+					societyId,
 				},
 			},
 		});
 
-		revalidatePath(`/dashboard/organizations/${piousOrganizationId}`);
+		revalidatePath(`/dashboard/organizations/${societyId}`);
 
 		return {
 			success: true,
@@ -459,7 +459,7 @@ export async function removeMember(
 // ============================================
 
 export async function createMeeting(
-	piousOrganizationId: string,
+	societyId: string,
 	formData: unknown
 ): Promise<ActionResponse> {
 	try {
@@ -479,9 +479,9 @@ export async function createMeeting(
 		}
 
 		// Verify organization ownership
-		const organization = await db.piousOrganization.findFirst({
+		const organization = await db.society.findFirst({
 			where: {
-				id: piousOrganizationId,
+				id: societyId,
 				organizationId: session.user.organizationId,
 			},
 		});
@@ -498,13 +498,13 @@ export async function createMeeting(
 				description: parsed.data.description,
 				location: parsed.data.location,
 				organizationId: session.user.organizationId,
-				piousOrganizationId,
+				societyId,
 				type: 'MEETING',
 				status: 'SCHEDULED',
 			},
 		});
 
-		revalidatePath(`/dashboard/organizations/${piousOrganizationId}`);
+		revalidatePath(`/dashboard/organizations/${societyId}`);
 
 		return {
 			success: true,
@@ -570,7 +570,7 @@ export async function markAttendance(
 // DELETE OPERATIONS
 // ============================================
 
-export async function deletePiousOrganization(
+export async function deletesociety(
 	id: string
 ): Promise<ActionResponse> {
 	try {
@@ -585,7 +585,7 @@ export async function deletePiousOrganization(
 		}
 
 		// Verify ownership
-		const existing = await db.piousOrganization.findFirst({
+		const existing = await db.society.findFirst({
 			where: {
 				id,
 				organizationId: session.user.organizationId,
@@ -597,11 +597,11 @@ export async function deletePiousOrganization(
 		}
 
 		// Delete memberships first (cascade might handle this)
-		await db.piousOrganizationMembership.deleteMany({
-			where: { piousOrganizationId: id },
+		await db.societyMembership.deleteMany({
+			where: { societyId: id },
 		});
 
-		await db.piousOrganization.delete({ where: { id } });
+		await db.society.delete({ where: { id } });
 
 		revalidatePath('/dashboard/organizations');
 
