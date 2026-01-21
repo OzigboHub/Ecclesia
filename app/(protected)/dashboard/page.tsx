@@ -2,6 +2,7 @@ import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { SuperAdminDashboard } from "@/components/features/dashboard/super-admin-dashboard";
 import { Users, DollarSign, Calendar, Church } from "lucide-react";
+import { getActiveAnnouncementsForOrg } from "@/app/actions/announcement.actions";
 
 const stats = [
 	{ name: "Total Parishioners", value: "1,234", icon: Users, change: "+12%" },
@@ -28,6 +29,10 @@ export default async function DashboardPage() {
 	if (session.user.role === "SUPER_ADMIN") {
 		return <SuperAdminDashboard />;
 	}
+
+	const announcementsResult = await getActiveAnnouncementsForOrg(3);
+	const announcements =
+		announcementsResult.success ? announcementsResult.data ?? [] : [];
 
 	// Other roles see organization-specific dashboard
 	return (
@@ -112,6 +117,51 @@ export default async function DashboardPage() {
 					</button>
 				</div>
 			</div>
+
+			{/* Announcements */}
+			{announcements.length > 0 && (
+				<div className="mt-8 bg-background border border-border rounded-lg shadow-sm p-6">
+					<div className="flex items-center justify-between">
+						<h2 className="text-lg font-semibold">Announcements</h2>
+						<a
+							href="/dashboard/announcements"
+							className="text-sm text-primary hover:underline"
+						>
+							View all
+						</a>
+					</div>
+					<div className="mt-4 space-y-4">
+						{announcements.map((announcement) => (
+							<div
+								key={announcement.id}
+								className="rounded-md border border-border p-4"
+							>
+								<div className="flex items-center justify-between gap-4">
+									<div>
+										<p className="font-semibold text-foreground">
+											{announcement.title}
+										</p>
+										<p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+											{announcement.content}
+										</p>
+									</div>
+									<span className="text-xs text-muted-foreground">
+										{announcement.publishedAt ?
+											new Date(announcement.publishedAt).toLocaleDateString(
+												"en-GB",
+												{
+													day: "2-digit",
+													month: "short",
+												}
+											)
+										:	""}
+									</span>
+								</div>
+							</div>
+						))}
+					</div>
+				</div>
+			)}
 
 			{/* Recent Activity */}
 			<div className="mt-8 bg-background border border-border rounded-lg shadow-sm p-6">

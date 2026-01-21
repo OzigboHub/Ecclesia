@@ -1,6 +1,8 @@
 import { AuthProvider } from "@/components/providers/auth-provider";
 import type { Metadata } from "next";
 import { Montserrat } from "next/font/google";
+import NextTopLoader from "nextjs-toploader";
+
 import { Toaster } from "sonner";
 import "./globals.css";
 
@@ -25,6 +27,16 @@ export default function RootLayout({
 				className={`${montserrat.className} text-[13px] antialiased`}
 				suppressHydrationWarning
 			>
+				<NextTopLoader
+          color="#eab308"
+          initialPosition={0.08}
+          crawlSpeed={200}
+          height={3}
+          crawl={true}
+          showSpinner={false}
+          easing="ease"
+          speed={200}
+        />
 				<AuthProvider>
 					{children}
 					<Toaster position="top-right" richColors />
