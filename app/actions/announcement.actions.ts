@@ -224,7 +224,6 @@ export async function createAnnouncement(
 
 		revalidatePath('/dashboard/announcements');
 		revalidatePath('/dashboard');
-		revalidatePath('/announcements');
 
 		return {
 			success: true,
