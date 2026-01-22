@@ -34,6 +34,19 @@ export const createAnnouncementSchema = z
 			message: 'Expiry date must be after publish date',
 			path: ['expiresAt'],
 		}
+	)
+	.refine(
+		(data) => {
+			if (!data.expiresAt) {
+				return true;
+			}
+			const now = new Date();
+			return data.expiresAt > now;
+		},
+		{
+			message: 'Expiry date must be in the future',
+			path: ['expiresAt'],
+		}
 	);
 
 export type CreateAnnouncementInput = z.infer<typeof createAnnouncementSchema>;
