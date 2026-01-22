@@ -216,7 +216,7 @@ export async function runMassGeneration(
 			};
 		}
 
-		revalidatePath('/dashboard/masses');
+		revalidatePath('/masses');
 		return {
 			success: true,
 			message: `Successfully generated ${count} masses.`,
@@ -253,7 +253,7 @@ export async function updateMass(
 			data: updateData,
 		});
 
-		revalidatePath('/dashboard/masses');
+		revalidatePath('/masses');
 		return { success: true, message: 'Mass updated successfully', data: mass };
 	} catch (error) {
 		console.error('Failed to update mass:', error);
@@ -292,7 +292,7 @@ export async function deleteMass(id: string): Promise<ActionResponse> {
 			where: { id },
 		});
 
-		revalidatePath('/dashboard/masses');
+		revalidatePath('/masses');
 		return { success: true, message: 'Mass deleted successfully' };
 	} catch (error) {
 		console.error('Failed to delete mass:', error);
@@ -337,4 +337,3 @@ export async function getMassDays(
 		return { success: false, message: 'Failed to get mass days' };
 	}
 }
-

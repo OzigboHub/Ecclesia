@@ -1,14 +1,14 @@
 import {
-    Calendar,
-    CalendarDays,
-    CirclePile,
-    ClipboardList,
-    Coins,
-    FolderKanban,
-    LayoutDashboard,
-    Settings,
-    UserCog,
-    Users,
+	Calendar,
+	CalendarDays,
+	CirclePile,
+	ClipboardList,
+	Coins,
+	FolderKanban,
+	LayoutDashboard,
+	Settings,
+	UserCog,
+	Users,
 } from "lucide-react";
 
 export const SIDEBAR = [
@@ -35,7 +35,7 @@ export const SIDEBAR = [
 	{
 		icon: <CalendarDays className=" w-5 h-5" />,
 		name: "Mass Calendar",
-		href: "/dashboard/masses",
+		href: "/masses",
 	},
 	{
 		icon: <Calendar className=" w-5 h-5" />,
