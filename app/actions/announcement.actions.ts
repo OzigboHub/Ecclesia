@@ -360,7 +360,6 @@ export async function deleteAnnouncement(
 
 		revalidatePath('/dashboard/announcements');
 		revalidatePath('/dashboard');
-		revalidatePath('/announcements');
 
 		return {
 			success: true,
