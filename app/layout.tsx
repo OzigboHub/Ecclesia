@@ -1,10 +1,10 @@
 import { AuthProvider } from "@/components/providers/auth-provider";
 import type { Metadata } from "next";
 import { Montserrat } from "next/font/google";
-import { ProgressBarProvider } from "@/components/providers/progress-bar-provider";
 
 import { Toaster } from "sonner";
 import "./globals.css";
+import { ProgressBarProvider } from "@/components/providers/progress-bar-provider";
 
 const montserrat = Montserrat({
 	variable: "--montserrat",

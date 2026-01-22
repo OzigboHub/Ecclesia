@@ -5,14 +5,14 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
-	createParishSchema,
-	createOutstationSchema,
-	type CreateParishInput,
-	type CreateOutstationInput,
+    createParishSchema,
+    createOutstationSchema,
+    type CreateParishInput,
+    type CreateOutstationInput,
 } from '@/lib/validators/organization.schema';
 import {
-	createParish,
-	createOutstation,
+    createParish,
+    createOutstation,
 } from '@/app/actions/organization.actions';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -20,17 +20,18 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
 } from '@/components/ui/select';
 import type { FieldError } from 'react-hook-form';
 
 interface AdminOrganizationFormProps {
 	type: 'parish' | 'outstation';
 	parishes?: Array<{ id: string; name: string }>;
+	defaultParentId?: string;
 	onSuccess?: () => void;
 }
 
@@ -45,6 +46,7 @@ interface FormErrors {
 export function AdminOrganizationForm({
 	type,
 	parishes = [],
+	defaultParentId,
 	onSuccess,
 }: AdminOrganizationFormProps) {
 	const [isPending, startTransition] = useTransition();
@@ -60,7 +62,7 @@ export function AdminOrganizationForm({
 			address: '',
 			contactEmail: '',
 			contactPhone: '',
-			...(type === 'outstation' && { parentId: '' }),
+			...(type === 'outstation' && { parentId: defaultParentId || '' }),
 		},
 	});
 
@@ -141,9 +143,17 @@ export function AdminOrganizationForm({
 					</div>
 
 					{/* Parent Parish (for outstations) */}
-					{type === 'outstation' && (
-						<div className='space-y-2'>
-							<Label htmlFor='parentId'>Parent Parish *</Label>
+				{type === 'outstation' && (
+					<div className='space-y-2'>
+						<Label htmlFor='parentId'>Parent Parish *</Label>
+						{defaultParentId ? (
+							<div className='flex items-center justify-between rounded-md border px-3 py-2 bg-muted'>
+								<span className='text-sm'>
+									{parishes.find((p) => p.id === defaultParentId)?.name || 'Selected Parish'}
+								</span>
+								<span className='text-xs text-muted-foreground'>(Pre-selected)</span>
+							</div>
+						) : (
 							<Select
 								value={form.watch('parentId')}
 								onValueChange={(value) =>
@@ -172,16 +182,17 @@ export function AdminOrganizationForm({
 									))}
 								</SelectContent>
 							</Select>
-							{formErrors.parentId && (
-								<p
-									id='parentId-error'
-									className='text-sm text-destructive'
-								>
-									{formErrors.parentId.message}
-								</p>
-							)}
-						</div>
-					)}
+						)}
+						{formErrors.parentId && (
+							<p
+								id='parentId-error'
+								className='text-sm text-destructive'
+							>
+								{formErrors.parentId.message}
+							</p>
+						)}
+					</div>
+				)}
 
 					{/* Address */}
 					<div className='space-y-2'>

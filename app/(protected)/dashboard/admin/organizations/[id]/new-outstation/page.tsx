@@ -23,13 +23,6 @@ export default async function NewOutstationPage({
 
 	const { id } = await params;
 
-	// Get all parishes for the dropdown
-	const parishes = await db.organization.findMany({
-		where: { level: 'PARISH' },
-		select: { id: true, name: true },
-		orderBy: { name: 'asc' },
-	});
-
 	const currentParish = await db.organization.findUnique({
 		where: { id },
 	});
@@ -60,11 +53,12 @@ export default async function NewOutstationPage({
 			</div>
 
 			<div className='flex justify-center'>
-				<AdminOrganizationForm
-					type='outstation'
-					parishes={[currentParish, ...parishes]}
-				/>
-			</div>
+			<AdminOrganizationForm
+				type='outstation'
+				parishes={[currentParish]}
+				defaultParentId={id}
+			/>
+		</div>
 		</div>
 	);
 }
