@@ -1,5 +1,4 @@
 import db from '@/lib/db';
-import { MassType } from '@prisma/client';
 import { addDays, startOfDay, endOfDay, getDay } from 'date-fns';
 
 const DAYS_MAP = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
@@ -15,18 +14,12 @@ export async function generateMassesForPeriod(
     });
 
     if (!org) {
-        console.log('Organization not found:', organizationId);
         return 0;
     }
 
     if (!org.autoGenerateMasses) {
-        console.log('Auto-generate masses is disabled for org:', organizationId);
         return 0;
     }
-
-    console.log(
-        `Found ${org.massScheduleTemplates.length} templates for org ${organizationId}`
-    );
 
     let createdCount = 0;
     // Use differenceInDays to calculate loop count or just loop while current <= end
@@ -56,9 +49,6 @@ export async function generateMassesForPeriod(
 
             for (const template of dayTemplates) {
                 if (existingMasses.length + dailyCreatedCount >= org.maxMassesPerDay) {
-                    console.log(
-                        `Max masses per day (${org.maxMassesPerDay}) reached for ${currentDate}`
-                    );
                     break;
                 }
 

@@ -191,22 +191,11 @@ export async function runMassGeneration(
 		const start = startDate ? new Date(startDate) : new Date();
 		const end = endDate ? new Date(endDate) : addDays(start, 30);
 
-		console.log(
-			'Running mass generation for org:',
-			session.user.organizationId,
-			'Range:',
-			start,
-			'to',
-			end
-		);
-
 		const count = await generateMassesForPeriod(
 			session.user.organizationId,
 			start,
 			end
 		);
-
-		console.log('Generated masses count:', count);
 
 		if (count === 0) {
 			return {
@@ -337,4 +326,3 @@ export async function getMassDays(
 		return { success: false, message: 'Failed to get mass days' };
 	}
 }
-

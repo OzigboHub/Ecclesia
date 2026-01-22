@@ -1,6 +1,8 @@
 import { AuthProvider } from "@/components/providers/auth-provider";
 import type { Metadata } from "next";
 import { Montserrat } from "next/font/google";
+import { ProgressBarProvider } from "@/components/providers/progress-bar-provider";
+
 import { Toaster } from "sonner";
 import "./globals.css";
 
@@ -25,6 +27,7 @@ export default function RootLayout({
 				className={`${montserrat.className} text-[13px] antialiased`}
 				suppressHydrationWarning
 			>
+				<ProgressBarProvider />
 				<AuthProvider>
 					{children}
 					<Toaster position="top-right" richColors />

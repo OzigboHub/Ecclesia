@@ -1,14 +1,15 @@
 import {
-    Calendar,
-    CalendarDays,
-    CirclePile,
-    ClipboardList,
-    Coins,
-    FolderKanban,
-    LayoutDashboard,
-    Settings,
-    UserCog,
-    Users,
+	Calendar,
+	CalendarDays,
+	CirclePile,
+	ClipboardList,
+	Coins,
+	FolderKanban,
+	LayoutDashboard,
+	Megaphone,
+	Settings,
+	UserCog,
+	Users,
 } from "lucide-react";
 
 export const SIDEBAR = [
@@ -20,12 +21,12 @@ export const SIDEBAR = [
 	{
 		icon: <Users className=" w-5 h-5" />,
 		name: "Parishioners",
-		href: "/dashboard/parishioners",
+		href: "/parishioners",
 	},
 	{
 		icon: <Coins className=" w-5 h-5" />,
 		name: "Payments",
-		href: "/dashboard/payments",
+		href: "/payments",
 	},
 	{
 		icon: <ClipboardList className=" w-5 h-5" />,
@@ -35,12 +36,17 @@ export const SIDEBAR = [
 	{
 		icon: <CalendarDays className=" w-5 h-5" />,
 		name: "Mass Calendar",
-		href: "/dashboard/masses",
+		href: "/masses",
 	},
 	{
 		icon: <Calendar className=" w-5 h-5" />,
 		name: "Appointments",
 		href: "/appointments",
+	},
+	{
+		icon: <Megaphone className=" w-5 h-5" />,
+		name: "Announcements",
+		href: "/announcements",
 	},
 	{
 		icon: <CirclePile className=" w-5 h-5" />,
