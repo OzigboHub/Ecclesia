@@ -27,10 +27,11 @@ export default function RootLayout({
 				className={`${montserrat.className} text-[13px] antialiased`}
 				suppressHydrationWarning
 			>
-				<ProgressBarProvider />
 				<AuthProvider>
-					{children}
-					<Toaster position="top-right" richColors />
+					<ProgressBarProvider>
+						{children}
+						<Toaster position="top-right" richColors />
+					</ProgressBarProvider>
 				</AuthProvider>
 			</body>
 		</html>
