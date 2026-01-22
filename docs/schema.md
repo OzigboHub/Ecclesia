@@ -35,7 +35,7 @@ model Organization {
   donations            Donation[]
   massIntentions       MassIntention[]
   sacraments           Sacrament[]
-  piousOrganizations   PiousOrganization[]
+  societies   Society[]
   liveStreams          LiveStream[]
   appointments         Appointment[]
   donationCampaigns    DonationCampaign[]
@@ -50,40 +50,40 @@ model OrganizationFeatureSettings {
   id                        String       @id @default(uuid())
   organizationId            String       @unique
   organization              Organization @relation(fields: [organizationId], references: [id])
-  
+
   // Core Features
   enableParishionerManagement Boolean    @default(true)
   enableSacramentalRecords    Boolean    @default(true)
   enableFinancialManagement   Boolean    @default(true)
-  
+
   // Payment Features
   enableOfferings             Boolean    @default(true)
   enableTithes                Boolean    @default(true)
   enableDonationCampaigns     Boolean    @default(true)
   enableCustomDonationTypes   Boolean    @default(true)
   enableMonthlyTracking       Boolean    @default(true)
-  
+
   // Spiritual Features
   enableMassIntentions        Boolean    @default(true)
   enableAppointments          Boolean    @default(true)
   enableConfessionBooking     Boolean    @default(true)
-  
+
   // Communication Features
   enableLiveStreaming         Boolean    @default(false)
   enableAnnouncements         Boolean    @default(true)
   enableSMSNotifications      Boolean    @default(false)
   enableEmailNotifications    Boolean    @default(true)
-  
+
   // Organization Features
-  enablePiousOrganizations    Boolean    @default(true)
+  enableSocieties    Boolean    @default(true)
   enableEventManagement       Boolean    @default(true)
-  
+
   // Advanced Features
   enableOnlinePayments        Boolean    @default(false)
   enableRecurringDonations    Boolean    @default(false)
   enableMobileApp             Boolean    @default(false)
   enablePublicWebsite         Boolean    @default(true)
-  
+
   createdAt                   DateTime   @default(now())
   updatedAt                   DateTime   @updatedAt
 
@@ -97,8 +97,8 @@ enum UserRole {
   PARISH_SECRETARY
   PARISH_STAFF
   OUTSTATION_ADMIN
-  ORGANIZATION_PRESIDENT
-  ORGANIZATION_SECRETARY
+  SOCIETY_PRESIDENT
+  SOCIETY_SECRETARY
   PARISHIONER
 }
 
@@ -116,8 +116,8 @@ model User {
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 
-  piousOrganizationLed      PiousOrganization? @relation("PiousOrganizationPresident")
-  piousOrganizationAssisted PiousOrganization? @relation("PiousOrganizationSecretary")
+  societyLed      Society? @relation("SocietyPresident")
+  societyAssisted Society? @relation("SocietySecretary")
   appointmentsMade          Appointment[]      @relation("AppointmentCreator")
   appointmentsAssigned      Appointment[]      @relation("AppointmentAssignee")
   paymentsRecorded          Payment[]          @relation("PaymentRecorder")
@@ -126,21 +126,21 @@ model User {
   @@index([email])
 }
 
-// --- Pious Organizations ---
-model PiousOrganization {
+// --- Societies ---
+model Society {
   id             String       @id @default(uuid())
   name           String
   description    String?
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id])
   presidentId    String?      @unique
-  president      User?        @relation("PiousOrganizationPresident", fields: [presidentId], references: [id])
+  president      User?        @relation("SocietyPresident", fields: [presidentId], references: [id])
   secretaryId    String?      @unique
-  secretary      User?        @relation("PiousOrganizationSecretary", fields: [secretaryId], references: [id])
+  secretary      User?        @relation("SocietySecretary", fields: [secretaryId], references: [id])
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
-  members PiousOrganizationMembership[]
+  members SocietyMembership[]
 
   @@unique([name, organizationId])
   @@index([organizationId])
@@ -180,7 +180,7 @@ model Parishioner {
 
   sacraments                    Sacrament[]
   massIntentions                MassIntention[]
-  piousOrganizationMemberships  PiousOrganizationMembership[]
+  societyMemberships  SocietyMembership[]
   appointments                  Appointment[]                 @relation("ParishionerAppointment")
   payments                      Payment[]
 
@@ -189,15 +189,15 @@ model Parishioner {
   @@index([phone])
 }
 
-model PiousOrganizationMembership {
+model SocietyMembership {
   parishionerId       String
   parishioner         Parishioner       @relation(fields: [parishionerId], references: [id])
-  piousOrganizationId String
-  piousOrganization   PiousOrganization @relation(fields: [piousOrganizationId], references: [id])
+  societyId           String
+  society             Society @relation(fields: [societyId], references: [id])
   joinedAt            DateTime          @default(now())
 
-  @@id([parishionerId, piousOrganizationId])
-  @@index([piousOrganizationId])
+  @@id([parishionerId, societyId])
+  @@index([societyId])
 }
 
 // --- Sacramental Records ---
@@ -380,7 +380,7 @@ model Payment {
   paymentMethod       PaymentMethod
   paymentStatus       PaymentStatus     @default(PENDING)
   transactionRef      String?           @unique
-  
+
   // Payer Information
   parishionerId       String?
   parishioner         Parishioner?      @relation(fields: [parishionerId], references: [id])
@@ -388,7 +388,7 @@ model Payment {
   onBehalfOf          String?           // Optional: If paying on behalf of someone else
   payerEmail          String?
   payerPhone          String?
-  
+
   // Link to specific purpose
   massIntentionId     String?
   massIntention       MassIntention?    @relation(fields: [massIntentionId], references: [id])
@@ -396,13 +396,13 @@ model Payment {
   donationCampaign    DonationCampaign? @relation(fields: [donationCampaignId], references: [id])
   donationId          String?
   donation            Donation?         @relation(fields: [donationId], references: [id])
-  
+
   // Organization and Audit
   organizationId      String
   organization        Organization      @relation(fields: [organizationId], references: [id])
   recordedById        String
   recordedBy          User              @relation("PaymentRecorder", fields: [recordedById], references: [id])
-  
+
   notes               String?
   receiptNumber       String?           @unique
   paymentDate         DateTime          @default(now())

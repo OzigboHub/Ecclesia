@@ -4,12 +4,12 @@ import { auth } from '@/auth';
 import { revalidatePath } from 'next/cache';
 import db from '@/lib/db';
 import {
-	createMassIntentionSchema,
-	updateMassIntentionSchema,
+    createMassIntentionSchema,
+    updateMassIntentionSchema,
 } from '@/lib/validators/mass-intention.schema';
 import type { ActionResponse } from '@/types';
 import { Prisma } from '@prisma/client';
-import { isFeatureEnabled } from '@/lib/features';
+import { isFeatureEnabled } from '@/lib/features.server';
 
 type MassIntentionWithRelations = Prisma.MassIntentionGetPayload<{
 	include: {
@@ -200,10 +200,20 @@ export async function createMassIntention(
 				});
 			}
 
-			// Update mass booked count
-			await tx.mass.update({
-				where: { id: massId },
-				data: { bookedIntentions: { increment: 1 } },
+			// Audit Log
+			await tx.auditLog.create({
+				data: {
+					action: 'MASS_INTENTION_BOOKED',
+					entityType: 'MassIntention',
+					entityId: massIntention.id,
+					performedBy: session.user.id,
+					details: {
+						intention: massIntention.intention,
+						requestedBy: massIntention.requestedBy,
+						massId: massIntention.massId,
+						stipend: stipend || 0,
+					},
+				},
 			});
 
 			return massIntention;
@@ -249,6 +259,7 @@ export async function updateMassIntention(
 			'PARISH_ADMIN',
 			'PARISH_SECRETARY',
 			'PARISH_STAFF',
+			'OUTSTATION_ADMIN',
 		];
 		if (!allowedRoles.includes(session.user.role)) {
 			return {
@@ -325,6 +336,19 @@ export async function updateMassIntention(
 			},
 		});
 
+		// Audit Log
+		await db.auditLog.create({
+			data: {
+				action: 'UPDATE',
+				entityType: 'MassIntention',
+				entityId: id,
+				performedBy: session.user.id,
+				details: {
+					updatedFields: Object.keys(parsed.data),
+				}
+			}
+		});
+
 		revalidatePath('/dashboard/mass-intentions');
 		revalidatePath(`/dashboard/mass-intentions/${id}`);
 
@@ -367,6 +391,20 @@ export async function deleteMassIntention(id: string): Promise<ActionResponse> {
 		}
 
 		await db.massIntention.delete({ where: { id } });
+
+		// Audit Log
+		await db.auditLog.create({
+			data: {
+				action: 'DELETE',
+				entityType: 'MassIntention',
+				entityId: id,
+				performedBy: session.user.id,
+				details: {
+					intention: existing.intention,
+					requestedBy: existing.requestedBy,
+				}
+			}
+		});
 
 		revalidatePath('/dashboard/mass-intentions');
 

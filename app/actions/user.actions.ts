@@ -5,9 +5,9 @@ import { revalidatePath } from 'next/cache';
 import db from '@/lib/db';
 import bcrypt from 'bcryptjs';
 import {
-	createUserSchema,
-	updateUserSchema,
-	changePasswordSchema,
+    createUserSchema,
+    updateUserSchema,
+    changePasswordSchema,
 } from '@/lib/validators/user.schema';
 import type { ActionResponse } from '@/types';
 import type { User, UserRole } from '@prisma/client';
@@ -22,8 +22,8 @@ const ROLE_HIERARCHY: Record<string, number> = {
 	PARISH_SECRETARY: 60,
 	PARISH_STAFF: 40,
 	OUTSTATION_ADMIN: 40,
-	ORGANIZATION_PRESIDENT: 30,
-	ORGANIZATION_SECRETARY: 30,
+	SOCIETY_PRESIDENT: 30,
+	SOCIETY_SECRETARY: 30,
 	PARISHIONER: 10,
 };
 
@@ -330,6 +330,22 @@ export async function createUser(
 			},
 		});
 
+		// Audit Log
+		await db.auditLog.create({
+			data: {
+				action: 'CREATE',
+				entityType: 'User',
+				entityId: user.id,
+				performedBy: session.user.id,
+				details: {
+					email: user.email,
+					role: user.role,
+					firstName: user.firstName,
+					lastName: user.lastName,
+				},
+			},
+		});
+
 		revalidatePath('/dashboard/users');
 
 		return {
@@ -429,6 +445,19 @@ export async function updateUser(
 		const user = await db.user.update({
 			where: { id },
 			data: parsed.data,
+		});
+
+		// Audit Log
+		await db.auditLog.create({
+			data: {
+				action: 'UPDATE',
+				entityType: 'User',
+				entityId: id,
+				performedBy: session.user.id,
+				details: {
+					updatedFields: Object.keys(parsed.data),
+				},
+			},
 		});
 
 		revalidatePath('/dashboard/users');
@@ -571,6 +600,19 @@ export async function toggleUserStatus(
 		const user = await db.user.update({
 			where: { id },
 			data: { isActive: !existingUser.isActive },
+		});
+
+		// Audit Log
+		await db.auditLog.create({
+			data: {
+				action: 'UPDATE',
+				entityType: 'User',
+				entityId: id,
+				performedBy: session.user.id,
+				details: {
+					action: user.isActive ? 'ACTIVATE' : 'DEACTIVATE',
+				},
+			},
 		});
 
 		revalidatePath('/dashboard/users');

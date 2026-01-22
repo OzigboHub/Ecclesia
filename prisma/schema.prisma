@@ -34,8 +34,11 @@ model Organization {
   featureSettings       OrganizationFeatureSettings?
   parishioners          Parishioner[]
   payments              Payment[]
-  piousOrganizations    PiousOrganization[]
+  societies             Society[]
   sacraments            Sacrament[]
+  baptisms              Baptism[]
+  confirmations         Confirmation[]
+  marriages             Marriage[]
   users                 User[]
 
   @@index([parentId])
@@ -59,7 +62,7 @@ model OrganizationFeatureSettings {
   enableAnnouncements         Boolean      @default(true)
   enableSMSNotifications      Boolean      @default(false)
   enableEmailNotifications    Boolean      @default(true)
-  enablePiousOrganizations    Boolean      @default(true)
+  enableSocieties             Boolean      @default(true)
   enableEventManagement       Boolean      @default(true)
   enableOnlinePayments        Boolean      @default(false)
   enableRecurringDonations    Boolean      @default(false)
@@ -88,8 +91,8 @@ model User {
   appointmentsMade          Appointment[]        @relation("AppointmentCreator")
   passwordResetTokens       PasswordResetToken[]
   paymentsRecorded          Payment[]            @relation("PaymentRecorder")
-  piousOrganizationLed      PiousOrganization?   @relation("PiousOrganizationPresident")
-  piousOrganizationAssisted PiousOrganization?   @relation("PiousOrganizationSecretary")
+  societyLed                Society?             @relation("SocietyPresident")
+  societyAssisted           Society?             @relation("SocietySecretary")
   organization              Organization         @relation(fields: [organizationId], references: [id])
 
   @@index([organizationId])
@@ -158,23 +161,23 @@ model Mass {
   @@index([massType])
 }
 
-model PiousOrganization {
-  id              String                        @id @default(uuid())
+model Society {
+  id              String              @id @default(uuid())
   name            String
   description     String?
   organizationId  String
-  presidentId     String?                       @unique
-  secretaryId     String?                       @unique
-  createdAt       DateTime                      @default(now())
-  updatedAt       DateTime                      @updatedAt
+  presidentId     String?             @unique
+  secretaryId     String?             @unique
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
   meetingSchedule String?
   patronSaint     String?
   events          Event[]
   payments        Payment[]
-  organization    Organization                  @relation(fields: [organizationId], references: [id])
-  president       User?                         @relation("PiousOrganizationPresident", fields: [presidentId], references: [id])
-  secretary       User?                         @relation("PiousOrganizationSecretary", fields: [secretaryId], references: [id])
-  members         PiousOrganizationMembership[]
+  organization    Organization        @relation(fields: [organizationId], references: [id])
+  president       User?               @relation("SocietyPresident", fields: [presidentId], references: [id])
+  secretary       User?               @relation("SocietySecretary", fields: [secretaryId], references: [id])
+  members         SocietyMembership[]
 
   @@unique([name, organizationId])
   @@index([organizationId])
@@ -205,24 +208,28 @@ model Parishioner {
   massIntentions               MassIntention[]
   organization                 Organization                  @relation(fields: [organizationId], references: [id])
   payments                     Payment[]
-  piousOrganizationMemberships PiousOrganizationMembership[]
+  societyMemberships           SocietyMembership[]
   sacraments                   Sacrament[]
+  baptisms                     Baptism[]
+  confirmations                Confirmation[]
+  marriagesAsHusband           Marriage[]                    @relation("MarriageHusband")
+  marriagesAsWife              Marriage[]                    @relation("MarriageWife")
 
   @@index([organizationId])
   @@index([email])
   @@index([phone])
 }
 
-model PiousOrganizationMembership {
-  parishionerId       String
-  piousOrganizationId String
-  joinedAt            DateTime              @default(now())
-  role                PiousOrganizationRole @default(MEMBER)
-  parishioner         Parishioner           @relation(fields: [parishionerId], references: [id])
-  piousOrganization   PiousOrganization     @relation(fields: [piousOrganizationId], references: [id])
+model SocietyMembership {
+  parishionerId String
+  societyId     String
+  joinedAt      DateTime    @default(now())
+  role          SocietyRole @default(MEMBER)
+  parishioner   Parishioner @relation(fields: [parishionerId], references: [id])
+  society       Society     @relation(fields: [societyId], references: [id])
 
-  @@id([parishionerId, piousOrganizationId])
-  @@index([piousOrganizationId])
+  @@id([parishionerId, societyId])
+  @@index([societyId])
 }
 
 model Sacrament {
@@ -253,11 +260,11 @@ model Event {
   maxAttendees        Int?
   createdAt           DateTime           @default(now())
   updatedAt           DateTime           @updatedAt
-  piousOrganizationId String?
-  minutes             String?
-  type                EventType          @default(MEETING)
-  organization        Organization       @relation(fields: [organizationId], references: [id])
-  piousOrganization   PiousOrganization? @relation(fields: [piousOrganizationId], references: [id])
+  societyId     String?
+  minutes       String?
+  type          EventType    @default(MEETING)
+  organization  Organization @relation(fields: [organizationId], references: [id])
+  society       Society?     @relation(fields: [societyId], references: [id])
   attendance          EventAttendance[]
   massIntentions      MassIntention[]
 
@@ -385,13 +392,13 @@ model Payment {
   paymentDate         DateTime           @default(now())
   createdAt           DateTime           @default(now())
   updatedAt           DateTime           @updatedAt
-  piousOrganizationId String?
-  donationCampaign    DonationCampaign?  @relation(fields: [donationCampaignId], references: [id])
-  donation            Donation?          @relation(fields: [donationId], references: [id])
-  massIntention       MassIntention?     @relation(fields: [massIntentionId], references: [id])
-  organization        Organization       @relation(fields: [organizationId], references: [id])
-  parishioner         Parishioner?       @relation(fields: [parishionerId], references: [id])
-  piousOrganization   PiousOrganization? @relation(fields: [piousOrganizationId], references: [id])
+  societyId        String?
+  donationCampaign DonationCampaign? @relation(fields: [donationCampaignId], references: [id])
+  donation         Donation?         @relation(fields: [donationId], references: [id])
+  massIntention    MassIntention?    @relation(fields: [massIntentionId], references: [id])
+  organization     Organization      @relation(fields: [organizationId], references: [id])
+  parishioner      Parishioner?      @relation(fields: [parishionerId], references: [id])
+  society          Society?          @relation(fields: [societyId], references: [id])
   recordedBy          User               @relation("PaymentRecorder", fields: [recordedById], references: [id])
 
   @@index([parishionerId])
@@ -401,7 +408,7 @@ model Payment {
   @@index([massIntentionId])
   @@index([donationCampaignId])
   @@index([donationId])
-  @@index([piousOrganizationId])
+  @@index([societyId])
   @@index([paymentDate])
   @@index([month])
   @@index([recordedById])
@@ -482,6 +489,63 @@ model AuditLog {
   @@index([createdAt])
 }
 
+model Baptism {
+  id             String       @id @default(uuid())
+  parishionerId  String
+  organizationId String
+  date           DateTime
+  minister       String?
+  godparents     String?
+  placeOfBaptism String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  parishioner    Parishioner  @relation(fields: [parishionerId], references: [id])
+
+  @@index([parishionerId])
+  @@index([organizationId])
+  @@index([date])
+}
+
+model Confirmation {
+  id                   String       @id @default(uuid())
+  parishionerId        String
+  organizationId       String
+  date                 DateTime
+  minister             String?
+  sponsor              String?
+  placeOfConfirmation  String?
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+  organization         Organization @relation(fields: [organizationId], references: [id])
+  parishioner          Parishioner  @relation(fields: [parishionerId], references: [id])
+
+  @@index([parishionerId])
+  @@index([organizationId])
+  @@index([date])
+}
+
+model Marriage {
+  id              String       @id @default(uuid())
+  husbandId       String
+  wifeId          String
+  organizationId  String
+  date            DateTime
+  priest          String?
+  witnesses       String?
+  placeOfMarriage String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  organization    Organization @relation(fields: [organizationId], references: [id])
+  husband         Parishioner  @relation("MarriageHusband", fields: [husbandId], references: [id])
+  wife            Parishioner  @relation("MarriageWife", fields: [wifeId], references: [id])
+
+  @@index([husbandId])
+  @@index([wifeId])
+  @@index([organizationId])
+  @@index([date])
+}
+
 enum HierarchyLevel {
   PARISH
   OUTSTATION
@@ -529,8 +593,8 @@ enum UserRole {
   PARISH_SECRETARY
   PARISH_STAFF
   OUTSTATION_ADMIN
-  ORGANIZATION_PRESIDENT
-  ORGANIZATION_SECRETARY
+  SOCIETY_PRESIDENT
+  SOCIETY_SECRETARY
   PARISHIONER
 }
 
@@ -546,7 +610,7 @@ enum MaritalStatus {
   DIVORCED
 }
 
-enum PiousOrganizationRole {
+enum SocietyRole {
   MEMBER
   PRESIDENT
   VICE_PRESIDENT
@@ -590,7 +654,7 @@ enum PaymentPurpose {
   DONATION_CAMPAIGN
   CUSTOM_DONATION
   OTHER
-  ORGANIZATION_DUES
+  SOCIETY_DUES
 }
 
 enum PaymentMethod {

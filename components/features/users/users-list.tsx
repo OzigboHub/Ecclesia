@@ -8,55 +8,55 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
-	AlertDialog,
-	AlertDialogAction,
-	AlertDialogCancel,
-	AlertDialogContent,
-	AlertDialogDescription,
-	AlertDialogFooter,
-	AlertDialogHeader,
-	AlertDialogTitle,
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuLabel,
-	DropdownMenuSeparator,
-	DropdownMenuTrigger,
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
 } from '@/components/ui/table';
 import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
 } from '@/components/ui/select';
 import { toggleUserStatus, deleteUser } from '@/app/actions/user.actions';
 import {
-	roleLabels,
-	userRoles,
-	type UserRoleType,
+    roleLabels,
+    userRoles,
+    type UserRoleType,
 } from '@/lib/validators/user.schema';
 import { toast } from 'sonner';
 import {
-	Edit2,
-	Trash2,
-	Search,
-	MoreHorizontal,
-	UserCheck,
-	UserX,
-	KeyRound,
-	Shield,
-	Filter,
+    Edit2,
+    Trash2,
+    Search,
+    MoreHorizontal,
+    UserCheck,
+    UserX,
+    KeyRound,
+    Shield,
+    Filter,
 } from 'lucide-react';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
@@ -83,8 +83,8 @@ const roleBadgeVariant: Record<
 	PARISH_SECRETARY: 'secondary',
 	PARISH_STAFF: 'secondary',
 	OUTSTATION_ADMIN: 'default',
-	ORGANIZATION_PRESIDENT: 'outline',
-	ORGANIZATION_SECRETARY: 'outline',
+	SOCIETY_PRESIDENT: 'outline',
+	SOCIETY_SECRETARY: 'outline',
 	PARISHIONER: 'outline',
 };
 
@@ -110,8 +110,8 @@ export function UsersList({
 		PARISH_SECRETARY: 60,
 		PARISH_STAFF: 40,
 		OUTSTATION_ADMIN: 40,
-		ORGANIZATION_PRESIDENT: 30,
-		ORGANIZATION_SECRETARY: 30,
+		SOCIETY_PRESIDENT: 30,
+		SOCIETY_SECRETARY: 30,
 		PARISHIONER: 10,
 	};
 

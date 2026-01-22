@@ -37,8 +37,8 @@ export const userRoles = [
 	'PARISH_SECRETARY',
 	'PARISH_STAFF',
 	'OUTSTATION_ADMIN',
-	'ORGANIZATION_PRESIDENT',
-	'ORGANIZATION_SECRETARY',
+	'SOCIETY_PRESIDENT',
+	'SOCIETY_SECRETARY',
 	'PARISHIONER',
 ] as const;
 
@@ -50,8 +50,8 @@ export const roleLabels: Record<UserRoleType, string> = {
 	PARISH_SECRETARY: 'Parish Secretary',
 	PARISH_STAFF: 'Parish Staff',
 	OUTSTATION_ADMIN: 'Outstation Admin',
-	ORGANIZATION_PRESIDENT: 'Organization President',
-	ORGANIZATION_SECRETARY: 'Organization Secretary',
+	SOCIETY_PRESIDENT: 'Society President',
+	SOCIETY_SECRETARY: 'Society Secretary',
 	PARISHIONER: 'Parishioner',
 };
 
@@ -61,8 +61,8 @@ export const roleDescriptions: Record<UserRoleType, string> = {
 	PARISH_SECRETARY: 'Manage parishioners, payments, and records',
 	PARISH_STAFF: 'Limited parish operations access',
 	OUTSTATION_ADMIN: 'Full access to outstation only',
-	ORGANIZATION_PRESIDENT: 'Lead a pious organization',
-	ORGANIZATION_SECRETARY: 'Assist pious organization management',
+	SOCIETY_PRESIDENT: 'Lead a parish society',
+	SOCIETY_SECRETARY: 'Assist society management',
 	PARISHIONER: 'Basic member access',
 };
 

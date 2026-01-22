@@ -1,7 +1,7 @@
 # Feature Toggle System
 ## Ecclesia Digital Parish Manager (DPM)
 
-**Version:** 1.0  
+**Version:** 1.0
 **Last Updated:** January 2026
 
 ---
@@ -26,40 +26,40 @@ model OrganizationFeatureSettings {
   id                        String       @id @default(uuid())
   organizationId            String       @unique
   organization              Organization @relation(fields: [organizationId], references: [id])
-  
+
   // Core Features
   enableParishionerManagement Boolean    @default(true)
   enableSacramentalRecords    Boolean    @default(true)
   enableFinancialManagement   Boolean    @default(true)
-  
+
   // Payment Features
   enableOfferings             Boolean    @default(true)
   enableTithes                Boolean    @default(true)
   enableDonationCampaigns     Boolean    @default(true)
   enableCustomDonationTypes   Boolean    @default(true)
   enableMonthlyTracking       Boolean    @default(true)
-  
+
   // Spiritual Features
   enableMassIntentions        Boolean    @default(true)
   enableAppointments          Boolean    @default(true)
   enableConfessionBooking     Boolean    @default(true)
-  
+
   // Communication Features
   enableLiveStreaming         Boolean    @default(false)
   enableAnnouncements         Boolean    @default(true)
   enableSMSNotifications      Boolean    @default(false)
   enableEmailNotifications    Boolean    @default(true)
-  
+
   // Organization Features
-  enablePiousOrganizations    Boolean    @default(true)
+  enableSocieties    Boolean    @default(true)
   enableEventManagement       Boolean    @default(true)
-  
+
   // Advanced Features
   enableOnlinePayments        Boolean    @default(false)
   enableRecurringDonations    Boolean    @default(false)
   enableMobileApp             Boolean    @default(false)
   enablePublicWebsite         Boolean    @default(true)
-  
+
   createdAt                   DateTime   @default(now())
   updatedAt                   DateTime   @updatedAt
 
@@ -118,7 +118,7 @@ model OrganizationFeatureSettings {
 
 | Feature | Key | Default | Description | Dependencies |
 |---------|-----|---------|-------------|--------------|
-| Pious Organizations | `enablePiousOrganizations` | `true` | CWO, CMO, CYON management | Parishioner Management |
+| Societies | `enableSocieties` | `true` | CWO, CMO, CYON management | Parishioner Management |
 | Event Management | `enableEventManagement` | `true` | Parish events and RSVP | None |
 
 ### 3.6 Advanced Features (Default: Disabled)
@@ -179,7 +179,7 @@ export async function GET(request: NextRequest) {
     'enableParishionerManagement',
     organizationId
   );
-  
+
   if (featureCheck) return featureCheck; // Return 403 if disabled
 
   // Proceed with normal logic
@@ -209,11 +209,11 @@ interface FeatureContextType {
 
 const FeatureContext = createContext<FeatureContextType | undefined>(undefined);
 
-export function FeatureProvider({ 
-  children, 
-  features 
-}: { 
-  children: ReactNode; 
+export function FeatureProvider({
+  children,
+  features
+}: {
+  children: ReactNode;
   features: OrganizationFeatureSettings | null;
 }) {
   const isEnabled = (feature: keyof OrganizationFeatureSettings) => {
@@ -250,7 +250,7 @@ export default function ParishionerList() {
 
   if (!isEnabled('enableParishionerManagement')) {
     return (
-      <FeatureDisabled 
+      <FeatureDisabled
         featureName="Parishioner Management"
         settingsLink="/settings/features"
       />
@@ -282,15 +282,15 @@ export default function Navigation() {
       {isEnabled('enableParishionerManagement') && (
         <Link href="/parishioners">Parishioners</Link>
       )}
-      
+
       {isEnabled('enableFinancialManagement') && (
         <Link href="/payments">Payments</Link>
       )}
-      
+
       {isEnabled('enableMassIntentions') && (
         <Link href="/mass-intentions">Mass Intentions</Link>
       )}
-      
+
       {isEnabled('enableLiveStreaming') && (
         <Link href="/live-streams">Live Streams</Link>
       )}
@@ -406,14 +406,14 @@ export default function FeatureSettingsPage() {
   return (
     <div className="max-w-4xl mx-auto p-6">
       <h1 className="text-3xl font-bold mb-6">Feature Settings</h1>
-      
+
       {FEATURE_GROUPS.map(group => (
         <div key={group.title} className="mb-8">
           <h2 className="text-xl font-semibold mb-4">{group.title}</h2>
-          
+
           <div className="space-y-4">
             {group.features.map(feature => (
-              <div 
+              <div
                 key={feature.key}
                 className="border rounded-lg p-4 hover:bg-gray-50"
               >
@@ -423,20 +423,20 @@ export default function FeatureSettingsPage() {
                     <p className="text-sm text-gray-600 mt-1">
                       {feature.description}
                     </p>
-                    
+
                     {feature.dependencies && (
                       <p className="text-xs text-blue-600 mt-2">
                         Requires: {feature.dependencies.join(', ')}
                       </p>
                     )}
-                    
+
                     {feature.impact && (
                       <p className="text-xs text-orange-600 mt-2">
                         ⚠️ {feature.impact}
                       </p>
                     )}
                   </div>
-                  
+
                   <label className="relative inline-flex items-center cursor-pointer">
                     <input
                       type="checkbox"
@@ -452,7 +452,7 @@ export default function FeatureSettingsPage() {
           </div>
         </div>
       ))}
-      
+
       <div className="flex justify-end mt-8">
         <button
           onClick={handleSave}
@@ -485,7 +485,7 @@ Financial Management
 
 Parishioner Management
 ├── Sacramental Records
-└── Pious Organizations
+└── Societies
 
 Appointments
 └── Confession Booking
@@ -529,8 +529,8 @@ export function validateFeatureChange(
     if (currentSettings.enableSacramentalRecords) {
       errors.push('Disable Sacramental Records before disabling Parishioner Management');
     }
-    if (currentSettings.enablePiousOrganizations) {
-      errors.push('Disable Pious Organizations before disabling Parishioner Management');
+    if (currentSettings.enableSocieties) {
+      errors.push('Disable Societies before disabling Parishioner Management');
     }
   }
 
@@ -605,17 +605,17 @@ export const FEATURE_PRESETS = {
     enablePublicWebsite: true,
     // All others: false
   },
-  
+
   STANDARD: {
     ...FEATURE_PRESETS.BASIC,
     enableDonationCampaigns: true,
     enableCustomDonationTypes: true,
     enableMonthlyTracking: true,
     enableAppointments: true,
-    enablePiousOrganizations: true,
+    enableSocieties: true,
     enableEmailNotifications: true,
   },
-  
+
   PREMIUM: {
     ...FEATURE_PRESETS.STANDARD,
     enableLiveStreaming: true,
@@ -624,7 +624,7 @@ export const FEATURE_PRESETS = {
     enableConfessionBooking: true,
     enableMobileApp: true,
   },
-  
+
   CUSTOM: {} // User defines all settings
 };
 ```
@@ -739,16 +739,16 @@ describe('Feature Toggle Integration', () => {
 
 ### Common Issues
 
-**Issue**: Feature enabled but not showing in UI  
+**Issue**: Feature enabled but not showing in UI
 **Solution**: Clear cache and refresh browser
 
-**Issue**: 403 error when accessing API  
+**Issue**: 403 error when accessing API
 **Solution**: Verify feature is enabled for organization
 
-**Issue**: Cannot disable feature  
+**Issue**: Cannot disable feature
 **Solution**: Check for dependent features and disable them first
 
-**Issue**: Feature settings not saving  
+**Issue**: Feature settings not saving
 **Solution**: Check user permissions and audit logs
 
 ---

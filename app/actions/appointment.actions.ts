@@ -4,14 +4,14 @@ import { auth } from '@/auth';
 import { revalidatePath } from 'next/cache';
 import db from '@/lib/db';
 import {
-	createAppointmentSchema,
-	updateAppointmentSchema,
-	appointmentFilterSchema,
-	type AppointmentFilter,
+    createAppointmentSchema,
+    updateAppointmentSchema,
+    appointmentFilterSchema,
+    type AppointmentFilter,
 } from '@/lib/validators/appointment.schema';
 import type { ActionResponse } from '@/types';
 import { Prisma } from '@prisma/client';
-import { isFeatureEnabled } from '@/lib/features';
+import { isFeatureEnabled } from '@/lib/features.server';
 
 type AppointmentWithRelations = Prisma.AppointmentGetPayload<{
 	include: {

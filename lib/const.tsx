@@ -1,14 +1,14 @@
 import {
-	Calendar,
-	CalendarDays,
-	CirclePile,
-	ClipboardList,
-	Coins,
-	FolderKanban,
-	LayoutDashboard,
-	Settings,
-	UserCog,
-	Users,
+    Calendar,
+    CalendarDays,
+    CirclePile,
+    ClipboardList,
+    Coins,
+    FolderKanban,
+    LayoutDashboard,
+    Settings,
+    UserCog,
+    Users,
 } from "lucide-react";
 
 export const SIDEBAR = [
@@ -44,8 +44,8 @@ export const SIDEBAR = [
 	},
 	{
 		icon: <CirclePile className=" w-5 h-5" />,
-		name: "Organizations",
-		href: "/dashboard/organizations",
+		name: "Societies",
+		href: "/dashboard/societies",
 	},
 	{
 		icon: <Settings className=" w-5 h-5" />,
@@ -67,10 +67,28 @@ export const ADMIN_EXTENDED = [
 	},
 ];
 
-export const SUPERADMIN_EXTENDED = [
+export const SUPERADMIN_SIDEBAR = [
 	{
-		name: "Manage Organizations",
+		name: "Overview",
+		href: "/dashboard/admin/overview",
+		icon: <LayoutDashboard className=" w-5 h-5" />,
+	},
+	{
+		name: "Organizations",
 		href: "/dashboard/admin/organizations",
 		icon: <FolderKanban className=" w-5 h-5" />,
+	},
+	{
+		name: "Global Actions",
+		href: "/dashboard/admin/global-actions",
+		icon: <CirclePile className=" w-5 h-5" />,
+	},
+];
+
+export const SUPERADMIN_EXTENDED = [
+	{
+		name: "Audit Logs",
+		href: "/dashboard/admin/audit-logs",
+		icon: <ClipboardList className=" w-5 h-5" />,
 	},
 ];

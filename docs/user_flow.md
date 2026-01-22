@@ -1,7 +1,7 @@
 # User Roles & Permissions Matrix
 ## Lumina Digital Parish Manager (DPM)
 
-**Version:** 1.0  
+**Version:** 1.0
 **Last Updated:** January 2026
 
 ---
@@ -14,8 +14,8 @@ SUPER_ADMIN (Platform Level)
             ├── PARISH_SECRETARY (Parish Level)
             ├── PARISH_STAFF (Parish Level)
             ├── OUTSTATION_ADMIN (Outstation Level)
-            ├── ORGANIZATION_PRESIDENT (Organization Level)
-            ├── ORGANIZATION_SECRETARY (Organization Level)
+            ├── SOCIETY_PRESIDENT (Organization Level)
+            ├── SOCIETY_SECRETARY (Organization Level)
             └── PARISHIONER (Member Level)
 ```
 
@@ -124,7 +124,7 @@ SUPER_ADMIN (Platform Level)
 - ✅ Assign/change user roles within their parish
 - ✅ Reset passwords for parish users
 - ✅ Assign Outstation Admins
-- ✅ Assign Organization Presidents and Secretaries
+- ✅ Assign Society Presidents and Secretaries
 - ❌ Cannot create or manage SUPER_ADMIN users
 - ❌ Cannot manage users from other parishes
 
@@ -144,8 +144,8 @@ SUPER_ADMIN (Platform Level)
 - ✅ Manage parishioner sacramental records
 - ✅ Set parishioner limits for outstations (within parish limits)
 
-#### Pious Organizations
-- ✅ Create pious organizations
+#### Societies
+- ✅ Create societies
 - ✅ Edit organization details
 - ✅ Assign organization presidents and secretaries
 - ✅ View all organization members
@@ -217,7 +217,7 @@ SUPER_ADMIN (Platform Level)
 - ✅ Manage sacramental records
 - ❌ Cannot delete parishioners (can deactivate)
 
-#### Pious Organizations
+#### Societies
 - ✅ View all organizations and members
 - ✅ Add members to organizations (with president approval)
 - ❌ Cannot create organizations
@@ -290,7 +290,7 @@ SUPER_ADMIN (Platform Level)
 - ❌ Cannot delete parishioners
 - ❌ Cannot edit sensitive information (financial history)
 
-#### Pious Organizations
+#### Societies
 - ✅ View organizations
 - ✅ View membership lists
 - ❌ Cannot edit organizations or memberships
@@ -358,7 +358,7 @@ SUPER_ADMIN (Platform Level)
 - ❌ Cannot view/edit parishioners from other outstations
 - ❌ Cannot delete parishioners
 
-#### Pious Organizations
+#### Societies
 - ✅ View outstation-level organizations
 - ✅ Manage outstation organization memberships
 - ❌ Cannot create organizations (parish level)
@@ -391,9 +391,9 @@ SUPER_ADMIN (Platform Level)
 
 ---
 
-### 2.6 ORGANIZATION_PRESIDENT
+### 2.6 SOCIETY_PRESIDENT
 
-**Who**: President of pious organizations (CWO, CMO, CYON, etc.)
+**Who**: President of societies (CWO, CMO, CYON, etc.)
 
 **Scope**: Their specific organization within the parish
 
@@ -414,7 +414,7 @@ SUPER_ADMIN (Platform Level)
 - ❌ Cannot change organization name
 
 #### User Management
-- ✅ View organization secretary
+- ✅ View Society Secretary
 - ✅ Request secretary assignment (parish admin approves)
 - ❌ Cannot manage other users
 
@@ -453,9 +453,9 @@ SUPER_ADMIN (Platform Level)
 
 ---
 
-### 2.7 ORGANIZATION_SECRETARY
+### 2.7 SOCIETY_SECRETARY
 
-**Who**: Secretary of pious organizations
+**Who**: Secretary of societies
 
 **Scope**: Their specific organization within the parish
 
@@ -520,7 +520,7 @@ SUPER_ADMIN (Platform Level)
 - ✅ View own sacramental records
 - ❌ Cannot edit sacramental records
 
-#### Pious Organizations
+#### Societies
 - ✅ View available organizations
 - ✅ Request to join organizations
 - ✅ View own organization memberships
@@ -636,8 +636,8 @@ SUPER_ADMIN (Platform Level)
 | PARISH_SECRETARY | Own parish + all outstations |
 | PARISH_STAFF | Own parish (limited fields) |
 | OUTSTATION_ADMIN | Own outstation only |
-| ORGANIZATION_PRESIDENT | Own organization + parish member directory |
-| ORGANIZATION_SECRETARY | Own organization + parish member directory |
+| SOCIETY_PRESIDENT | Own organization + parish member directory |
+| SOCIETY_SECRETARY | Own organization + parish member directory |
 | PARISHIONER | Own data only |
 
 ---
@@ -651,14 +651,14 @@ SUPER_ADMIN (Platform Level)
 export function authorize(allowedRoles: UserRole[]) {
   return async (req: NextRequest) => {
     const session = await getServerSession();
-    
+
     if (!session || !allowedRoles.includes(session.user.role)) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 403 }
       );
     }
-    
+
     return null; // Authorized
   };
 }
@@ -670,9 +670,9 @@ export async function POST(request: NextRequest) {
     'PARISH_ADMIN',
     'PARISH_SECRETARY'
   ])(request);
-  
+
   if (authCheck) return authCheck;
-  
+
   // Proceed with logic
 }
 ```
@@ -690,11 +690,11 @@ interface Props {
 
 export function ProtectedAction({ allowedRoles, children }: Props) {
   const { data: session } = useSession();
-  
+
   if (!session || !allowedRoles.includes(session.user.role)) {
     return null;
   }
-  
+
   return <>{children}</>;
 }
 

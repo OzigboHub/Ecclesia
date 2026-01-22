@@ -194,7 +194,7 @@
 -   [ ] Outstation only sees own data
 -   [ ] Organization switching for multi-parish admins
 -   [ ] Query filters for all endpoints
--   [ ] Prevent cross-organization access
+-   [ ] Prevent crSociety memberships
 -   [ ] Integration tests
 -   [ ] Security audit
 
@@ -761,16 +761,16 @@
 
 ---
 
-## Epic 8: Pious Organizations
+## Epic 8: Societies
 
-### US-027: Pious Organization Setup APIs
+### US-027: Society Setup APIs
 
 **Priority**: P2
 **Points**: 5
 **Sprint**: 11
 
 **As a** parish admin
-**I want** to create pious organizations
+**I want** to create societies
 **So that** groups can be managed
 
 **Acceptance Criteria**:
@@ -786,14 +786,14 @@
 
 ---
 
-### US-028: Pious Organization UI
+### US-028: Society UI
 
 **Priority**: P2
 **Points**: 8
 **Sprint**: 11
 
 **As a** parish admin
-**I want** to manage pious organizations
+**I want** to manage societies
 **So that** I can set up groups
 
 **Acceptance Criteria**:

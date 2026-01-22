@@ -73,7 +73,7 @@ Ecclesia DPM aims to be the premier digital solution for Catholic parish managem
 -   Limited access to necessary information
 -   Cumbersome data entry processes
 
-### 2.4 Organization President/Secretary
+### 2.4 Society President/Secretary
 
 **Demographics**: 30-70 years, basic technical skills
 **Goals**:
@@ -160,7 +160,7 @@ Ecclesia DPM aims to be the premier digital solution for Catholic parish managem
     -   Appointments
     -   Live Streaming
     -   SMS/Email Notifications
-    -   Pious Organizations
+    -   Societies
     -   Event Management
     -   Online Payments
     -   Public Website
@@ -181,7 +181,7 @@ Ecclesia DPM aims to be the premier digital solution for Catholic parish managem
 -   FR-PM-003: System shall store contact information (email, phone, address)
 -   FR-PM-004: System shall validate email and phone uniqueness
 -   FR-PM-005: System shall support bulk import of parishioners via CSV
--   FR-PM-006: System shall track parishioner membership in pious organizations
+-   FR-PM-006: System shall track parishioner membership in societies
 
 #### 3.3.2 Sacramental Records
 
@@ -283,7 +283,7 @@ Ecclesia DPM aims to be the premier digital solution for Catholic parish managem
 -   FR-AM-006: System shall send appointment reminders 24 hours before scheduled time
 -   FR-AM-007: System shall allow rescheduling of pending appointments
 
-### 3.7 Pious Organization Management
+### 3.7 Society Management
 
 #### 3.7.1 Organization Setup
 
@@ -291,7 +291,7 @@ Ecclesia DPM aims to be the premier digital solution for Catholic parish managem
 
 **Requirements**:
 
--   FR-PO-001: Parish shall create pious organizations
+-   FR-PO-001: Parish shall create societies
 -   FR-PO-002: Each organization shall have president and secretary roles
 -   FR-PO-003: Organization names shall be unique within parish
 -   FR-PO-004: System shall track organization members
@@ -607,7 +607,7 @@ Ecclesia DPM aims to be the premier digital solution for Catholic parish managem
 -   **Parish**: A defined Catholic church community with a resident priest
 -   **Outstation**: A smaller worship community under a parish's jurisdiction
 -   **Stipend**: A donation given for a mass intention
--   **Pious Organization**: A Catholic group within the parish (e.g., CWO, CMO, CYON)
+-   **Society**: A Catholic group within the parish (e.g., CWO, CMO, CYON)
 
 ### 12.2 References
 

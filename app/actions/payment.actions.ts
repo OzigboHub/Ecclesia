@@ -4,10 +4,10 @@ import { auth } from '@/auth';
 import { revalidatePath } from 'next/cache';
 import db from '@/lib/db';
 import {
-	createPaymentSchema,
-	updatePaymentSchema,
-	paymentQuerySchema,
-	type PaymentQuery,
+    createPaymentSchema,
+    updatePaymentSchema,
+    paymentQuerySchema,
+    type PaymentQuery,
 } from '@/lib/validators/payment.schema';
 import type { ActionResponse } from '@/types';
 import { Prisma } from '@prisma/client';
@@ -388,6 +388,8 @@ export async function createPayment(
 			'PARISH_SECRETARY',
 			'PARISH_STAFF',
 			'OUTSTATION_ADMIN',
+			'SOCIETY_PRESIDENT',
+			'SOCIETY_SECRETARY',
 		];
 		if (!allowedRoles.includes(session.user.role)) {
 			return { success: false, message: 'Permission denied' };
@@ -440,7 +442,22 @@ export async function createPayment(
 			},
 		});
 
-		// 7. Revalidate cache
+		// 7. Audit Log
+		await db.auditLog.create({
+			data: {
+				action: 'PAYMENT_RECORDED',
+				entityType: 'Payment',
+				entityId: payment.id,
+				performedBy: session.user.id,
+				details: {
+					amount: payment.amount,
+					purpose: payment.purpose,
+					receiptNumber,
+				},
+			},
+		});
+
+		// 8. Revalidate cache
 		revalidatePath('/dashboard/payments');
 		if (parsed.data.parishionerId) {
 			revalidatePath(
@@ -530,6 +547,19 @@ export async function updatePayment(
 					},
 				},
 				donationCampaign: true,
+			},
+		});
+
+		// Audit Log
+		await db.auditLog.create({
+			data: {
+				action: 'UPDATE',
+				entityType: 'Payment',
+				entityId: id,
+				performedBy: session.user.id,
+				details: {
+					updatedFields: Object.keys(parsed.data),
+				},
 			},
 		});
 
@@ -652,6 +682,20 @@ export async function deletePayment(id: string): Promise<ActionResponse> {
 		}
 
 		await db.payment.delete({ where: { id } });
+
+		// Audit Log
+		await db.auditLog.create({
+			data: {
+				action: 'DELETE',
+				entityType: 'Payment',
+				entityId: id,
+				performedBy: session.user.id,
+				details: {
+					receiptNumber: existing.receiptNumber,
+					amount: existing.amount,
+				},
+			},
+		});
 
 		revalidatePath('/dashboard/payments');
 

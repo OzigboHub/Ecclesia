@@ -469,7 +469,7 @@ model OrganizationFeatureSettings {
   enableEmailNotifications    Boolean      @default(true)
 
   // Organization Features
-  enablePiousOrganizations    Boolean      @default(true)
+  enableSocieties    Boolean      @default(true)
   enableEventManagement       Boolean      @default(true)
 
   // Advanced Features
