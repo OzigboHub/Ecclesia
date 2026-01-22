@@ -25,6 +25,7 @@ model Organization {
   donations             Donation[]
   donationCampaigns     DonationCampaign[]
   events                Event[]
+  announcements         Announcement[]
   liveStreams           LiveStream[]
   masses                Mass[]
   massIntentions        MassIntention[]
@@ -462,14 +463,18 @@ model Announcement {
   title          String
   content        String
   organizationId String
+  organization   Organization     @relation(fields: [organizationId], references: [id])
   targetLevels   HierarchyLevel[]
   isPublished    Boolean          @default(false)
   publishedAt    DateTime?
+  expiresAt      DateTime?
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
 
   @@index([organizationId])
   @@index([isPublished])
+  @@index([publishedAt])
+  @@index([expiresAt])
 }
 
 model AuditLog {

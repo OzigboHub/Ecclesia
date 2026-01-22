@@ -1,6 +1,6 @@
 "use server";
 
-import { signIn, signOut } from "@/auth";
+import { signIn } from "@/auth";
 import { AuthError } from "next-auth";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
@@ -193,7 +193,6 @@ export async function requestPasswordReset(
 		const resetUrl = `${
 			process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
 		}/auth/reset-password?token=${token}`;
-		console.log("Password reset link:", resetUrl);
 
 		// In production, you would send an email here:
 		// await sendPasswordResetEmail(user.email, resetUrl);

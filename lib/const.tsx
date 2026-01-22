@@ -6,6 +6,7 @@ import {
 	Coins,
 	FolderKanban,
 	LayoutDashboard,
+	Megaphone,
 	Settings,
 	UserCog,
 	Users,
@@ -20,12 +21,12 @@ export const SIDEBAR = [
 	{
 		icon: <Users className=" w-5 h-5" />,
 		name: "Parishioners",
-		href: "/dashboard/parishioners",
+		href: "/parishioners",
 	},
 	{
 		icon: <Coins className=" w-5 h-5" />,
 		name: "Payments",
-		href: "/dashboard/payments",
+		href: "/payments",
 	},
 	{
 		icon: <ClipboardList className=" w-5 h-5" />,
@@ -41,6 +42,11 @@ export const SIDEBAR = [
 		icon: <Calendar className=" w-5 h-5" />,
 		name: "Appointments",
 		href: "/appointments",
+	},
+	{
+		icon: <Megaphone className=" w-5 h-5" />,
+		name: "Announcements",
+		href: "/announcements",
 	},
 	{
 		icon: <CirclePile className=" w-5 h-5" />,
