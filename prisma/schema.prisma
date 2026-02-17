@@ -4,7 +4,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  // url      = env("DATABASE_URL")
 }
 
 model Organization {
@@ -22,11 +21,13 @@ model Organization {
   maxMassesPerDay       Int                          @default(5)
   minMassesPerDay       Int                          @default(1)
   appointments          Appointment[]
+  baptisms              Baptism[]
+  confirmations         Confirmation[]
   donations             Donation[]
   donationCampaigns     DonationCampaign[]
   events                Event[]
-  announcements         Announcement[]
   liveStreams           LiveStream[]
+  marriages             Marriage[]
   masses                Mass[]
   massIntentions        MassIntention[]
   massScheduleTemplates MassScheduleTemplate[]
@@ -35,11 +36,8 @@ model Organization {
   featureSettings       OrganizationFeatureSettings?
   parishioners          Parishioner[]
   payments              Payment[]
-  societies             Society[]
   sacraments            Sacrament[]
-  baptisms              Baptism[]
-  confirmations         Confirmation[]
-  marriages             Marriage[]
+  societies             Society[]
   users                 User[]
 
   @@index([parentId])
@@ -63,7 +61,6 @@ model OrganizationFeatureSettings {
   enableAnnouncements         Boolean      @default(true)
   enableSMSNotifications      Boolean      @default(false)
   enableEmailNotifications    Boolean      @default(true)
-  enableSocieties             Boolean      @default(true)
   enableEventManagement       Boolean      @default(true)
   enableOnlinePayments        Boolean      @default(false)
   enableRecurringDonations    Boolean      @default(false)
@@ -71,30 +68,31 @@ model OrganizationFeatureSettings {
   enablePublicWebsite         Boolean      @default(true)
   createdAt                   DateTime     @default(now())
   updatedAt                   DateTime     @updatedAt
+  enableSocieties             Boolean      @default(true)
   organization                Organization @relation(fields: [organizationId], references: [id])
 
   @@index([organizationId])
 }
 
 model User {
-  id                        String               @id @default(uuid())
-  email                     String               @unique
-  password                  String
-  firstName                 String
-  lastName                  String
-  role                      UserRole
-  organizationId            String
-  isActive                  Boolean              @default(true)
-  lastLogin                 DateTime?
-  createdAt                 DateTime             @default(now())
-  updatedAt                 DateTime             @updatedAt
-  appointmentsAssigned      Appointment[]        @relation("AppointmentAssignee")
-  appointmentsMade          Appointment[]        @relation("AppointmentCreator")
-  passwordResetTokens       PasswordResetToken[]
-  paymentsRecorded          Payment[]            @relation("PaymentRecorder")
-  societyLed                Society?             @relation("SocietyPresident")
-  societyAssisted           Society?             @relation("SocietySecretary")
-  organization              Organization         @relation(fields: [organizationId], references: [id])
+  id                   String               @id @default(uuid())
+  email                String               @unique
+  password             String
+  firstName            String
+  lastName             String
+  role                 UserRole
+  isActive             Boolean              @default(true)
+  lastLogin            DateTime?
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+  organizationId       String
+  appointmentsAssigned Appointment[]        @relation("AppointmentAssignee")
+  appointmentsMade     Appointment[]        @relation("AppointmentCreator")
+  passwordResetTokens  PasswordResetToken[]
+  paymentsRecorded     Payment[]            @relation("PaymentRecorder")
+  societyLed           Society?             @relation("SocietyPresident")
+  societyAssisted      Society?             @relation("SocietySecretary")
+  organization         Organization         @relation(fields: [organizationId], references: [id])
 
   @@index([organizationId])
   @@index([email])
@@ -115,7 +113,6 @@ model PasswordResetToken {
 
 model MassScheduleTemplate {
   id             String       @id @default(uuid())
-  organizationId String
   dayOfWeek      DayOfWeek
   time           String
   massType       MassType     @default(DAILY_MASS)
@@ -126,6 +123,7 @@ model MassScheduleTemplate {
   effectiveUntil DateTime?
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
+  organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id])
 
   @@index([organizationId])
@@ -135,7 +133,6 @@ model MassScheduleTemplate {
 
 model Mass {
   id                 String          @id @default(uuid())
-  organizationId     String
   date               DateTime
   time               String
   massType           MassType
@@ -152,6 +149,7 @@ model Mass {
   notes              String?
   createdAt          DateTime        @default(now())
   updatedAt          DateTime        @updatedAt
+  organizationId     String
   organization       Organization    @relation(fields: [organizationId], references: [id])
   intentions         MassIntention[]
 
@@ -187,34 +185,34 @@ model Society {
 }
 
 model Parishioner {
-  id                           String                        @id @default(uuid())
-  firstName                    String
-  lastName                     String
-  otherNames                   String?
-  email                        String?                       @unique
-  phone                        String?
-  address                      String?
-  dateOfBirth                  DateTime?
-  gender                       Gender?
-  maritalStatus                MaritalStatus?
-  organizationId               String
-  createdAt                    DateTime                      @default(now())
-  updatedAt                    DateTime                      @updatedAt
-  occupation                   String?
-  deletedAt                    DateTime?
-  isActive                     Boolean                       @default(true)
-  photoUrl                     String?
-  appointments                 Appointment[]                 @relation("ParishionerAppointment")
-  eventAttendances             EventAttendance[]
-  massIntentions               MassIntention[]
-  organization                 Organization                  @relation(fields: [organizationId], references: [id])
-  payments                     Payment[]
-  societyMemberships           SocietyMembership[]
-  sacraments                   Sacrament[]
-  baptisms                     Baptism[]
-  confirmations                Confirmation[]
-  marriagesAsHusband           Marriage[]                    @relation("MarriageHusband")
-  marriagesAsWife              Marriage[]                    @relation("MarriageWife")
+  id                 String              @id @default(uuid())
+  firstName          String
+  lastName           String
+  otherNames         String?
+  email              String?             @unique
+  phone              String?
+  address            String?
+  dateOfBirth        DateTime?
+  gender             Gender?
+  maritalStatus      MaritalStatus?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  occupation         String?
+  deletedAt          DateTime?
+  isActive           Boolean             @default(true)
+  photoUrl           String?
+  organizationId     String
+  appointments       Appointment[]       @relation("ParishionerAppointment")
+  baptisms           Baptism[]
+  confirmations      Confirmation[]
+  eventAttendances   EventAttendance[]
+  marriagesAsHusband Marriage[]          @relation("MarriageHusband")
+  marriagesAsWife    Marriage[]          @relation("MarriageWife")
+  massIntentions     MassIntention[]
+  organization       Organization        @relation(fields: [organizationId], references: [id])
+  payments           Payment[]
+  sacraments         Sacrament[]
+  societyMemberships SocietyMembership[]
 
   @@index([organizationId])
   @@index([email])
@@ -238,10 +236,10 @@ model Sacrament {
   type           SacramentType
   dateReceived   DateTime
   parishionerId  String
-  organizationId String
   notes          String?
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
+  organizationId String
   organization   Organization  @relation(fields: [organizationId], references: [id])
   parishioner    Parishioner   @relation(fields: [parishionerId], references: [id])
 
@@ -250,24 +248,24 @@ model Sacrament {
 }
 
 model Event {
-  id                  String             @id @default(uuid())
-  title               String
-  description         String?
-  startTime           DateTime
-  endTime             DateTime
-  location            String?
-  organizationId      String
-  status              EventStatus        @default(SCHEDULED)
-  maxAttendees        Int?
-  createdAt           DateTime           @default(now())
-  updatedAt           DateTime           @updatedAt
-  societyId     String?
-  minutes       String?
-  type          EventType    @default(MEETING)
-  organization  Organization @relation(fields: [organizationId], references: [id])
-  society       Society?     @relation(fields: [societyId], references: [id])
-  attendance          EventAttendance[]
-  massIntentions      MassIntention[]
+  id             String            @id @default(uuid())
+  title          String
+  description    String?
+  startTime      DateTime
+  endTime        DateTime
+  location       String?
+  status         EventStatus       @default(SCHEDULED)
+  maxAttendees   Int?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  minutes        String?
+  type           EventType         @default(MEETING)
+  organizationId String
+  societyId      String?
+  organization   Organization      @relation(fields: [organizationId], references: [id])
+  society        Society?          @relation(fields: [societyId], references: [id])
+  attendance     EventAttendance[]
+  massIntentions MassIntention[]
 
   @@index([organizationId])
   @@index([startTime])
@@ -292,10 +290,10 @@ model DonationCampaign {
   targetAmount   Float
   startDate      DateTime
   endDate        DateTime?
-  organizationId String
   isActive       Boolean      @default(true)
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
+  organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id])
   payments       Payment[]
 
@@ -313,7 +311,6 @@ model MassIntention {
   contactPhone   String?
   stipend        Float?
   parishionerId  String?
-  organizationId String
   eventId        String?
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
@@ -322,6 +319,7 @@ model MassIntention {
   approvedBy     String?
   massId         String
   status         IntentionStatus @default(PENDING)
+  organizationId String
   event          Event?          @relation(fields: [eventId], references: [id])
   mass           Mass            @relation(fields: [massId], references: [id])
   organization   Organization    @relation(fields: [organizationId], references: [id])
@@ -353,13 +351,13 @@ model DonationType {
 model Donation {
   id             String       @id @default(uuid())
   donationTypeId String
-  organizationId String
   targetAmount   Float?
   startDate      DateTime?
   endDate        DateTime?
   isActive       Boolean      @default(true)
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
+  organizationId String
   donationType   DonationType @relation(fields: [donationTypeId], references: [id])
   organization   Organization @relation(fields: [organizationId], references: [id])
   payments       Payment[]
@@ -370,37 +368,37 @@ model Donation {
 }
 
 model Payment {
-  id                  String             @id @default(uuid())
-  amount              Float
-  currency            String             @default("NGN")
-  purpose             PaymentPurpose
-  month               Int?
-  paymentMethod       PaymentMethod
-  paymentStatus       PaymentStatus      @default(PENDING)
-  transactionRef      String?            @unique
-  parishionerId       String?
-  payerName           String
-  onBehalfOf          String?
-  payerEmail          String?
-  payerPhone          String?
-  massIntentionId     String?
-  donationCampaignId  String?
-  donationId          String?
-  organizationId      String
-  recordedById        String
-  notes               String?
-  receiptNumber       String?            @unique
-  paymentDate         DateTime           @default(now())
-  createdAt           DateTime           @default(now())
-  updatedAt           DateTime           @updatedAt
-  societyId        String?
-  donationCampaign DonationCampaign? @relation(fields: [donationCampaignId], references: [id])
-  donation         Donation?         @relation(fields: [donationId], references: [id])
-  massIntention    MassIntention?    @relation(fields: [massIntentionId], references: [id])
-  organization     Organization      @relation(fields: [organizationId], references: [id])
-  parishioner      Parishioner?      @relation(fields: [parishionerId], references: [id])
-  society          Society?          @relation(fields: [societyId], references: [id])
-  recordedBy          User               @relation("PaymentRecorder", fields: [recordedById], references: [id])
+  id                 String            @id @default(uuid())
+  amount             Float
+  currency           String            @default("NGN")
+  purpose            PaymentPurpose
+  month              Int?
+  paymentMethod      PaymentMethod
+  paymentStatus      PaymentStatus     @default(PENDING)
+  transactionRef     String?           @unique
+  parishionerId      String?
+  payerName          String
+  onBehalfOf         String?
+  payerEmail         String?
+  payerPhone         String?
+  massIntentionId    String?
+  donationCampaignId String?
+  donationId         String?
+  recordedById       String
+  notes              String?
+  receiptNumber      String?           @unique
+  paymentDate        DateTime          @default(now())
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  organizationId     String
+  societyId          String?
+  donationCampaign   DonationCampaign? @relation(fields: [donationCampaignId], references: [id])
+  donation           Donation?         @relation(fields: [donationId], references: [id])
+  massIntention      MassIntention?    @relation(fields: [massIntentionId], references: [id])
+  organization       Organization      @relation(fields: [organizationId], references: [id])
+  parishioner        Parishioner?      @relation(fields: [parishionerId], references: [id])
+  recordedBy         User              @relation("PaymentRecorder", fields: [recordedById], references: [id])
+  society            Society?          @relation(fields: [societyId], references: [id])
 
   @@index([parishionerId])
   @@index([organizationId])
@@ -426,9 +424,9 @@ model Appointment {
   parishionerId  String
   assignedToId   String?
   requestedById  String
-  organizationId String
   createdAt      DateTime          @default(now())
   updatedAt      DateTime          @updatedAt
+  organizationId String
   assignedTo     User?             @relation("AppointmentAssignee", fields: [assignedToId], references: [id])
   organization   Organization      @relation(fields: [organizationId], references: [id])
   parishioner    Parishioner       @relation("ParishionerAppointment", fields: [parishionerId], references: [id])
@@ -446,11 +444,11 @@ model LiveStream {
   title          String
   description    String?
   streamUrl      String
-  organizationId String
   isLive         Boolean      @default(false)
   scheduledFor   DateTime?
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
+  organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id])
 
   @@index([organizationId])
@@ -462,19 +460,15 @@ model Announcement {
   id             String           @id @default(uuid())
   title          String
   content        String
-  organizationId String
-  organization   Organization     @relation(fields: [organizationId], references: [id])
   targetLevels   HierarchyLevel[]
   isPublished    Boolean          @default(false)
   publishedAt    DateTime?
-  expiresAt      DateTime?
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
+  organizationId String
 
   @@index([organizationId])
   @@index([isPublished])
-  @@index([publishedAt])
-  @@index([expiresAt])
 }
 
 model AuditLog {
@@ -513,17 +507,17 @@ model Baptism {
 }
 
 model Confirmation {
-  id                   String       @id @default(uuid())
-  parishionerId        String
-  organizationId       String
-  date                 DateTime
-  minister             String?
-  sponsor              String?
-  placeOfConfirmation  String?
-  createdAt            DateTime     @default(now())
-  updatedAt            DateTime     @updatedAt
-  organization         Organization @relation(fields: [organizationId], references: [id])
-  parishioner          Parishioner  @relation(fields: [parishionerId], references: [id])
+  id                  String       @id @default(uuid())
+  parishionerId       String
+  organizationId      String
+  date                DateTime
+  minister            String?
+  sponsor             String?
+  placeOfConfirmation String?
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+  organization        Organization @relation(fields: [organizationId], references: [id])
+  parishioner         Parishioner  @relation(fields: [parishionerId], references: [id])
 
   @@index([parishionerId])
   @@index([organizationId])
@@ -541,8 +535,8 @@ model Marriage {
   placeOfMarriage String?
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
-  organization    Organization @relation(fields: [organizationId], references: [id])
   husband         Parishioner  @relation("MarriageHusband", fields: [husbandId], references: [id])
+  organization    Organization @relation(fields: [organizationId], references: [id])
   wife            Parishioner  @relation("MarriageWife", fields: [wifeId], references: [id])
 
   @@index([husbandId])

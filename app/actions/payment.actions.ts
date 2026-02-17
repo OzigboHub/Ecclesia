@@ -4,10 +4,10 @@ import { auth } from '@/auth';
 import { revalidatePath } from 'next/cache';
 import db from '@/lib/db';
 import {
-    createPaymentSchema,
-    updatePaymentSchema,
-    paymentQuerySchema,
-    type PaymentQuery,
+	createPaymentSchema,
+	updatePaymentSchema,
+	paymentQuerySchema,
+	type PaymentQuery,
 } from '@/lib/validators/payment.schema';
 import type { ActionResponse } from '@/types';
 import { Prisma } from '@prisma/client';
@@ -120,6 +120,15 @@ export async function getPayments(
 			return { success: false, message: 'Unauthorized' };
 		}
 
+		// Financial Privacy: Only Admin, Secretary, and Super Admin can view financial records
+		const allowedRoles = ['SUPER_ADMIN', 'PARISH_ADMIN', 'PARISH_SECRETARY'];
+		if (!allowedRoles.includes(session.user.role)) {
+			return {
+				success: false,
+				message: 'Access Denied: You do not have permission to view financial records',
+			};
+		}
+
 		// Check if financial management is enabled
 		const settings = await db.organizationFeatureSettings.findUnique({
 			where: { organizationId: session.user.organizationId },
@@ -175,11 +184,11 @@ export async function getPayments(
 			}),
 			...(dateFrom &&
 				dateTo && {
-					paymentDate: {
-						gte: dateFrom,
-						lte: dateTo,
-					},
-				}),
+				paymentDate: {
+					gte: dateFrom,
+					lte: dateTo,
+				},
+			}),
 		};
 
 		// Execute queries in parallel
@@ -252,6 +261,18 @@ export async function getPayment(
 			return { success: false, message: 'Payment not found' };
 		}
 
+		// Privacy Check: Parishioners can only see their own payments
+		const allowedRoles = ['SUPER_ADMIN', 'PARISH_ADMIN', 'PARISH_SECRETARY'];
+		if (
+			!allowedRoles.includes(session.user.role) &&
+			payment.parishionerId !== session.user.parishionerId
+		) {
+			return {
+				success: false,
+				message: 'Access Denied: You can only view your own payment records',
+			};
+		}
+
 		return {
 			success: true,
 			message: 'Payment retrieved successfully',
@@ -279,6 +300,12 @@ export async function getPaymentStats(): Promise<
 		const session = await auth();
 		if (!session?.user) {
 			return { success: false, message: 'Unauthorized' };
+		}
+
+		// Financial Privacy
+		const allowedRoles = ['SUPER_ADMIN', 'PARISH_ADMIN', 'PARISH_SECRETARY'];
+		if (!allowedRoles.includes(session.user.role)) {
+			return { success: false, message: 'Access Denied' };
 		}
 
 		const currentYear = new Date().getFullYear();
@@ -370,64 +397,86 @@ export async function getPaymentStats(): Promise<
 
 /**
  * Record a new payment
+ * Supports guest checkout for certain purposes and digital methods
  */
 export async function createPayment(
-	formData: unknown
+	formData: unknown,
+	organizationId?: string // Required for guest checkout
 ): Promise<ActionResponse<PaymentWithRelations>> {
 	try {
-		// 1. Authentication
 		const session = await auth();
-		if (!session?.user) {
-			return { success: false, message: 'Unauthorized' };
-		}
-
-		// 2. Authorization - check role
-		const allowedRoles = [
-			'SUPER_ADMIN',
-			'PARISH_ADMIN',
-			'PARISH_SECRETARY',
-			'PARISH_STAFF',
-			'OUTSTATION_ADMIN',
-			'SOCIETY_PRESIDENT',
-			'SOCIETY_SECRETARY',
-		];
-		if (!allowedRoles.includes(session.user.role)) {
-			return { success: false, message: 'Permission denied' };
-		}
-
-		// 3. Validation
 		const parsed = createPaymentSchema.safeParse(formData);
 		if (!parsed.success) {
 			return {
 				success: false,
-				message: 'Please check your input and try again',
+				message: 'Validation failed',
 				errors: parsed.error.flatten().fieldErrors,
 			};
 		}
 
-		// 4. Feature toggle check
-		const featureCheck = await checkFeatureEnabled(
-			session.user.organizationId,
-			parsed.data.purpose
-		);
+		const { purpose, paymentMethod, ...paymentData } = parsed.data;
+
+		// 1. Determine Organization Scope
+		const targetOrgId = organizationId || session?.user?.organizationId;
+		if (!targetOrgId) {
+			return { success: false, message: 'Organization Context Required' };
+		}
+
+		// 2. Authentication & Authorization Check
+		const isGuestCheckout = !session && ['CARD', 'MOBILE_MONEY', 'BANK_TRANSFER'].includes(paymentMethod) &&
+			['DONATION_CAMPAIGN', 'EVENT_PAYMENT', 'MASS_INTENTION', 'OTHER'].includes(purpose);
+
+		if (!session && !isGuestCheckout) {
+			return { success: false, message: 'Authentication required for this payment type' };
+		}
+
+		if (session) {
+			// Role check for staff recording manual payments
+			const staffRoles = ['SUPER_ADMIN', 'PARISH_ADMIN', 'PARISH_SECRETARY', 'PARISH_STAFF'];
+			if (paymentMethod === 'CASH' && !staffRoles.includes(session.user.role)) {
+				return { success: false, message: 'Only staff can record cash payments' };
+			}
+		}
+
+		// 3. Feature Enablement Check
+		const featureCheck = await checkFeatureEnabled(targetOrgId, purpose);
 		if (!featureCheck.enabled) {
-			return { success: false, message: featureCheck.message! };
+			return { success: false, message: featureCheck.message || 'This payment feature is not enabled' };
+		}
+
+		// 4. Resolve recordedById (required): use session user or first org admin for guest checkout
+		let recordedById: string;
+		if (session?.user?.id) {
+			recordedById = session.user.id;
+		} else {
+			const orgUser = await db.user.findFirst({
+				where: { organizationId: targetOrgId },
+				orderBy: { createdAt: 'asc' },
+				select: { id: true },
+			});
+			if (!orgUser) {
+				return { success: false, message: 'No organization user found to record payment' };
+			}
+			recordedById = orgUser.id;
 		}
 
 		// 5. Generate receipt number
-		const receiptNumber = await generateReceiptNumber(
-			session.user.organizationId
-		);
+		const receiptNumber = await generateReceiptNumber(targetOrgId);
 
-		// 6. Create payment
+		// 6. Create payment (map EVENT_PAYMENT to OTHER for DB; Prisma enum has no EVENT_PAYMENT yet)
+		const dbPurpose = purpose === 'EVENT_PAYMENT' ? 'OTHER' : purpose;
+		const { eventId: _eventId, paymentGateway: _paymentGateway, ...restPaymentData } = paymentData;
 		const payment = await db.payment.create({
 			data: {
-				...parsed.data,
+				...restPaymentData,
+				payerName: paymentData.payerName ?? 'Guest',
+				purpose: dbPurpose,
+				paymentMethod,
 				currency: 'NGN',
-				paymentStatus: 'COMPLETED', // Manual payments are immediately completed
+				paymentStatus: paymentMethod === 'CASH' ? 'COMPLETED' : 'PENDING',
 				receiptNumber,
-				organizationId: session.user.organizationId,
-				recordedById: session.user.id,
+				organizationId: targetOrgId,
+				recordedById,
 			},
 			include: {
 				parishioner: true,
@@ -442,37 +491,32 @@ export async function createPayment(
 			},
 		});
 
-		// 7. Audit Log
-		await db.auditLog.create({
-			data: {
-				action: 'PAYMENT_RECORDED',
-				entityType: 'Payment',
-				entityId: payment.id,
-				performedBy: session.user.id,
-				details: {
-					amount: payment.amount,
-					purpose: payment.purpose,
-					receiptNumber,
+		// 7. Audit Log (only if recorded by logged-in user)
+		if (session) {
+			await db.auditLog.create({
+				data: {
+					action: 'PAYMENT_RECORDED',
+					entityType: 'Payment',
+					entityId: payment.id,
+					performedBy: session.user.id,
+					details: {
+						amount: payment.amount,
+						purpose: payment.purpose,
+						receiptNumber,
+					},
 				},
-			},
-		});
-
-		// 8. Revalidate cache
-		revalidatePath('/dashboard/payments');
-		if (parsed.data.parishionerId) {
-			revalidatePath(
-				`/dashboard/parishioners/${parsed.data.parishionerId}`
-			);
+			});
 		}
 
+		revalidatePath('/dashboard/payments');
 		return {
 			success: true,
-			message: `Payment recorded successfully. Receipt: ${receiptNumber}`,
+			message: paymentMethod === 'CASH' ? 'Payment recorded successfully' : 'Payment initiated',
 			data: payment,
 		};
 	} catch (error) {
 		console.error('Failed to create payment:', error);
-		return { success: false, message: 'Failed to record payment' };
+		return { success: false, message: 'Failed to process payment' };
 	}
 }
 

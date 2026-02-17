@@ -1,14 +1,14 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useEffect } from 'react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import {
-    featureCategories,
-    featureLabels,
-    featureDescriptions,
-    FeatureName,
+	featureCategories,
+	featureLabels,
+	featureDescriptions,
+	FeatureName,
 } from '@/lib/features';
 import { updateOrganizationFeatures } from '@/app/actions/organization.actions';
 
@@ -23,6 +23,15 @@ export function FeatureToggleClient({
 }: FeatureToggleClientProps) {
 	const [settings, setSettings] = useState(initialSettings);
 	const [isPending, startTransition] = useTransition();
+	const [mounted, setMounted] = useState(false);
+
+	useEffect(() => {
+		setMounted(true);
+	}, []);
+
+	if (!mounted) {
+		return null;
+	}
 
 	// Note: updateOrganizationFeatures currently uses session ID.
 	// We need to update it to accept an organizationId for super admins.

@@ -15,8 +15,22 @@ export const createSocietySchema = z.object({
 		.max(500, 'Description must not exceed 500 characters')
 		.optional(),
 	patronSaint: z.string().max(100).optional(),
-	presidentId: z.string().uuid('Invalid user selected').optional().nullable(),
-	secretaryId: z.string().uuid('Invalid user selected').optional().nullable(),
+	presidentId: z
+		.union([
+			z.string().uuid('Invalid user selected'),
+			z.literal(''),
+			z.null(),
+		])
+		.optional()
+		.transform((val) => (val === '' || val === undefined ? undefined : val)),
+	secretaryId: z
+		.union([
+			z.string().uuid('Invalid user selected'),
+			z.literal(''),
+			z.null(),
+		])
+		.optional()
+		.transform((val) => (val === '' || val === undefined ? undefined : val)),
 	meetingSchedule: z.string().max(200).optional(),
 });
 

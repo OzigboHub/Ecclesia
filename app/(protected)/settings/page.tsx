@@ -55,7 +55,15 @@ export default function SettingsPage() {
 		isLoading: featuresLoading,
 		refetch,
 	} = useFeatureSettings();
-	const { isAdmin, role } = useRole();
+	const { isSuperAdmin, role } = useRole();
+
+	// Only Super Admin can access Settings
+	React.useEffect(() => {
+		if (featuresLoading) return;
+		if (!isSuperAdmin) {
+			router.replace('/dashboard');
+		}
+	}, [isSuperAdmin, featuresLoading, router]);
 
 	const [isSaving, setIsSaving] = React.useState(false);
 	const [localFeatures, setLocalFeatures] = React.useState<
@@ -104,7 +112,7 @@ export default function SettingsPage() {
 	}, [settings]);
 
 	const handleFeatureToggle = (feature: FeatureName) => {
-		if (!isAdmin) {
+		if (!isSuperAdmin) {
 			toast.error('You do not have permission to change settings');
 			return;
 		}
@@ -117,7 +125,7 @@ export default function SettingsPage() {
 	};
 
 	const handleSaveFeatures = async () => {
-		if (!isAdmin) {
+		if (!isSuperAdmin) {
 			toast.error('You do not have permission to save settings');
 			return;
 		}
@@ -164,7 +172,7 @@ export default function SettingsPage() {
 	};
 
 	const handleSaveOrgDetails = async () => {
-		if (!isAdmin) {
+		if (!isSuperAdmin) {
 			toast.error('You do not have permission to save settings');
 			return;
 		}
@@ -233,18 +241,17 @@ export default function SettingsPage() {
 				</div>
 			</div>
 
-			{/* Admin Only Notice */}
-			{!isAdmin && (
+			{/* Super Admin only - show notice if somehow non-super-admin lands here */}
+			{!isSuperAdmin && (
 				<div className='bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 flex items-start gap-3'>
 					<LockIcon className='h-5 w-5 text-yellow-600 dark:text-yellow-500 shrink-0 mt-0.5' />
 					<div>
 						<p className='font-medium text-yellow-800 dark:text-yellow-200'>
-							View Only Access
+							Access restricted
 						</p>
 						<p className='text-sm text-yellow-700 dark:text-yellow-300'>
-							Only administrators can modify these settings. Your
-							current role is{' '}
-							<span className='font-medium'>{role}</span>.
+							Only System / Super Admin can access settings. Your
+							role is <span className='font-medium'>{role}</span>. Redirecting…
 						</p>
 					</div>
 				</div>
@@ -281,7 +288,7 @@ export default function SettingsPage() {
 						<p className='text-muted-foreground'>
 							Enable or disable features for your organization
 						</p>
-						{isAdmin && (
+						{isSuperAdmin && (
 							<Button
 								onClick={handleSaveFeatures}
 								disabled={isSaving || !hasChanges}
@@ -348,7 +355,7 @@ export default function SettingsPage() {
 																)
 															}
 															disabled={
-																!isAdmin ||
+																!isSuperAdmin ||
 																isSaving
 															}
 														/>
@@ -372,7 +379,7 @@ export default function SettingsPage() {
 						<p className='text-muted-foreground'>
 							Update your organization&apos;s basic information
 						</p>
-						{isAdmin && (
+						{isSuperAdmin && (
 							<Button
 								onClick={handleSaveOrgDetails}
 								disabled={isSaving || !orgHasChanges}
@@ -398,7 +405,7 @@ export default function SettingsPage() {
 											e.target.value
 										)
 									}
-									disabled={!isAdmin || isSaving}
+									disabled={!isSuperAdmin || isSaving}
 									placeholder='Parish name'
 								/>
 							</div>
@@ -415,7 +422,7 @@ export default function SettingsPage() {
 											e.target.value
 										)
 									}
-									disabled={!isAdmin || isSaving}
+									disabled={!isSuperAdmin || isSaving}
 									placeholder='contact@parish.org'
 								/>
 							</div>
@@ -432,7 +439,7 @@ export default function SettingsPage() {
 											e.target.value
 										)
 									}
-									disabled={!isAdmin || isSaving}
+									disabled={!isSuperAdmin || isSaving}
 									placeholder='+234 xxx xxx xxxx'
 								/>
 							</div>
@@ -448,7 +455,7 @@ export default function SettingsPage() {
 											e.target.value
 										)
 									}
-									disabled={!isAdmin || isSaving}
+									disabled={!isSuperAdmin || isSaving}
 									placeholder='Parish address'
 									rows={3}
 								/>

@@ -1,5 +1,21 @@
 import { getPublicAnnouncements } from '@/app/actions/announcement.actions';
 
+type Announcement = {
+	id: string;
+	title: string;
+	content: string;
+	organizationId: string;
+	isPublished: boolean;
+	publishedAt: Date | null;
+	createdAt: Date;
+	updatedAt: Date;
+		organization?: {
+			id: string;
+			name: string;
+			level: string;
+		};
+};
+
 function formatDate(value?: Date | null) {
 	if (!value) return '';
 	return new Date(value).toLocaleDateString('en-GB', {
@@ -16,12 +32,12 @@ export default async function PublicAnnouncementsPage() {
 		return (
 			<div className='max-w-4xl mx-auto px-4 py-12'>
 				<h1 className='text-3xl font-bold'>Announcements</h1>
-				<p className='mt-4 text-destructive'>{result.message}</p>
+				<p className='mt-4 text-muted-foreground'>{result.message}</p>
 			</div>
 		);
 	}
 
-	const announcements = result.data ?? [];
+	const announcements: Announcement[] = result.data ?? [];
 
 	return (
 		<div className='max-w-4xl mx-auto px-4 py-12 space-y-8'>
@@ -38,7 +54,7 @@ export default async function PublicAnnouncementsPage() {
 				</div>
 			) : (
 				<div className='space-y-4'>
-					{announcements.map((announcement) => (
+					{announcements.map((announcement: Announcement) => (
 						<article
 							key={announcement.id}
 							className='rounded-lg border border-border bg-background p-6 shadow-sm'
@@ -49,8 +65,8 @@ export default async function PublicAnnouncementsPage() {
 										{announcement.title}
 									</h2>
 									<p className='text-sm text-muted-foreground'>
-										{announcement.organization.name} •{' '}
-										{announcement.organization.level}
+										{announcement.organization?.name ?? announcement.organizationId} •{' '}
+										{announcement.organization?.level ?? ''}
 									</p>
 								</div>
 								<span className='text-sm text-muted-foreground'>

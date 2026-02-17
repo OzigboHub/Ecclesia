@@ -33,6 +33,33 @@ const addressSchema = z
 	.optional()
 	.or(z.literal(''));
 
+// Parish admin fields (reused from user validation rules)
+const parishAdminFirstNameSchema = z
+	.string()
+	.min(2, 'First name must be at least 2 characters')
+	.max(100, 'First name must not exceed 100 characters')
+	.trim();
+const parishAdminLastNameSchema = z
+	.string()
+	.min(2, 'Last name must be at least 2 characters')
+	.max(100, 'Last name must not exceed 100 characters')
+	.trim();
+const parishAdminEmailSchema = z
+	.string()
+	.min(1, 'Parish admin email is required')
+	.email('Please enter a valid email address')
+	.toLowerCase()
+	.trim();
+const parishAdminPasswordSchema = z
+	.string()
+	.min(8, 'Password must be at least 8 characters')
+	.regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+	.regex(/[0-9]/, 'Password must contain at least one number')
+	.regex(
+		/[^A-Za-z0-9]/,
+		'Password must contain at least one special character'
+	);
+
 // ============================================
 // CREATE PARISH SCHEMA
 // ============================================
@@ -42,6 +69,12 @@ export const createParishSchema = z.object({
 	address: addressSchema,
 	contactEmail: contactEmailSchema,
 	contactPhone: contactPhoneSchema,
+	parishAdmin: z.object({
+		firstName: parishAdminFirstNameSchema,
+		lastName: parishAdminLastNameSchema,
+		email: parishAdminEmailSchema,
+		password: parishAdminPasswordSchema,
+	}),
 });
 
 export type CreateParishInput = z.infer<typeof createParishSchema>;

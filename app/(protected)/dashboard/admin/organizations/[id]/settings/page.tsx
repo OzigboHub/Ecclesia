@@ -36,13 +36,13 @@ export default async function OrganizationSettingsPage({
 	// but currently getOrganizationFeatures uses session.user.organizationId.
 	// I should probably add a getOrganizationFeaturesById action.
 
-	const settings = await db.organizationFeatureSettings.findUnique({
+	let settings = await db.organizationFeatureSettings.findUnique({
 		where: { organizationId: id },
 	});
 
 	if (!settings) {
 		// Create default settings if they don't exist
-		await db.organizationFeatureSettings.create({
+		settings = await db.organizationFeatureSettings.create({
 			data: { organizationId: id },
 		});
 	}

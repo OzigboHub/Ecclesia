@@ -41,6 +41,12 @@ interface FormErrors {
 	contactEmail?: FieldError;
 	contactPhone?: FieldError;
 	parentId?: FieldError;
+	parishAdmin?: {
+		firstName?: FieldError;
+		lastName?: FieldError;
+		email?: FieldError;
+		password?: FieldError;
+	};
 }
 
 export function AdminOrganizationForm({
@@ -62,6 +68,14 @@ export function AdminOrganizationForm({
 			address: '',
 			contactEmail: '',
 			contactPhone: '',
+			...(type === 'parish' && {
+				parishAdmin: {
+					firstName: '',
+					lastName: '',
+					email: '',
+					password: '',
+				},
+			}),
 			...(type === 'outstation' && { parentId: defaultParentId || '' }),
 		},
 	});
@@ -92,9 +106,10 @@ export function AdminOrganizationForm({
 				if (result.errors) {
 					Object.entries(result.errors).forEach(
 						([field, messages]) => {
+							const msg = Array.isArray(messages) ? messages[0] : String(messages);
 							setError(field as any, {
 								type: 'server',
-								message: messages[0],
+								message: msg,
 							});
 						}
 					);
@@ -243,6 +258,82 @@ export function AdminOrganizationForm({
 							</p>
 						)}
 					</div>
+
+					{/* Parish Admin (parish only) */}
+					{type === 'parish' && (
+						<>
+							<div className='border-t pt-4 mt-4'>
+								<h3 className='text-sm font-medium mb-3'>Parish Admin (default administrator)</h3>
+								<p className='text-xs text-muted-foreground mb-3'>
+									This user will have full access to manage the parish and its outstations.
+								</p>
+							</div>
+							<div className='grid gap-4 sm:grid-cols-2'>
+								<div className='space-y-2'>
+									<Label htmlFor='parishAdmin.firstName'>First Name *</Label>
+									<Input
+										id='parishAdmin.firstName'
+										{...register('parishAdmin.firstName')}
+										placeholder='Admin first name'
+										disabled={isPending}
+										aria-invalid={!!formErrors.parishAdmin?.firstName}
+									/>
+									{formErrors.parishAdmin?.firstName && (
+										<p className='text-sm text-destructive'>
+											{formErrors.parishAdmin.firstName.message}
+										</p>
+									)}
+								</div>
+								<div className='space-y-2'>
+									<Label htmlFor='parishAdmin.lastName'>Last Name *</Label>
+									<Input
+										id='parishAdmin.lastName'
+										{...register('parishAdmin.lastName')}
+										placeholder='Admin last name'
+										disabled={isPending}
+										aria-invalid={!!formErrors.parishAdmin?.lastName}
+									/>
+									{formErrors.parishAdmin?.lastName && (
+										<p className='text-sm text-destructive'>
+											{formErrors.parishAdmin.lastName.message}
+										</p>
+									)}
+								</div>
+							</div>
+							<div className='space-y-2'>
+								<Label htmlFor='parishAdmin.email'>Parish Admin Email *</Label>
+								<Input
+									id='parishAdmin.email'
+									type='email'
+									{...register('parishAdmin.email')}
+									placeholder='admin@parish.example.com'
+									disabled={isPending}
+									aria-invalid={!!formErrors.parishAdmin?.email}
+								/>
+								{formErrors.parishAdmin?.email && (
+									<p className='text-sm text-destructive'>
+										{formErrors.parishAdmin.email.message}
+									</p>
+								)}
+							</div>
+							<div className='space-y-2'>
+								<Label htmlFor='parishAdmin.password'>Parish Admin Password *</Label>
+								<Input
+									id='parishAdmin.password'
+									type='password'
+									{...register('parishAdmin.password')}
+									placeholder='Min 8 chars, uppercase, number, special character'
+									disabled={isPending}
+									aria-invalid={!!formErrors.parishAdmin?.password}
+								/>
+								{formErrors.parishAdmin?.password && (
+									<p className='text-sm text-destructive'>
+										{formErrors.parishAdmin.password.message}
+									</p>
+								)}
+							</div>
+						</>
+					)}
 
 					{/* Buttons */}
 					<div className='flex justify-end gap-3 pt-4'>

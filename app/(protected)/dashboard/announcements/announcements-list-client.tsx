@@ -16,12 +16,11 @@ type AnnouncementItem = {
 	id: string;
 	title: string;
 	content: string;
-	targetLevels: Array<'PARISH' | 'OUTSTATION'>;
 	isPublished: boolean;
 	publishedAt: Date | string | null;
-	expiresAt: Date | string | null;
 	createdAt: Date | string;
-	organization: {
+	targetLevels?: ('PARISH' | 'OUTSTATION')[];
+	organization?: {
 		id: string;
 		name: string;
 		level: 'PARISH' | 'OUTSTATION';
@@ -33,7 +32,6 @@ const statusOptions = [
 	{ value: 'draft', label: 'Draft' },
 	{ value: 'scheduled', label: 'Scheduled' },
 	{ value: 'active', label: 'Active' },
-	{ value: 'expired', label: 'Expired' },
 ] as const;
 
 function toDate(value?: Date | string | null) {
@@ -45,12 +43,8 @@ function getAnnouncementStatus(announcement: AnnouncementItem) {
 	if (!announcement.isPublished) return 'draft';
 	const now = new Date();
 	const publishedAt = toDate(announcement.publishedAt);
-	const expiresAt = toDate(announcement.expiresAt);
 	if (publishedAt && publishedAt > now) {
 		return 'scheduled';
-	}
-	if (expiresAt && expiresAt <= now) {
-		return 'expired';
 	}
 	return 'active';
 }
@@ -122,22 +116,6 @@ export default function AnnouncementsListClient({
 			),
 		},
 		{
-			header: 'Audience',
-			accessorKey: 'targetLevels',
-			cell: (row: AnnouncementItem) => (
-				<div className='flex flex-wrap gap-1'>
-					{row.targetLevels.map((level) => (
-						<span
-							key={level}
-							className='text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground'
-						>
-							{level}
-						</span>
-					))}
-				</div>
-			),
-		},
-		{
 			header: 'Schedule',
 			accessorKey: 'publishedAt',
 			cell: (row: AnnouncementItem) => (
@@ -145,10 +123,6 @@ export default function AnnouncementsListClient({
 					<div>
 						<span className='font-semibold text-foreground'>Publish:</span>{' '}
 						{formatDate(row.publishedAt)}
-					</div>
-					<div>
-						<span className='font-semibold text-foreground'>Expires:</span>{' '}
-						{formatDate(row.expiresAt)}
 					</div>
 				</div>
 			),
@@ -166,8 +140,7 @@ export default function AnnouncementsListClient({
 								'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100',
 							status === 'scheduled' &&
 								'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100',
-							status === 'expired' &&
-								'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-100',
+
 							status === 'draft' &&
 								'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-100'
 						)}
@@ -253,9 +226,7 @@ export default function AnnouncementsListClient({
 									id: editing.id,
 									title: editing.title,
 									content: editing.content,
-									targetLevels: editing.targetLevels,
-									publishAt: toDate(editing.publishedAt) ?? new Date(),
-									expiresAt: toDate(editing.expiresAt) ?? undefined,
+								publishAt: toDate(editing.publishedAt) ?? new Date(),
 								}
 							: undefined
 					}

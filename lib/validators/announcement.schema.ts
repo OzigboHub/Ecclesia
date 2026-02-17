@@ -17,37 +17,8 @@ export const createAnnouncementSchema = z
 			.min(10, 'Content must be at least 10 characters')
 			.max(4000, 'Content must not exceed 4000 characters')
 			.trim(),
-		targetLevels: z
-			.array(hierarchyLevelEnum)
-			.min(1, 'Select at least one audience'),
 		publishAt: optionalDate,
-		expiresAt: optionalDate,
-	})
-	.refine(
-		(data) => {
-			if (data.publishAt && data.expiresAt) {
-				return data.expiresAt > data.publishAt;
-			}
-			return true;
-		},
-		{
-			message: 'Expiry date must be after publish date',
-			path: ['expiresAt'],
-		}
-	)
-	.refine(
-		(data) => {
-			if (!data.expiresAt) {
-				return true;
-			}
-			const now = new Date();
-			return data.expiresAt > now;
-		},
-		{
-			message: 'Expiry date must be in the future',
-			path: ['expiresAt'],
-		}
-	);
+	});
 
 export type CreateAnnouncementInput = z.infer<typeof createAnnouncementSchema>;
 
@@ -65,23 +36,10 @@ export const updateAnnouncementSchema = z
 			.max(4000, 'Content must not exceed 4000 characters')
 			.trim()
 			.optional(),
-		targetLevels: z.array(hierarchyLevelEnum).min(1).optional(),
+		// targetLevels removed: feature guarded at runtime until DB schema matches
 		publishAt: optionalDate,
-		expiresAt: nullableDate.optional(),
 		isPublished: z.boolean().optional(),
-	})
-	.refine(
-		(data) => {
-			if (data.publishAt && data.expiresAt) {
-				return data.expiresAt > data.publishAt;
-			}
-			return true;
-		},
-		{
-			message: 'Expiry date must be after publish date',
-			path: ['expiresAt'],
-		}
-	);
+	});
 
 export type UpdateAnnouncementInput = z.infer<typeof updateAnnouncementSchema>;
 
@@ -89,7 +47,7 @@ export const announcementFilterSchema = z.object({
 	page: z.coerce.number().int().positive().default(1),
 	limit: z.coerce.number().int().min(1).max(200).default(20),
 	search: z.string().optional(),
-	status: z.enum(['draft', 'scheduled', 'active', 'expired']).optional(),
+	status: z.enum(['draft', 'scheduled', 'active']).optional(),
 });
 
 export type AnnouncementFilter = z.infer<typeof announcementFilterSchema>;

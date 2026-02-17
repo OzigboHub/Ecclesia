@@ -1,22 +1,11 @@
 
-> ecclesia@0.1.0 build C:\Users\rexed\codes\ecclesia
+> ecclesia@0.1.0 build C:\Users\USER\ecclesia
 > next build
 
 ▲ Next.js 16.1.1 (Turbopack)
 - Environments: .env
 
   Creating an optimized production build ...
-✓ Compiled successfully in 17.0s
+✓ Compiled successfully in 25.4s
   Running TypeScript ...
-  Collecting page data using 7 workers ...
-  Generating static pages using 7 workers (0/38) ...
-  Generating static pages using 7 workers (9/38) 
-Error occurred prerendering page "/auth/forgot-password". Read more: https://nextjs.org/docs/messages/prerender-error
-TypeError: f.usePathname is not a function
-    at <unknown> (C:\Users\rexed\codes\ecclesia\.next\server\chunks\ssr\[root-of-the-server]__7e2a6d1e._.js:6:4406)
-    at stringify (<anonymous>) {
-  digest: '608290283'
-}
-Export encountered an error on /(auth)/auth/forgot-password/page: /auth/forgot-password, exiting the build.
-⨯ Next.js build worker exited with code: 1 and signal: null
  ELIFECYCLE  Command failed with exit code 1.

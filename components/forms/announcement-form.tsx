@@ -59,12 +59,7 @@ export function AnnouncementForm({
 		defaultValues: {
 			title: announcement?.title ?? '',
 			content: announcement?.content ?? '',
-			targetLevels:
-				announcement?.targetLevels?.length
-					? announcement.targetLevels
-					: [hierarchyLevelEnum.enum.PARISH],
 			publishAt: announcement?.publishAt ?? new Date(),
-			expiresAt: announcement?.expiresAt ?? undefined,
 		},
 	});
 
@@ -74,18 +69,7 @@ export function AnnouncementForm({
 		control,
 		formState: { errors },
 		setError,
-		setValue,
-		watch,
 	} = form;
-
-	const selectedTargets = watch('targetLevels') ?? [];
-
-	const toggleTarget = (value: (typeof audienceOptions)[number]['value']) => {
-		const updated = selectedTargets.includes(value)
-			? selectedTargets.filter((level) => level !== value)
-			: [...selectedTargets, value];
-		setValue('targetLevels', updated, { shouldValidate: true });
-	};
 
 	const onSubmit = (data: CreateAnnouncementInput) => {
 		startTransition(async () => {
@@ -147,29 +131,6 @@ export function AnnouncementForm({
 				)}
 			</div>
 
-			<div className='space-y-2'>
-				<Label>Target Audience *</Label>
-				<div className='grid gap-3 sm:grid-cols-2'>
-					{audienceOptions.map((option) => (
-						<label
-							key={option.value}
-							className='flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm'
-						>
-							<Checkbox
-								checked={selectedTargets.includes(option.value)}
-								onCheckedChange={() => toggleTarget(option.value)}
-								disabled={isPending}
-							/>
-							<span>{option.label}</span>
-						</label>
-					))}
-				</div>
-				{errors.targetLevels && (
-					<p className='text-sm text-destructive'>
-						{errors.targetLevels.message}
-					</p>
-				)}
-			</div>
 
 			<div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
 				<div className='space-y-2'>
@@ -194,31 +155,6 @@ export function AnnouncementForm({
 					{errors.publishAt && (
 						<p className='text-sm text-destructive'>
 							{errors.publishAt.message as string}
-						</p>
-					)}
-				</div>
-				<div className='space-y-2'>
-					<Label htmlFor='expiresAt'>Expiry Date (Optional)</Label>
-					<Controller
-						name='expiresAt'
-						control={control}
-						render={({ field }) => (
-							<Input
-								id='expiresAt'
-								type='datetime-local'
-								value={formatDateTimeLocal(field.value)}
-								onChange={(event) => {
-									const value = event.target.value;
-									field.onChange(value ? new Date(value) : undefined);
-								}}
-								disabled={isPending}
-								aria-invalid={!!errors.expiresAt}
-							/>
-						)}
-					/>
-					{errors.expiresAt && (
-						<p className='text-sm text-destructive'>
-							{errors.expiresAt.message as string}
 						</p>
 					)}
 				</div>

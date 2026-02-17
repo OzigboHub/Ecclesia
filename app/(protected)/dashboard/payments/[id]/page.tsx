@@ -389,8 +389,9 @@ export default async function PaymentDetailPage({ params }: PageProps) {
 							Recorded By
 						</p>
 						<p className='text-base'>
-							{payment.recordedBy.firstName}{' '}
-							{payment.recordedBy.lastName}
+							{payment.recordedBy
+								? `${payment.recordedBy.firstName} ${payment.recordedBy.lastName}`
+								: 'Online Payment (Guest/System)'}
 						</p>
 						<p className='text-xs text-muted-foreground mt-1'>
 							{formatDate(payment.createdAt)}

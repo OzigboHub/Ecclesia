@@ -51,6 +51,11 @@ export const authConfig: NextAuthConfig = {
 						data: { lastLogin: new Date() },
 					});
 
+					// NEW: Look up parishioner record if any
+					const parishioner = await db.parishioner.findUnique({
+						where: { email: user.email },
+					});
+
 					// Return user data for JWT
 					return {
 						id: user.id,
@@ -59,6 +64,7 @@ export const authConfig: NextAuthConfig = {
 						role: user.role,
 						organizationId: user.organizationId,
 						organizationName: user.organization?.name ?? null,
+						parishionerId: parishioner?.id ?? null,
 					};
 				} catch (error) {
 					// Handle Zod validation errors - return null to indicate invalid credentials
@@ -89,6 +95,9 @@ export const authConfig: NextAuthConfig = {
 				token.organizationName = (
 					user as unknown as Record<string, unknown>
 				).organizationName as string | null;
+				token.parishionerId = (
+					user as unknown as Record<string, unknown>
+				).parishionerId as string | null;
 			}
 			return token;
 		},
@@ -99,6 +108,9 @@ export const authConfig: NextAuthConfig = {
 				session.user.role = token.role as string;
 				session.user.organizationId = token.organizationId as string;
 				session.user.organizationName = token.organizationName as
+					| string
+					| null;
+				session.user.parishionerId = token.parishionerId as
 					| string
 					| null;
 			}

@@ -54,7 +54,8 @@ export default function Sidebar() {
 		if (item.name === "Mass Intentions") return canManageMassIntentions(userRole);
 		if (item.name === "Appointments") return canBookAppointments(userRole);
 		if (item.name === "Societies") return canManageSocieties(userRole);
-		return true; // Dashboard and Settings
+		if (item.name === "Settings") return isSuperAdmin; // Only Super Admin / System Admin
+		return true; // Dashboard
 	});
 
 	// Filter admin items based on role

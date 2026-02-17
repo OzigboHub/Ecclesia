@@ -3,14 +3,46 @@
 import { auth } from '@/auth';
 import db from '@/lib/db';
 import type { ActionResponse } from '@/types';
+import bcrypt from 'bcryptjs';
 import type { OrganizationFeatureSettings } from '@prisma/client';
 import type { FeatureName } from '@/lib/features';
 import { featureDependencies } from '@/lib/features';
 import { isFeatureEnabled } from '@/lib/features.server';
 
 /**
+ * Get public information about an organization
+ */
+export async function getPublicOrganization(id: string): Promise<ActionResponse<any>> {
+	try {
+		const organization = await db.organization.findUnique({
+			where: { id },
+			select: {
+				id: true,
+				name: true,
+				address: true,
+				contactEmail: true,
+				contactPhone: true,
+				level: true,
+			},
+		});
+
+		if (!organization) {
+			return { success: false, message: 'Organization not found' };
+		}
+
+		return {
+			success: true,
+			message: 'Organization retrieved',
+			data: organization,
+		};
+	} catch (error) {
+		console.error('Get public organization error:', error);
+		return { success: false, message: 'Failed to fetch organization' };
+	}
+}
+
+/**
  * Get organization feature settings for the current user's organization
- * or a specific organization if the user is a super admin
  */
 export async function getOrganizationFeatures(
 	targetOrganizationId?: string
@@ -82,9 +114,8 @@ export async function updateOrganizationFeatures(
 			return { success: false, message: 'No organization context' };
 		}
 
-		// Only admins can update feature settings
-		const allowedRoles = ['SUPER_ADMIN', 'PARISH_ADMIN'];
-		if (!allowedRoles.includes(session.user.role)) {
+		// Only Super Admin / System Admin can update feature settings
+		if (session.user.role !== 'SUPER_ADMIN') {
 			return {
 				success: false,
 				message:
@@ -215,9 +246,8 @@ export async function updateOrganization(data: {
 			return { success: false, message: 'Unauthorized' };
 		}
 
-		// Only admins can update organization
-		const allowedRoles = ['SUPER_ADMIN', 'PARISH_ADMIN'];
-		if (!allowedRoles.includes(session.user.role)) {
+		// Only Super Admin / System Admin can update organization details (Settings)
+		if (session.user.role !== 'SUPER_ADMIN') {
 			return {
 				success: false,
 				message:
@@ -498,20 +528,53 @@ export async function createParish(
 			};
 		}
 
-		// Create parish
-		const parish = await db.organization.create({
-			data: {
-				name: parsed.data.name,
-				level: 'PARISH',
-				address: parsed.data.address,
-				contactEmail: parsed.data.contactEmail,
-				contactPhone: parsed.data.contactPhone,
-			},
+		const { parishAdmin } = parsed.data;
+
+		// Check if parish admin email already exists
+		const existingAdmin = await db.user.findUnique({
+			where: { email: parishAdmin.email },
+		});
+		if (existingAdmin) {
+			return {
+				success: false,
+				message: 'A user with this parish admin email already exists',
+				errors: {
+					'parishAdmin.email': ['This email is already registered'],
+				},
+			};
+		}
+
+		// Create parish and parish admin in a transaction
+		const parish = await db.$transaction(async (tx) => {
+			const newParish = await tx.organization.create({
+				data: {
+					name: parsed.data.name,
+					level: 'PARISH',
+					address: parsed.data.address,
+					contactEmail: parsed.data.contactEmail,
+					contactPhone: parsed.data.contactPhone,
+				},
+			});
+
+			const hashedPassword = await bcrypt.hash(parishAdmin.password, 12);
+			await tx.user.create({
+				data: {
+					firstName: parishAdmin.firstName,
+					lastName: parishAdmin.lastName,
+					email: parishAdmin.email,
+					password: hashedPassword,
+					role: 'PARISH_ADMIN',
+					organizationId: newParish.id,
+					isActive: true,
+				},
+			});
+
+			return newParish;
 		});
 
 		return {
 			success: true,
-			message: 'Parish created successfully',
+			message: 'Parish created successfully with parish admin',
 			data: { id: parish.id, name: parish.name },
 		};
 	} catch (error) {

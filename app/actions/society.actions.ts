@@ -214,11 +214,16 @@ export async function createSociety(
 			};
 		}
 
+		const { presidentId, secretaryId, ...rest } = parsed.data;
+		const data = {
+			...rest,
+			organizationId: session.user.organizationId,
+			...(presidentId && { presidentId }),
+			...(secretaryId && { secretaryId }),
+		};
+
 		const society = await db.society.create({
-			data: {
-				...parsed.data,
-				organizationId: session.user.organizationId,
-			},
+			data,
 			include: {
 				president: {
 					select: {

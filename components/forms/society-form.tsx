@@ -2,7 +2,7 @@
 
 import { useTransition, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm, Controller, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
     createSocietySchema,
@@ -12,7 +12,7 @@ import {
     createSociety,
     updateSociety,
 } from '@/app/actions/society.actions';
-import { getParishioners } from '@/app/actions/parishioner.actions';
+import { getUsers } from '@/app/actions/user.actions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -25,7 +25,6 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import type { Parishioner } from '@prisma/client';
 
 interface SocietyFormProps {
 	initialData?: {
@@ -45,11 +44,11 @@ export function SocietyForm({
 	onSuccess,
 }: SocietyFormProps) {
 	const [isPending, startTransition] = useTransition();
-	const [parishioners, setParishioners] = useState<Parishioner[]>([]);
+	const [users, setUsers] = useState<Array<{ id: string; firstName: string; lastName: string }>>([]);
 	const router = useRouter();
 
 	const form = useForm<CreateSocietyInput>({
-		resolver: zodResolver(createSocietySchema),
+		resolver: zodResolver(createSocietySchema) as Resolver<CreateSocietyInput>,
 		defaultValues: {
 			name: initialData?.name ?? '',
 			description: initialData?.description ?? '',
@@ -69,15 +68,15 @@ export function SocietyForm({
 		reset,
 	} = form;
 
-	// Fetch parishioners for president/secretary selection
+	// Fetch users (staff) for president/secretary selection — Society president/secretary are Users
 	useEffect(() => {
-		async function fetchParishioners() {
-			const result = await getParishioners();
+		async function fetchUsers() {
+			const result = await getUsers();
 			if (result.success && result.data) {
-				setParishioners(result.data);
+				setUsers(result.data.map((u) => ({ id: u.id, firstName: u.firstName, lastName: u.lastName })));
 			}
 		}
-		fetchParishioners();
+		fetchUsers();
 	}, []);
 
 	const onSubmit = (data: CreateSocietyInput) => {
@@ -211,12 +210,12 @@ export function SocietyForm({
 									<SelectItem value='__none__'>
 										None
 									</SelectItem>
-									{parishioners.map((p) => (
+									{users.map((u) => (
 										<SelectItem
-											key={p.id}
-											value={p.id}
+											key={u.id}
+											value={u.id}
 										>
-											{p.firstName} {p.lastName}
+											{u.firstName} {u.lastName}
 										</SelectItem>
 									))}
 								</SelectContent>
@@ -256,12 +255,12 @@ export function SocietyForm({
 									<SelectItem value='__none__'>
 										None
 									</SelectItem>
-									{parishioners.map((p) => (
+									{users.map((u) => (
 										<SelectItem
-											key={p.id}
-											value={p.id}
+											key={u.id}
+											value={u.id}
 										>
-											{p.firstName} {p.lastName}
+											{u.firstName} {u.lastName}
 										</SelectItem>
 									))}
 								</SelectContent>
