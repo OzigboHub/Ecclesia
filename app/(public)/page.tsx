@@ -70,7 +70,7 @@ export default async function LandingPage() {
 							<span className="text-primary">Ecclesia</span>
 						</h1>
 						<p className="mt-4 text-lg text-muted-foreground md:text-xl">
-							Watch live services, stay updated on events, and
+							Watch live Mass, stay updated on events, and
 							support your parish — all in one place.
 						</p>
 						<div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
@@ -117,7 +117,7 @@ export default async function LandingPage() {
 							)}
 							{/* Guest access button */}
 							<Button asChild variant="secondary" size="lg" className="w-full sm:w-auto">
-								<Link href="/p">Enter as Guest</Link>
+								<Link href="/p">Guest</Link>
 							</Button>
 						</div>
 					</div>
@@ -322,7 +322,7 @@ export default async function LandingPage() {
 							<div className="mt-6 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
 								<Button asChild>
 									<Link href="/auth/login">
-										Staff Login
+										Login
 										<ArrowRight className="ml-2 h-4 w-4" />
 									</Link>
 								</Button>
