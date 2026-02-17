@@ -157,10 +157,11 @@ export async function getPayments(
 			sortOrder,
 		} = parsed;
 
-		// Build where clause
+		// Build where clause (EVENT_PAYMENT is stored as OTHER in DB)
+		const dbPurposeForQuery = purpose === 'EVENT_PAYMENT' ? 'OTHER' : purpose;
 		const where: Prisma.PaymentWhereInput = {
 			organizationId: session.user.organizationId,
-			...(purpose && { purpose }),
+			...(dbPurposeForQuery && { purpose: dbPurposeForQuery }),
 			...(status && { paymentStatus: status }),
 			...(method && { paymentMethod: method }),
 			...(parishionerId && { parishionerId }),
@@ -463,7 +464,7 @@ export async function createPayment(
 		// 5. Generate receipt number
 		const receiptNumber = await generateReceiptNumber(targetOrgId);
 
-		// 6. Create payment (map EVENT_PAYMENT to OTHER for DB; Prisma enum has no EVENT_PAYMENT yet)
+		// 6. Create payment (map EVENT_PAYMENT to OTHER; Prisma enum has no EVENT_PAYMENT)
 		const dbPurpose = purpose === 'EVENT_PAYMENT' ? 'OTHER' : purpose;
 		const { eventId: _eventId, paymentGateway: _paymentGateway, ...restPaymentData } = paymentData;
 		const payment = await db.payment.create({

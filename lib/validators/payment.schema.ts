@@ -21,6 +21,7 @@ export const createPaymentSchema = z
 			'DONATION_CAMPAIGN',
 			'CUSTOM_DONATION',
 			'SOCIETY_DUES',
+			'EVENT_PAYMENT',
 			'OTHER',
 		]),
 		month: z.number().int().min(1).max(12).optional(),
@@ -32,15 +33,15 @@ export const createPaymentSchema = z
 			'CHECK',
 		]),
 		parishionerId: z.string().uuid('Invalid parishioner ID').optional(),
-		payerName: z
+		payerName: z.string().min(2).max(100).optional(),
+		onBehalfOf: z.string().max(100).optional(),
+		payerEmail: z.string().email().optional().or(z.literal('')),
+		payerPhone: z
 			.string()
-				(data) =>
-					data.purpose !== 'DONATION_CAMPAIGN' || data.donationCampaignId,
-				{
-					message: 'Donation campaign is required for campaign donations',
-					path: ['donationCampaignId'],
-				}
-			)
+			.regex(/^(\+234|0)[789][01]\d{8}$/, 'Invalid Nigerian phone')
+			.optional()
+			.or(z.literal('')),
+		massIntentionId: z.string().uuid().optional(),
 		donationCampaignId: z.string().uuid().optional(),
 		eventId: z.string().uuid().optional(),
 		paymentGateway: z.string().optional(),
@@ -116,6 +117,7 @@ export const paymentQuerySchema = z.object({
 			'DONATION_CAMPAIGN',
 			'CUSTOM_DONATION',
 			'SOCIETY_DUES',
+			'EVENT_PAYMENT',
 			'OTHER',
 		])
 		.optional(),
@@ -149,6 +151,7 @@ export const paystackInitializeSchema = z.object({
 		'DONATION_CAMPAIGN',
 		'CUSTOM_DONATION',
 		'SOCIETY_DUES',
+		'EVENT_PAYMENT',
 		'OTHER',
 	]),
 	parishionerId: z.string().uuid().optional(),
