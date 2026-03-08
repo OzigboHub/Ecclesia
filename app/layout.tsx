@@ -1,10 +1,12 @@
 import { AuthProvider } from "@/components/providers/auth-provider";
 import type { Metadata } from "next";
 import { Montserrat } from "next/font/google";
+import NextTopLoader from "nextjs-toploader";
 
 import { Toaster } from "sonner";
 import "./globals.css";
-import { ProgressBarProvider } from "@/components/providers/progress-bar-provider";
+import PublicNavbar from "@/components/layout/public-navbar";
+import PublicFooter from "@/components/layout/public-footer";
 
 const montserrat = Montserrat({
 	variable: "--montserrat",
@@ -28,10 +30,21 @@ export default function RootLayout({
 				suppressHydrationWarning
 			>
 				<AuthProvider>
-					<ProgressBarProvider>
-						{children}
-						<Toaster position="top-right" richColors />
-					</ProgressBarProvider>
+					<NextTopLoader
+						initialPosition={0.08}
+						crawlSpeed={200}
+						easing="ease"
+						speed={200}
+						height={3}
+						shadow="0 0 10px #fbbf24,0 0 5px #fbbf24"
+						crawl={true}
+						color="#fbbf24"
+						zIndex={1600}
+					/>
+					<PublicNavbar />
+					{children}
+					<PublicFooter />
+					<Toaster position="top-right" richColors />
 				</AuthProvider>
 			</body>
 		</html>
