@@ -31,7 +31,7 @@ export default function PublicFooter() {
 			</div>
 
 			<div className=" shadow-2xl bg-primary mt-[50px] md:rounded-[60px] py-[80px] px-[30px]">
-				<div className="   w-full">
+				<div className=" text-secondary   w-full">
 					<p className=" font-extrabold text-center text-5xl">
 						Ready to bring your parish online?
 					</p>

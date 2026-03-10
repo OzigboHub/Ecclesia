@@ -41,7 +41,9 @@ export default function PublicNavbar() {
 					);
 				})}
 				<Button variant={"outline"}>View Mass</Button>
-				<Button>Login</Button>
+				<Button>
+					<Link href={"/auth/login"}>Login</Link>
+				</Button>
 			</div>
 			{open && (
 				<div className=" top-0 left-0 mt-[64px] absolute w-full h-screen bg-secondary">

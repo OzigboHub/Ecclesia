@@ -149,7 +149,7 @@ export default function LandingPage() {
 					</div>
 				</div>
 			</MaxWidthWrapper>
-			<div className="bg-primary/30">
+			<div id="features" className="bg-primary/30">
 				<MaxWidthWrapper>
 					<div className=" flex  items-center flex-col py-[60px]  ">
 						<p className=" font-extrabold md:w-[50%] text-center text-4xl">
@@ -241,7 +241,7 @@ export default function LandingPage() {
 								height={"1000"}
 								className=" rounded-[40px]"
 							/>
-							<div className=" absolute md:-left-[50px] -bottom-[50px] px-[30px] rounded-[15px] py-[20px] bg-primary">
+							<div className=" text-secondary absolute md:-left-[50px] -bottom-[50px] px-[30px] rounded-[15px] py-[20px] bg-primary">
 								<p className=" font-bold text-2xl">99.99%</p>
 								<p className=" font-bold">UPTIME GUARANTEED</p>
 							</div>

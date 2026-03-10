@@ -111,7 +111,7 @@ export const SUPERADMIN_EXTENDED = [
 export const NAVLINKS = [
 	{
 		name: "Features",
-		link: "/features",
+		link: "#features",
 	},
 	{
 		name: "Pricing",

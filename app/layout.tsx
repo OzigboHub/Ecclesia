@@ -26,7 +26,7 @@ export default function RootLayout({
 	return (
 		<html lang="en">
 			<body
-				className={`${montserrat.className} text-[13px] antialiased`}
+				className={`${montserrat.className} scroll-smooth text-[13px] antialiased`}
 				suppressHydrationWarning
 			>
 				<AuthProvider>
@@ -40,6 +40,7 @@ export default function RootLayout({
 						crawl={true}
 						color="#fbbf24"
 						zIndex={1600}
+						showSpinner={false}
 					/>
 					<PublicNavbar />
 					{children}
