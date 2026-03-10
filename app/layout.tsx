@@ -44,7 +44,6 @@ export default function RootLayout({
 					/>
 					<PublicNavbar />
 					{children}
-					<PublicFooter />
 					<Toaster position="top-right" richColors />
 				</AuthProvider>
 			</body>
