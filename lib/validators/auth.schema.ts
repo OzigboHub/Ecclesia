@@ -143,3 +143,52 @@ export const changePasswordSchema = z
 	});
 
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
+
+// ============================================
+// REGISTER SCHEMA - SERVER SIDE
+// ============================================
+
+export const registerSchemaServer = z
+	.object({
+		firstName: z
+			.string()
+			.min(2, 'First name must be at least 2 characters')
+			.max(50, 'First name must not exceed 50 characters')
+			.trim(),
+		lastName: z
+			.string()
+			.min(2, 'Last name must be at least 2 characters')
+			.max(50, 'Last name must not exceed 50 characters')
+			.trim(),
+		email: z
+			.string()
+			.min(1, 'Email is required')
+			.email('Invalid email address')
+			.toLowerCase()
+			.trim(),
+		password: z
+			.string()
+			.min(8, 'Password must be at least 8 characters')
+			.regex(
+				/[A-Z]/,
+				'Password must contain at least one uppercase letter'
+			)
+			.regex(
+				/[a-z]/,
+				'Password must contain at least one lowercase letter'
+			)
+			.regex(/[0-9]/, 'Password must contain at least one number')
+			.regex(
+				/[^A-Za-z0-9]/,
+				'Password must contain at least one special character'
+			),
+		confirmPassword: z.string().min(1, 'Please confirm your password'),
+		organizationId: z.string().min(1, 'Organization is required'),
+		role: z.string().optional(),
+	})
+	.refine((data) => data.password === data.confirmPassword, {
+		message: 'Passwords do not match',
+		path: ['confirmPassword'],
+	});
+
+export type RegisterServerInput = z.infer<typeof registerSchemaServer>;
