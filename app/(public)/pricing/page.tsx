@@ -1,8 +1,23 @@
+"use client";
+
 import { Check, Sparkles } from "lucide-react";
 import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogHeader,
+	DialogTitle,
+	DialogTrigger,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { useState } from "react";
+import { toast } from "sonner";
 
 const tiers = [
 	{
@@ -10,7 +25,7 @@ const tiers = [
 		price: "₦0",
 		period: "per month",
 		description: "Perfect for small outstations getting started.",
-		cta: "Get started",
+		cta: "Request a quote",
 		href: "/auth/register",
 		features: [
 			"Parishioner directory",
@@ -21,7 +36,6 @@ const tiers = [
 			"Book Mass Intention",
 			"Live Streaming",
 			"Donation Campaign",
-			"Donation Campaign",
 		],
 	},
 	{
@@ -29,7 +43,7 @@ const tiers = [
 		price: "₦50,000",
 		period: "per month",
 		description: "Everything you need for a growing parish office.",
-		cta: "Start free trial",
+		cta: "Request a quote",
 		href: "/auth/register",
 		badge: "Most popular",
 		features: [
@@ -46,7 +60,7 @@ const tiers = [
 		price: "Custom",
 		period: "annual agreement",
 		description: "Tailored rollouts for multi-parish dioceses.",
-		cta: "Talk to sales",
+		cta: "Request a quote",
 		href: "/contact",
 		features: [
 			"Dedicated success manager",
@@ -73,6 +87,47 @@ const faqs = [
 ];
 
 export default function Pricing() {
+	const [emailValue, setEmailValue] = useState("");
+	const [subjectValue, setSubjectValue] = useState("");
+	const [messageValue, setMMessageValue] = useState("");
+	const [tierValue, setTierValue] = useState("");
+	const [loading, setLoading] = useState(false);
+
+	const onSubmit = async () => {
+		const payload = {
+			tier: tierValue,
+			email: emailValue,
+			subject: subjectValue,
+			message: messageValue,
+		};
+		setLoading(true);
+		try {
+			const res = await fetch("/api/quotes", {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify(payload),
+			});
+
+			const data = await res.json();
+
+			if (!res.ok) {
+				if (data?.errors) {
+					console.log(data.error);
+				}
+
+				throw new Error(data?.error ?? "Failed to send message");
+			}
+
+			toast.success("Message sent successfully.");
+		} catch (error) {
+			console.error("Email failed", error);
+			toast.error("Failed to send message. Please try again.");
+		} finally {
+			setLoading(false);
+		}
+	};
 	return (
 		<div className="flex flex-col gap-16 px-4 py-12 sm:px-6 lg:px-8">
 			<section className="mx-auto flex w-full max-w-4xl flex-col items-center gap-6 text-center">
@@ -137,13 +192,80 @@ export default function Pricing() {
 								</li>
 							))}
 						</ul>
-						<Button
-							asChild
-							variant={tier.badge ? "default" : "outline"}
-							className="mt-8"
+						<Dialog
+							onOpenChange={(open) => {
+								if (open) {
+									setSubjectValue(
+										`Quote Request For ${tier.name} Tier`,
+									);
+									setTierValue(tier.name);
+								}
+							}}
 						>
-							<Link href={tier.href}>{tier.cta}</Link>
-						</Button>
+							<DialogTrigger asChild>
+								<Button
+									variant={tier.badge ? "default" : "outline"}
+									className="mt-8"
+								>
+									{tier.cta}
+								</Button>
+							</DialogTrigger>
+							<DialogContent>
+								<DialogHeader>
+									<DialogTitle>Request Quote?</DialogTitle>
+									<DialogDescription>
+										Send Ecclesia admins a quote regarding
+										this pricing tier.
+									</DialogDescription>
+									<div className=" mt-[10px]">
+										<Badge>{tier.name}</Badge>
+										<div className=" flex gap-2 flex-col mt-[10px]">
+											<Label>Email Address</Label>
+											<Input
+												value={emailValue}
+												onChange={(e) =>
+													setEmailValue(
+														e.target.value,
+													)
+												}
+												placeholder="Enter your email"
+											/>
+										</div>
+										<div className=" flex gap-2 flex-col mt-[10px]">
+											<Label>Subject</Label>
+											<Input
+												value={subjectValue}
+												disabled
+											/>
+										</div>
+										<div className=" flex gap-2 flex-col mt-[10px]">
+											<Label>Message</Label>
+											<Textarea
+												value={messageValue}
+												onChange={(e) =>
+													setMMessageValue(
+														e.target.value,
+													)
+												}
+												placeholder="Start typing..."
+												className=" h-[200px] resize-none"
+											/>
+										</div>
+										<div className=" mt-[10px]">
+											<Button
+												onClick={onSubmit}
+												disabled={loading}
+												className=" w-full"
+											>
+												{loading ?
+													"Submitting..."
+												:	"Submit"}
+											</Button>
+										</div>
+									</div>
+								</DialogHeader>
+							</DialogContent>
+						</Dialog>
 					</div>
 				))}
 			</section>
