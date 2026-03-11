@@ -35,7 +35,7 @@ export default function LandingPage() {
 								livestreams, interactive calendars and real-time
 								community updates. Faith has no boundaries.
 							</p>
-							<div className=" flex flex-row gap-4">
+							<div className=" flex flex-col md:flex-row gap-4">
 								<Button className="rounded-[15px] py-[30px]">
 									<HiMiniArrowRightCircle />
 									Access Live Streams
