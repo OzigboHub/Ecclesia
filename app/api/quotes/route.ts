@@ -39,16 +39,16 @@ export async function POST(req: Request) {
 			.replace(/\n/g, "<br />");
 
 		const { data, error } = await resend.emails.send({
-			from: `Ecclesia Quote Request <support@ecclesialight.com>`,
-			to: ["support@ecclesialight.com", contactRecipient],
+			from: `Ecclesia Quote Request <admin@ecclesialight.com>`,
+			to: ["admin@ecclesialight.com", contactRecipient],
 			subject: `Contact: ${subject}`,
 			// reply_to: email,
 			html: `
   <div style="background:#f6f6f6;padding:40px 0;font-family:Arial,Helvetica,sans-serif;">
     <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
       <tr>
+      
         <td align="center">
-          
           <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;padding:30px;">
             
             <tr>

@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
+	DialogClose,
 	DialogContent,
 	DialogDescription,
 	DialogHeader,
@@ -252,15 +253,17 @@ export default function Pricing() {
 											/>
 										</div>
 										<div className=" mt-[10px]">
-											<Button
-												onClick={onSubmit}
-												disabled={loading}
-												className=" w-full"
-											>
-												{loading ?
-													"Submitting..."
-												:	"Submit"}
-											</Button>
+											<DialogClose asChild>
+												<Button
+													onClick={onSubmit}
+													disabled={loading}
+													className=" w-full"
+												>
+													{loading ?
+														"Submitting..."
+													:	"Submit"}
+												</Button>
+											</DialogClose>
 										</div>
 									</div>
 								</DialogHeader>

@@ -1,17 +1,16 @@
+import MaxWidthWrapper from "@/components/shared/max-width-wrapper";
+import { ParishSearchDialog } from "@/components/shared/parish-search-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { FEATURES } from "@/lib/const";
 import Image from "next/image";
+import Link from "next/link";
+import { ReactNode } from "react";
+import { FaBell, FaUserCircle } from "react-icons/fa";
+import { FaArrowRightLong, FaCalendarDays } from "react-icons/fa6";
 import { HiMiniArrowRightCircle } from "react-icons/hi2";
 import { IoLocation } from "react-icons/io5";
-import { IoSearch } from "react-icons/io5";
-import { FaBell, FaUserCircle } from "react-icons/fa";
-import { FaArrowRightLong } from "react-icons/fa6";
-import MaxWidthWrapper from "@/components/shared/max-width-wrapper";
-import { FEATURES } from "@/lib/const";
-import { ReactNode } from "react";
 import { MdBrandingWatermark, MdVolunteerActivism } from "react-icons/md";
-import { FaCalendarDays } from "react-icons/fa6";
 
 export default function LandingPage() {
 	return (
@@ -67,17 +66,8 @@ export default function LandingPage() {
 									their specific events, updates and
 									stewardship opportunities.
 								</p>
-								<div className="  flex gap-3 items-center mt-[10px]">
-									<div className=" relative w-full">
-										<IoSearch className=" w-5 h-5 text-muted-foreground top-1/2 -translate-y-1/2 ml-[20px]  absolute" />
-										<Input
-											className=" py-[30px] pl-[50px] rounded-[15px]"
-											placeholder="Search by name, city or zip...."
-										/>
-									</div>
-									<Button className=" rounded-[15px] py-[30px]">
-										Search
-									</Button>
+								<div className="mt-[10px]">
+									<ParishSearchDialog />
 								</div>
 							</div>
 						</CardContent>
@@ -96,9 +86,14 @@ export default function LandingPage() {
 									profile, giving history and ministry groups.
 								</p>
 								<div className="mt-[10px]">
-									<Button className=" hover:bg-white bg-white rounded-[15px] py-[30px] w-full">
-										Login To Your Account
-										<FaArrowRightLong />
+									<Button
+										asChild
+										className=" hover:bg-white bg-white rounded-[15px] py-[30px] w-full"
+									>
+										<Link href={"/auth/login"}>
+											Login To Your Account
+											<FaArrowRightLong />
+										</Link>
 									</Button>
 								</div>
 							</div>
@@ -227,8 +222,13 @@ export default function LandingPage() {
 									</div>
 								</div>
 								<div className="">
-									<Button className=" rounded-[15px] py-[30px]">
-										Request a Demo
+									<Button
+										asChild
+										className=" rounded-[15px] py-[30px]"
+									>
+										<Link href={"/contact"}>
+											Request a Demo
+										</Link>
 									</Button>
 								</div>
 							</div>

@@ -40,10 +40,14 @@ export default function PublicNavbar() {
 						</Link>
 					);
 				})}
-				<Button variant={"outline"}>View Mass</Button>
-				<Button>
-					<Link href={"/auth/login"}>Login</Link>
-				</Button>
+				<div className=" flex gap-3">
+					<Button variant={"outline"}>
+						<Link href={"/auth/register"}>Register</Link>
+					</Button>
+					<Button>
+						<Link href={"/auth/login"}>Login</Link>
+					</Button>
+				</div>
 			</div>
 			{open && (
 				<div className=" top-0 left-0 mt-[64px] absolute w-full h-screen bg-secondary">
@@ -61,8 +65,14 @@ export default function PublicNavbar() {
 								);
 							})}
 							<div className=" flex gap-3">
-								<Button variant={"outline"}>View Mass</Button>
-								<Button>Login</Button>
+								<Button variant={"outline"}>
+									<Link href={"/auth/register"}>
+										Register
+									</Link>
+								</Button>
+								<Button>
+									<Link href={"/auth/login"}>Login</Link>
+								</Button>
 							</div>
 						</div>
 					</div>
