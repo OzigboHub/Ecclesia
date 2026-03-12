@@ -110,6 +110,10 @@ export const SUPERADMIN_EXTENDED = [
 
 export const NAVLINKS = [
 	{
+		name: "Home",
+		link: "/",
+	},
+	{
 		name: "Features",
 		link: "#features",
 	},
@@ -120,6 +124,10 @@ export const NAVLINKS = [
 	{
 		name: "Contact",
 		link: "/contact",
+	},
+	{
+		name: "Masses",
+		link: "/mass",
 	},
 ];
 
