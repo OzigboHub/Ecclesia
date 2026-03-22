@@ -1,14 +1,22 @@
-import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import {
+	getJoinRequestsForSociety,
+	getSociety,
+	JoinRequestWithParishioner,
+} from "@/app/actions/society.actions";
 import { auth } from "@/auth";
-import { getSociety } from "@/app/actions/society.actions";
+import { AddMemberDialog } from "@/components/societies/add-member-dialog";
+import { CreateMeetingDialog } from "@/components/societies/create-meeting-dialog";
+import { JoinRequestButton } from "@/components/societies/join-request-button";
+import { JoinRequestsPanel } from "@/components/societies/join-requests-panel";
+import { MemberListItem } from "@/components/societies/member-list-item";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Edit2, ArrowLeft } from "lucide-react";
-import { AddMemberDialog } from "@/components/societies/add-member-dialog";
-import { MemberListItem } from "@/components/societies/member-list-item";
-import { CreateMeetingDialog } from "@/components/societies/create-meeting-dialog";
+import db from "@/lib/db";
+import { canManageSocieties } from "@/lib/permissions";
+import { ArrowLeft, Edit2, Users } from "lucide-react";
+import Link from "next/link";
+import { notFound, redirect } from "next/navigation";
 
 interface SocietyDetailPageProps {
 	params: Promise<{ id: string }>;
@@ -17,15 +25,12 @@ interface SocietyDetailPageProps {
 export default async function SocietyDetailPage({
 	params,
 }: SocietyDetailPageProps) {
-	// Auth check
 	const session = await auth();
 	if (!session?.user) {
 		redirect("/auth/login");
 	}
 
-	// Await params (Next.js 16 pattern)
 	const { id } = await params;
-
 	const result = await getSociety(id);
 
 	if (!result.success || !result.data) {
@@ -33,6 +38,51 @@ export default async function SocietyDetailPage({
 	}
 
 	const society = result.data;
+	const isParishioner = session.user.role === "PARISHIONER";
+	const canManage = canManageSocieties(session.user.role);
+	const isSocietyLeader =
+		society.presidentId === session.user.id ||
+		society.secretaryId === session.user.id;
+	const canReviewRequests = canManage || isSocietyLeader;
+	const canEdit = canManage || isSocietyLeader;
+
+	let joinStatus: "NONE" | "PENDING" | "MEMBER" | "REJECTED" = "NONE";
+	if (isParishioner && session.user.parishionerId) {
+		const [membership, joinRequest] = await Promise.all([
+			db.societyMembership.findUnique({
+				where: {
+					parishionerId_societyId: {
+						parishionerId: session.user.parishionerId,
+						societyId: id,
+					},
+				},
+				select: { parishionerId: true },
+			}),
+			db.societyJoinRequest.findUnique({
+				where: {
+					parishionerId_societyId: {
+						parishionerId: session.user.parishionerId,
+						societyId: id,
+					},
+				},
+				select: { status: true },
+			}),
+		]);
+
+		if (membership) {
+			joinStatus = "MEMBER";
+		} else if (joinRequest) {
+			joinStatus = joinRequest.status as "PENDING" | "REJECTED";
+		}
+	}
+
+	let joinRequests: JoinRequestWithParishioner[] = [];
+	if (canReviewRequests) {
+		const requestsResult = await getJoinRequestsForSociety(id);
+		if (requestsResult.success && requestsResult.data) {
+			joinRequests = requestsResult.data;
+		}
+	}
 
 	return (
 		<div className="space-y-6">
@@ -48,22 +98,28 @@ export default async function SocietyDetailPage({
 					</h1>
 					<div className="flex items-center text-muted-foreground mt-1 gap-4 text-sm">
 						<span className="flex items-center gap-1">
-							<Users className="h-3 w-3" />{" "}
+							<Users className="h-3 w-3" />
 							{society.members.length} Members
 						</span>
 					</div>
 				</div>
-				<Button variant="outline" asChild>
-					<Link
-						href={`/dashboard/societies/${society.id}/edit`}
-					>
-						<Edit2 className="h-4 w-4 mr-2" /> Edit
-					</Link>
-				</Button>
+				{canEdit && (
+					<Button variant="outline" asChild>
+						<Link href={`/dashboard/societies/${society.id}/edit`}>
+							<Edit2 className="mr-2 h-4 w-4" /> Edit
+						</Link>
+					</Button>
+				)}
+				{isParishioner && (
+					<JoinRequestButton
+						societyId={society.id}
+						initialStatus={joinStatus}
+					/>
+				)}
 			</div>
 
 			<div className="grid gap-6 md:grid-cols-3">
-				<div className="md:col-span-2 space-y-6">
+				<div className="space-y-6 md:col-span-2">
 					<Card>
 						<CardHeader>
 							<CardTitle>About</CardTitle>
@@ -85,18 +141,30 @@ export default async function SocietyDetailPage({
 							<TabsTrigger value="documents">
 								Documents
 							</TabsTrigger>
+							{canReviewRequests && (
+								<TabsTrigger value="join-requests">
+									Join Requests
+									{joinRequests.length > 0 && (
+										<span className="ml-2 rounded-full bg-primary px-1.5 py-0.5 text-xs leading-none text-primary-foreground">
+											{joinRequests.length}
+										</span>
+									)}
+								</TabsTrigger>
+							)}
 						</TabsList>
 						<TabsContent value="members" className="mt-4">
 							<Card>
 								<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
 									<CardTitle>Members List</CardTitle>
-									<AddMemberDialog
-										societyId={society.id}
-									/>
+									{!isParishioner && (
+										<AddMemberDialog
+											societyId={society.id}
+										/>
+									)}
 								</CardHeader>
 								<CardContent>
 									{society.members.length === 0 ?
-										<div className="text-center py-6 text-muted-foreground">
+										<div className="py-6 text-center text-muted-foreground">
 											<p>No members registered yet.</p>
 										</div>
 									:	<ul className="divide-y">
@@ -106,10 +174,9 @@ export default async function SocietyDetailPage({
 														key={
 															membership.parishionerId
 														}
-														societyId={
-															society.id
-														}
+														societyId={society.id}
 														membership={membership}
+														readOnly={isParishioner}
 													/>
 												),
 											)}
@@ -122,13 +189,15 @@ export default async function SocietyDetailPage({
 							<Card>
 								<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
 									<CardTitle>Upcoming Events</CardTitle>
-									<CreateMeetingDialog
-										societyId={society.id}
-									/>
+									{!isParishioner && (
+										<CreateMeetingDialog
+											societyId={society.id}
+										/>
+									)}
 								</CardHeader>
 								<CardContent>
 									{society.events.length === 0 ?
-										<p className="text-muted-foreground text-sm">
+										<p className="text-sm text-muted-foreground">
 											No events scheduled.
 										</p>
 									:	<ul className="space-y-2">
@@ -136,7 +205,7 @@ export default async function SocietyDetailPage({
 												(event: any) => (
 													<li
 														key={event.id}
-														className="p-3 border rounded-md"
+														className="rounded-md border p-3"
 													>
 														<p className="font-medium">
 															{event.title}
@@ -155,10 +224,15 @@ export default async function SocietyDetailPage({
 							</Card>
 						</TabsContent>
 						<TabsContent value="documents" className="mt-4">
-							<div className="p-4 text-center text-muted-foreground text-sm">
+							<div className="p-4 text-center text-sm text-muted-foreground">
 								Coming soon...
 							</div>
 						</TabsContent>
+						{canReviewRequests && (
+							<TabsContent value="join-requests" className="mt-4">
+								<JoinRequestsPanel requests={joinRequests} />
+							</TabsContent>
+						)}
 					</Tabs>
 				</div>
 
@@ -169,7 +243,7 @@ export default async function SocietyDetailPage({
 						</CardHeader>
 						<CardContent className="space-y-4">
 							<div>
-								<p className="text-xs font-medium text-muted-foreground uppercase">
+								<p className="text-xs font-medium uppercase text-muted-foreground">
 									President
 								</p>
 								<p className="font-medium">
@@ -179,7 +253,7 @@ export default async function SocietyDetailPage({
 								</p>
 							</div>
 							<div>
-								<p className="text-xs font-medium text-muted-foreground uppercase">
+								<p className="text-xs font-medium uppercase text-muted-foreground">
 									Secretary
 								</p>
 								<p className="font-medium">

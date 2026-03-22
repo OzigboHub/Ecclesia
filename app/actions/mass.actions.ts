@@ -1,20 +1,20 @@
-'use server';
+"use server";
 
-import { auth } from '@/auth';
-import { revalidatePath } from 'next/cache';
-import db from '@/lib/db';
-import { MassType } from '@prisma/client';
-import type { ActionResponse } from '@/types';
-import { startOfDay, endOfDay, addDays, format } from 'date-fns';
-import { generateMassesForPeriod } from '@/lib/services/mass.service';
+import { auth } from "@/auth";
+import db from "@/lib/db";
+import { generateMassesForPeriod } from "@/lib/services/mass.service";
+import type { ActionResponse } from "@/types";
+import { MassType } from "@prisma/client";
+import { addDays, endOfDay, format, startOfDay } from "date-fns";
+import { revalidatePath } from "next/cache";
 
 export async function getMasses(
 	date: Date | string,
-	organizationId?: string
+	organizationId?: string,
 ): Promise<ActionResponse<any>> {
 	try {
 		const session = await auth();
-		if (!session) return { success: false, message: 'Unauthorized' };
+		if (!session) return { success: false, message: "Unauthorized" };
 
 		// Use provided organizationId or default to user's organization
 		const targetOrgId = organizationId || session.user.organizationId;
@@ -29,7 +29,7 @@ export async function getMasses(
 			if (!org || org.parentId !== session.user.organizationId) {
 				return {
 					success: false,
-					message: 'You do not have access to this organization',
+					message: "You do not have access to this organization",
 				};
 			}
 		}
@@ -43,7 +43,7 @@ export async function getMasses(
 					lte: endOfDay(searchDate),
 				},
 			},
-			orderBy: { time: 'asc' },
+			orderBy: { time: "asc" },
 			include: {
 				_count: {
 					select: { intentions: true },
@@ -56,21 +56,21 @@ export async function getMasses(
 			},
 		});
 
-		return { success: true, message: 'Masses retrieved', data: masses };
+		return { success: true, message: "Masses retrieved", data: masses };
 	} catch (error) {
-		console.error('Failed to get masses:', error);
-		return { success: false, message: 'Failed to get masses' };
+		console.error("Failed to get masses:", error);
+		return { success: false, message: "Failed to get masses" };
 	}
 }
 
 export async function getMassesInRange(
 	startDate: Date | string,
 	endDate: Date | string,
-	organizationId?: string
+	organizationId?: string,
 ): Promise<ActionResponse<any>> {
 	try {
 		const session = await auth();
-		if (!session) return { success: false, message: 'Unauthorized' };
+		if (!session) return { success: false, message: "Unauthorized" };
 
 		// Use provided organizationId or default to user's organization
 		const targetOrgId = organizationId || session.user.organizationId;
@@ -87,7 +87,7 @@ export async function getMassesInRange(
 			if (!org || org.parentId !== session.user.organizationId) {
 				return {
 					success: false,
-					message: 'You do not have access to this organization',
+					message: "You do not have access to this organization",
 				};
 			}
 		}
@@ -103,7 +103,7 @@ export async function getMassesInRange(
 					lte: endOfDay(end),
 				},
 			},
-			orderBy: [{ date: 'asc' }, { time: 'asc' }],
+			orderBy: [{ date: "asc" }, { time: "asc" }],
 			include: {
 				intentions: {
 					include: {
@@ -113,10 +113,10 @@ export async function getMassesInRange(
 			},
 		});
 
-		return { success: true, message: 'Masses retrieved', data: masses };
+		return { success: true, message: "Masses retrieved", data: masses };
 	} catch (error) {
-		console.error('Failed to get masses in range:', error);
-		return { success: false, message: 'Failed to get masses' };
+		console.error("Failed to get masses in range:", error);
+		return { success: false, message: "Failed to get masses" };
 	}
 }
 
@@ -125,11 +125,11 @@ export async function createMass(data: any): Promise<ActionResponse> {
 		const session = await auth();
 		if (
 			!session ||
-			!['SUPER_ADMIN', 'PARISH_ADMIN', 'PARISH_SECRETARY'].includes(
-				session.user.role
+			!["SUPER_ADMIN", "PARISH_ADMIN", "PARISH_SECRETARY"].includes(
+				session.user.role,
 			)
 		) {
-			return { success: false, message: 'Unauthorized' };
+			return { success: false, message: "Unauthorized" };
 		}
 
 		const date = new Date(data.date);
@@ -138,7 +138,7 @@ export async function createMass(data: any): Promise<ActionResponse> {
 			select: { maxMassesPerDay: true },
 		});
 
-		if (!org) return { success: false, message: 'Organization not found' };
+		if (!org) return { success: false, message: "Organization not found" };
 
 		const count = await db.mass.count({
 			where: {
@@ -147,7 +147,7 @@ export async function createMass(data: any): Promise<ActionResponse> {
 					gte: startOfDay(date),
 					lte: endOfDay(date),
 				},
-				status: { not: 'CANCELLED' },
+				status: { not: "CANCELLED" },
 			},
 		});
 
@@ -172,21 +172,28 @@ export async function createMass(data: any): Promise<ActionResponse> {
 			},
 		});
 
-		revalidatePath('/dashboard/mass-schedule');
-		return { success: true, message: 'Mass created', data: mass };
+		revalidatePath("/dashboard/mass-schedule");
+		return { success: true, message: "Mass created", data: mass };
 	} catch (error) {
-		console.error('Failed to create mass:', error);
-		return { success: false, message: 'Failed to create mass' };
+		console.error("Failed to create mass:", error);
+		return { success: false, message: "Failed to create mass" };
 	}
 }
 
 export async function runMassGeneration(
 	startDate?: Date | string,
-	endDate?: Date | string
+	endDate?: Date | string,
 ): Promise<ActionResponse> {
 	try {
 		const session = await auth();
-		if (!session) return { success: false, message: 'Unauthorized' };
+		if (
+			!session ||
+			!["SUPER_ADMIN", "PARISH_ADMIN", "PARISH_SECRETARY"].includes(
+				session.user.role,
+			)
+		) {
+			return { success: false, message: "Unauthorized" };
+		}
 
 		const start = startDate ? new Date(startDate) : new Date();
 		const end = endDate ? new Date(endDate) : addDays(start, 30);
@@ -194,41 +201,41 @@ export async function runMassGeneration(
 		const count = await generateMassesForPeriod(
 			session.user.organizationId,
 			start,
-			end
+			end,
 		);
 
 		if (count === 0) {
 			return {
 				success: true,
 				message:
-					'No new masses generated. Check if you have active templates or if the limit is reached.',
+					"No new masses generated. Check if you have active templates or if the limit is reached.",
 			};
 		}
 
-		revalidatePath('/masses');
+		revalidatePath("/masses");
 		return {
 			success: true,
 			message: `Successfully generated ${count} masses.`,
 		};
 	} catch (e) {
-		console.error('Mass generation failed:', e);
-		return { success: false, message: 'Generation failed' };
+		console.error("Mass generation failed:", e);
+		return { success: false, message: "Generation failed" };
 	}
 }
 
 export async function updateMass(
 	id: string,
-	data: any
+	data: any,
 ): Promise<ActionResponse> {
 	try {
 		const session = await auth();
 		if (
 			!session ||
-			!['SUPER_ADMIN', 'PARISH_ADMIN', 'PARISH_SECRETARY'].includes(
-				session.user.role
+			!["SUPER_ADMIN", "PARISH_ADMIN", "PARISH_SECRETARY"].includes(
+				session.user.role,
 			)
 		) {
-			return { success: false, message: 'Unauthorized' };
+			return { success: false, message: "Unauthorized" };
 		}
 
 		const updateData: any = {
@@ -242,11 +249,15 @@ export async function updateMass(
 			data: updateData,
 		});
 
-		revalidatePath('/masses');
-		return { success: true, message: 'Mass updated successfully', data: mass };
+		revalidatePath("/masses");
+		return {
+			success: true,
+			message: "Mass updated successfully",
+			data: mass,
+		};
 	} catch (error) {
-		console.error('Failed to update mass:', error);
-		return { success: false, message: 'Failed to update mass' };
+		console.error("Failed to update mass:", error);
+		return { success: false, message: "Failed to update mass" };
 	}
 }
 
@@ -255,11 +266,11 @@ export async function deleteMass(id: string): Promise<ActionResponse> {
 		const session = await auth();
 		if (
 			!session ||
-			!['SUPER_ADMIN', 'PARISH_ADMIN', 'PARISH_SECRETARY'].includes(
-				session.user.role
+			!["SUPER_ADMIN", "PARISH_ADMIN", "PARISH_SECRETARY"].includes(
+				session.user.role,
 			)
 		) {
-			return { success: false, message: 'Unauthorized' };
+			return { success: false, message: "Unauthorized" };
 		}
 
 		// Check if there are intentions
@@ -268,12 +279,13 @@ export async function deleteMass(id: string): Promise<ActionResponse> {
 			include: { _count: { select: { intentions: true } } },
 		});
 
-		if (!mass) return { success: false, message: 'Mass not found' };
+		if (!mass) return { success: false, message: "Mass not found" };
 
 		if (mass._count.intentions > 0) {
 			return {
 				success: false,
-				message: 'Cannot delete mass with existing intentions. Cancel it instead.',
+				message:
+					"Cannot delete mass with existing intentions. Cancel it instead.",
 			};
 		}
 
@@ -281,22 +293,22 @@ export async function deleteMass(id: string): Promise<ActionResponse> {
 			where: { id },
 		});
 
-		revalidatePath('/masses');
-		return { success: true, message: 'Mass deleted successfully' };
+		revalidatePath("/masses");
+		return { success: true, message: "Mass deleted successfully" };
 	} catch (error) {
-		console.error('Failed to delete mass:', error);
-		return { success: false, message: 'Failed to delete mass' };
+		console.error("Failed to delete mass:", error);
+		return { success: false, message: "Failed to delete mass" };
 	}
 }
 
 export async function getMassDays(
 	startDate: Date | string,
 	endDate: Date | string,
-	organizationId?: string
+	organizationId?: string,
 ): Promise<ActionResponse<string[]>> {
 	try {
 		const session = await auth();
-		if (!session) return { success: false, message: 'Unauthorized' };
+		if (!session) return { success: false, message: "Unauthorized" };
 
 		const targetOrgId = organizationId || session.user.organizationId;
 
@@ -310,19 +322,19 @@ export async function getMassDays(
 					gte: start,
 					lte: end,
 				},
-				status: { not: 'CANCELLED' },
+				status: { not: "CANCELLED" },
 			},
 			select: { date: true },
 		});
 
 		// Extract unique dates as ISO strings (YYYY-MM-DD format)
 		const dates = Array.from(
-			new Set(masses.map((m) => format(m.date, 'yyyy-MM-dd')))
+			new Set(masses.map((m) => format(m.date, "yyyy-MM-dd"))),
 		);
 
-		return { success: true, message: 'Mass days retrieved', data: dates };
+		return { success: true, message: "Mass days retrieved", data: dates };
 	} catch (error) {
-		console.error('Failed to get mass days:', error);
-		return { success: false, message: 'Failed to get mass days' };
+		console.error("Failed to get mass days:", error);
+		return { success: false, message: "Failed to get mass days" };
 	}
 }
