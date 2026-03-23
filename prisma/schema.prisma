@@ -7,38 +7,40 @@ datasource db {
 }
 
 model Organization {
-  id                    String                       @id @default(uuid())
-  name                  String                       @unique
-  level                 HierarchyLevel
-  parentId              String?
-  address               String?
-  contactEmail          String?
-  contactPhone          String?
-  createdAt             DateTime                     @default(now())
-  updatedAt             DateTime                     @updatedAt
-  autoGenerateMasses    Boolean                      @default(true)
-  generateDaysInAdvance Int                          @default(90)
-  maxMassesPerDay       Int                          @default(5)
-  minMassesPerDay       Int                          @default(1)
-  appointments          Appointment[]
-  baptisms              Baptism[]
-  confirmations         Confirmation[]
-  donations             Donation[]
-  donationCampaigns     DonationCampaign[]
-  events                Event[]
-  liveStreams           LiveStream[]
-  marriages             Marriage[]
-  masses                Mass[]
-  massIntentions        MassIntention[]
-  massScheduleTemplates MassScheduleTemplate[]
-  parent                Organization?                @relation("ChildOrganizations", fields: [parentId], references: [id])
-  children              Organization[]               @relation("ChildOrganizations")
-  featureSettings       OrganizationFeatureSettings?
-  parishioners          Parishioner[]
-  payments              Payment[]
-  sacraments            Sacrament[]
-  societies             Society[]
-  users                 User[]
+  id                         String                       @id @default(uuid())
+  name                       String                       @unique
+  level                      HierarchyLevel
+  parentId                   String?
+  address                    String?
+  contactEmail               String?
+  contactPhone               String?
+  appointmentBookingOpensAt  DateTime?
+  appointmentBookingClosesAt DateTime?
+  createdAt                  DateTime                     @default(now())
+  updatedAt                  DateTime                     @updatedAt
+  autoGenerateMasses         Boolean                      @default(true)
+  generateDaysInAdvance      Int                          @default(90)
+  maxMassesPerDay            Int                          @default(5)
+  minMassesPerDay            Int                          @default(1)
+  appointments               Appointment[]
+  baptisms                   Baptism[]
+  confirmations              Confirmation[]
+  donations                  Donation[]
+  donationCampaigns          DonationCampaign[]
+  events                     Event[]
+  liveStreams                LiveStream[]
+  marriages                  Marriage[]
+  masses                     Mass[]
+  massIntentions             MassIntention[]
+  massScheduleTemplates      MassScheduleTemplate[]
+  parent                     Organization?                @relation("ChildOrganizations", fields: [parentId], references: [id])
+  children                   Organization[]               @relation("ChildOrganizations")
+  featureSettings            OrganizationFeatureSettings?
+  parishioners               Parishioner[]
+  payments                   Payment[]
+  sacraments                 Sacrament[]
+  societies                  Society[]
+  users                      User[]
 
   @@index([parentId])
 }
@@ -487,15 +489,18 @@ model Announcement {
   id             String           @id @default(uuid())
   title          String
   content        String
+  imageUrl       String?
   targetLevels   HierarchyLevel[]
   isPublished    Boolean          @default(false)
   publishedAt    DateTime?
+  expiresAt      DateTime?
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
   organizationId String
 
   @@index([organizationId])
   @@index([isPublished])
+  @@index([expiresAt])
 }
 
 model AuditLog {
