@@ -80,6 +80,9 @@ model User {
   password             String
   firstName            String
   lastName             String
+  phone                String?
+  address              String?
+  dateOfBirth          DateTime?
   role                 UserRole
   isActive             Boolean              @default(true)
   lastLogin            DateTime?
@@ -92,10 +95,12 @@ model User {
   paymentsRecorded     Payment[]            @relation("PaymentRecorder")
   societyLed           Society?             @relation("SocietyPresident")
   societyAssisted      Society?             @relation("SocietySecretary")
+  reviewedJoinRequests SocietyJoinRequest[] @relation("JoinRequestReviewer")
   organization         Organization         @relation(fields: [organizationId], references: [id])
 
   @@index([organizationId])
   @@index([email])
+  @@index([phone])
 }
 
 model PasswordResetToken {
@@ -161,22 +166,23 @@ model Mass {
 }
 
 model Society {
-  id              String              @id @default(uuid())
+  id              String               @id @default(uuid())
   name            String
   description     String?
   organizationId  String
-  presidentId     String?             @unique
-  secretaryId     String?             @unique
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
+  presidentId     String?              @unique
+  secretaryId     String?              @unique
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
   meetingSchedule String?
   patronSaint     String?
   events          Event[]
   payments        Payment[]
-  organization    Organization        @relation(fields: [organizationId], references: [id])
-  president       User?               @relation("SocietyPresident", fields: [presidentId], references: [id])
-  secretary       User?               @relation("SocietySecretary", fields: [secretaryId], references: [id])
+  organization    Organization         @relation(fields: [organizationId], references: [id])
+  president       User?                @relation("SocietyPresident", fields: [presidentId], references: [id])
+  secretary       User?                @relation("SocietySecretary", fields: [secretaryId], references: [id])
   members         SocietyMembership[]
+  joinRequests    SocietyJoinRequest[]
 
   @@unique([name, organizationId])
   @@index([organizationId])
@@ -185,38 +191,59 @@ model Society {
 }
 
 model Parishioner {
-  id                 String              @id @default(uuid())
+  id                 String               @id @default(uuid())
   firstName          String
   lastName           String
   otherNames         String?
-  email              String?             @unique
+  email              String?              @unique
   phone              String?
   address            String?
   dateOfBirth        DateTime?
   gender             Gender?
   maritalStatus      MaritalStatus?
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
   occupation         String?
   deletedAt          DateTime?
-  isActive           Boolean             @default(true)
+  isActive           Boolean              @default(true)
   photoUrl           String?
   organizationId     String
-  appointments       Appointment[]       @relation("ParishionerAppointment")
+  appointments       Appointment[]        @relation("ParishionerAppointment")
   baptisms           Baptism[]
   confirmations      Confirmation[]
   eventAttendances   EventAttendance[]
-  marriagesAsHusband Marriage[]          @relation("MarriageHusband")
-  marriagesAsWife    Marriage[]          @relation("MarriageWife")
+  marriagesAsHusband Marriage[]           @relation("MarriageHusband")
+  marriagesAsWife    Marriage[]           @relation("MarriageWife")
   massIntentions     MassIntention[]
-  organization       Organization        @relation(fields: [organizationId], references: [id])
+  organization       Organization         @relation(fields: [organizationId], references: [id])
   payments           Payment[]
   sacraments         Sacrament[]
   societyMemberships SocietyMembership[]
+  joinRequests       SocietyJoinRequest[]
 
   @@index([organizationId])
   @@index([email])
   @@index([phone])
+}
+
+model SocietyJoinRequest {
+  id            String            @id @default(uuid())
+  parishionerId String
+  societyId     String
+  status        JoinRequestStatus @default(PENDING)
+  message       String?
+  reviewedById  String?
+  reviewedAt    DateTime?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  parishioner   Parishioner       @relation(fields: [parishionerId], references: [id])
+  society       Society           @relation(fields: [societyId], references: [id])
+  reviewedBy    User?             @relation("JoinRequestReviewer", fields: [reviewedById], references: [id])
+
+  @@unique([parishionerId, societyId])
+  @@index([societyId])
+  @@index([parishionerId])
+  @@index([status])
 }
 
 model SocietyMembership {
@@ -607,6 +634,12 @@ enum MaritalStatus {
   MARRIED
   WIDOWED
   DIVORCED
+}
+
+enum JoinRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 enum SocietyRole {

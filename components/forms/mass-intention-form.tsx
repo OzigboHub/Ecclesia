@@ -1,28 +1,29 @@
-'use client';
+"use client";
 
-import { useTransition, useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useForm, Controller } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import {
-	createMassIntentionSchema,
-	type CreateMassIntentionInput,
-} from '@/lib/validators/mass-intention.schema';
-import { createMassIntention } from '@/app/actions/mass-intention.actions';
-import { getParishioners } from '@/app/actions/parishioner.actions';
-import { getMasses } from '@/app/actions/mass.actions';
-import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { createMassIntention } from "@/app/actions/mass-intention.actions";
+import { getMasses } from "@/app/actions/mass.actions";
+import { getParishioners } from "@/app/actions/parishioner.actions";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
 	Select,
 	SelectContent,
 	SelectItem,
 	SelectTrigger,
 	SelectValue,
-} from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import {
+	createMassIntentionSchema,
+	type CreateMassIntentionInput,
+} from "@/lib/validators/mass-intention.schema";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState, useTransition } from "react";
+import { Controller, useForm } from "react-hook-form";
+import { toast } from "sonner";
 
 interface MassIntentionFormProps {
 	onSuccess?: () => void;
@@ -47,41 +48,36 @@ export function MassIntentionForm({
 	organizationId,
 	defaultValues: calendarDefaults,
 }: MassIntentionFormProps) {
+	const { data: session } = useSession();
+	const isParishioner = session?.user?.role === "PARISHIONER";
+	const initialSelectedDate =
+		calendarDefaults?.massDate ?
+			new Date(calendarDefaults.massDate).toISOString().split("T")[0]
+		:	new Date().toISOString().split("T")[0];
 	const [isPending, startTransition] = useTransition();
 	const [parishioners, setParishioners] = useState<Parishioner[]>([]);
 	const [isLoadingParishioners, setIsLoadingParishioners] = useState(true);
 	const [availableMasses, setAvailableMasses] = useState<any[]>([]);
 	const [isLoadingMasses, setIsLoadingMasses] = useState(false);
-	const [selectedDate, setSelectedDate] = useState<string>(
-		new Date().toISOString().split('T')[0]
-	);
+	const [selectedDate, setSelectedDate] =
+		useState<string>(initialSelectedDate);
 	const router = useRouter();
-
-	// Format date with time slot if provided from calendar
-	const getInitialDate = () => {
-		if (calendarDefaults?.massDate && calendarDefaults?.timeSlot) {
-			const date = new Date(calendarDefaults.massDate);
-			const [hours, minutes] = calendarDefaults.timeSlot.split(':');
-			date.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
-			return date.toISOString();
-		}
-		return new Date().toISOString();
-	};
 
 	const form = useForm<CreateMassIntentionInput>({
 		resolver: zodResolver(createMassIntentionSchema),
 		defaultValues: {
-			intention: '',
-			intentionType: 'THANKSGIVING',
-			requestedBy: '',
-			contactEmail: '',
-			contactPhone: '',
-			massId: calendarDefaults?.massId || '',
+			intention: "",
+			intentionType: "THANKSGIVING",
+			requestedBy: session?.user?.name || "",
+			contactEmail: session?.user?.email || "",
+			contactPhone: "",
+			massId: calendarDefaults?.massId || "",
 			stipend: undefined,
-			parishionerId: '',
-			notes: calendarDefaults?.timeSlot
-				? `Booked for ${calendarDefaults.timeSlot} mass`
-				: '',
+			parishionerId: session?.user?.parishionerId || "",
+			notes:
+				calendarDefaults?.timeSlot ?
+					`Booked for ${calendarDefaults.timeSlot} mass`
+				:	"",
 		},
 	});
 
@@ -91,11 +87,26 @@ export function MassIntentionForm({
 		control,
 		formState: { errors },
 		setError,
+		setValue,
 		reset,
 	} = form;
 
 	// Load parishioners on mount
 	useEffect(() => {
+		if (isParishioner) {
+			setIsLoadingParishioners(false);
+			if (session?.user?.parishionerId) {
+				setValue("parishionerId", session.user.parishionerId);
+			}
+			if (session?.user?.name) {
+				setValue("requestedBy", session.user.name);
+			}
+			if (session?.user?.email) {
+				setValue("contactEmail", session.user.email);
+			}
+			return;
+		}
+
 		async function loadParishioners() {
 			setIsLoadingParishioners(true);
 			const result = await getParishioners();
@@ -105,27 +116,39 @@ export function MassIntentionForm({
 			setIsLoadingParishioners(false);
 		}
 		loadParishioners();
-	}, []);
+	}, [isParishioner, session, setValue]);
 
 	// Load available masses when date changes
 	useEffect(() => {
 		async function loadMasses() {
 			setIsLoadingMasses(true);
-			form.setValue('massId', ''); // Reset mass selection when date changes
-			const result = await getMasses(selectedDate);
+			const shouldPreserveSelectedMass =
+				selectedDate === initialSelectedDate &&
+				!!calendarDefaults?.massId;
+			setValue(
+				"massId",
+				shouldPreserveSelectedMass ? calendarDefaults.massId! : "",
+			);
+			const result = await getMasses(selectedDate, organizationId);
 			if (result.success && result.data) {
 				setAvailableMasses(
 					result.data.filter(
 						(m: any) =>
-							m.status === 'SCHEDULED' ||
-							m.status === 'RESCHEDULED'
-					)
+							m.status === "SCHEDULED" ||
+							m.status === "RESCHEDULED",
+					),
 				);
 			}
 			setIsLoadingMasses(false);
 		}
 		loadMasses();
-	}, [selectedDate, form]);
+	}, [
+		calendarDefaults?.massId,
+		initialSelectedDate,
+		organizationId,
+		selectedDate,
+		setValue,
+	]);
 
 	const onSubmit = (data: CreateMassIntentionInput) => {
 		startTransition(async () => {
@@ -144,10 +167,10 @@ export function MassIntentionForm({
 					Object.entries(result.errors).forEach(
 						([field, messages]) => {
 							setError(field as keyof CreateMassIntentionInput, {
-								type: 'server',
+								type: "server",
 								message: messages[0],
 							});
-						}
+						},
 					);
 				}
 			}
@@ -155,40 +178,37 @@ export function MassIntentionForm({
 	};
 
 	return (
-		<form
-			onSubmit={handleSubmit(onSubmit)}
-			className='space-y-4'
-		>
+		<form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
 			{/* Intention Details */}
-			<div className='space-y-2'>
-				<Label htmlFor='intention'>Intention Details *</Label>
+			<div className="space-y-2">
+				<Label htmlFor="intention">Intention Details *</Label>
 				<Textarea
-					id='intention'
-					{...register('intention')}
-					placeholder='E.g. For the soul of... / In thanksgiving for...'
+					id="intention"
+					{...register("intention")}
+					placeholder="E.g. For the soul of... / In thanksgiving for..."
 					disabled={isPending}
-					className='min-h-25'
+					className="min-h-25"
 					aria-invalid={!!errors.intention}
 					aria-describedby={
-						errors.intention ? 'intention-error' : undefined
+						errors.intention ? "intention-error" : undefined
 					}
 				/>
 				{errors.intention && (
 					<p
-						id='intention-error'
-						className='text-sm text-destructive'
+						id="intention-error"
+						className="text-sm text-destructive"
 					>
 						{errors.intention.message}
 					</p>
 				)}
 			</div>
 
-			<div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
+			<div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
 				{/* Intention Type */}
-				<div className='space-y-2'>
-					<Label htmlFor='intentionType'>Intention Type *</Label>
+				<div className="space-y-2">
+					<Label htmlFor="intentionType">Intention Type *</Label>
 					<Controller
-						name='intentionType'
+						name="intentionType"
 						control={control}
 						render={({ field }) => (
 							<Select
@@ -196,17 +216,17 @@ export function MassIntentionForm({
 								onValueChange={field.onChange}
 								disabled={isPending}
 							>
-								<SelectTrigger id='intentionType'>
-									<SelectValue placeholder='Select type' />
+								<SelectTrigger id="intentionType">
+									<SelectValue placeholder="Select type" />
 								</SelectTrigger>
 								<SelectContent>
-									<SelectItem value='THANKSGIVING'>
+									<SelectItem value="THANKSGIVING">
 										Thanksgiving
 									</SelectItem>
-									<SelectItem value='REQUIEM'>
+									<SelectItem value="REQUIEM">
 										Requiem (For the Dead)
 									</SelectItem>
-									<SelectItem value='SPECIAL_INTENTION'>
+									<SelectItem value="SPECIAL_INTENTION">
 										Special Intention
 									</SelectItem>
 								</SelectContent>
@@ -214,29 +234,29 @@ export function MassIntentionForm({
 						)}
 					/>
 					{errors.intentionType && (
-						<p className='text-sm text-destructive'>
+						<p className="text-sm text-destructive">
 							{errors.intentionType.message}
 						</p>
 					)}
 				</div>
 
 				{/* Requested By */}
-				<div className='space-y-2'>
-					<Label htmlFor='requestedBy'>Requested By *</Label>
+				<div className="space-y-2">
+					<Label htmlFor="requestedBy">Requested By *</Label>
 					<Input
-						id='requestedBy'
-						{...register('requestedBy')}
-						placeholder='Name of requester'
+						id="requestedBy"
+						{...register("requestedBy")}
+						placeholder="Name of requester"
 						disabled={isPending}
 						aria-invalid={!!errors.requestedBy}
 						aria-describedby={
-							errors.requestedBy ? 'requestedBy-error' : undefined
+							errors.requestedBy ? "requestedBy-error" : undefined
 						}
 					/>
 					{errors.requestedBy && (
 						<p
-							id='requestedBy-error'
-							className='text-sm text-destructive'
+							id="requestedBy-error"
+							className="text-sm text-destructive"
 						>
 							{errors.requestedBy.message}
 						</p>
@@ -244,13 +264,13 @@ export function MassIntentionForm({
 				</div>
 			</div>
 
-			<div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
+			<div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
 				{/* Mass Date Filter */}
-				<div className='space-y-2'>
-					<Label htmlFor='massDate'>Preferred Date *</Label>
+				<div className="space-y-2">
+					<Label htmlFor="massDate">Preferred Date *</Label>
 					<Input
-						id='massDate'
-						type='date'
+						id="massDate"
+						type="date"
 						value={selectedDate}
 						onChange={(e) => setSelectedDate(e.target.value)}
 						disabled={isPending}
@@ -258,10 +278,10 @@ export function MassIntentionForm({
 				</div>
 
 				{/* Mass Selection */}
-				<div className='space-y-2'>
-					<Label htmlFor='massId'>Select Mass *</Label>
+				<div className="space-y-2">
+					<Label htmlFor="massId">Select Mass *</Label>
 					<Controller
-						name='massId'
+						name="massId"
 						control={control}
 						render={({ field }) => (
 							<Select
@@ -269,14 +289,14 @@ export function MassIntentionForm({
 								onValueChange={field.onChange}
 								disabled={isPending || isLoadingMasses}
 							>
-								<SelectTrigger id='massId'>
+								<SelectTrigger id="massId">
 									<SelectValue
 										placeholder={
-											isLoadingMasses
-												? 'Loading masses...'
-												: availableMasses.length === 0
-												? 'No masses available'
-												: 'Select a mass'
+											isLoadingMasses ?
+												"Loading masses..."
+											: availableMasses.length === 0 ?
+												"No masses available"
+											:	"Select a mass"
 										}
 									/>
 								</SelectTrigger>
@@ -286,8 +306,8 @@ export function MassIntentionForm({
 											key={mass.id}
 											value={mass.id}
 										>
-											{mass.time} -{' '}
-											{mass.massType.replace('_', ' ')}
+											{mass.time} -{" "}
+											{mass.massType.replace("_", " ")}
 										</SelectItem>
 									))}
 								</SelectContent>
@@ -295,82 +315,82 @@ export function MassIntentionForm({
 						)}
 					/>
 					{errors.massId && (
-						<p className='text-sm text-destructive'>
+						<p className="text-sm text-destructive">
 							{errors.massId.message}
 						</p>
 					)}
 				</div>
 
 				{/* Stipend */}
-				<div className='space-y-2'>
-					<Label htmlFor='stipend'>
+				<div className="space-y-2">
+					<Label htmlFor="stipend">
 						Stipend Amount (Optional) — Auto-creates Payment
 					</Label>
-					<p className='text-xs text-muted-foreground'>
+					<p className="text-xs text-muted-foreground">
 						If provided, a payment record will be automatically
 						created and linked to this intention
 					</p>
-					<div className='relative'>
-						<span className='absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground'>
+					<div className="relative">
+						<span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
 							₦
 						</span>
 						<Input
-							id='stipend'
-							type='number'
-							step='0.01'
-							min='0'
-							{...register('stipend', { valueAsNumber: true })}
-							className='pl-8'
-							placeholder='0.00'
+							id="stipend"
+							type="number"
+							step="0.01"
+							min="0"
+							{...register("stipend", { valueAsNumber: true })}
+							className="pl-8"
+							placeholder="0.00"
 							disabled={isPending}
-							aria-describedby='stipend-helper'
+							aria-describedby="stipend-helper"
 						/>
 					</div>
 					<p
-						id='stipend-helper'
-						className='text-xs text-muted-foreground'
+						id="stipend-helper"
+						className="text-xs text-muted-foreground"
 					>
 						Payment will be recorded with receipt number
 						automatically.
 					</p>
 					{errors.stipend && (
-						<p className='text-sm text-destructive'>
+						<p className="text-sm text-destructive">
 							{errors.stipend.message}
 						</p>
 					)}
 				</div>
 			</div>
 
-			<div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
+			<div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
 				{/* Contact Phone */}
-				<div className='space-y-2'>
-					<Label htmlFor='contactPhone'>Contact Phone</Label>
+				<div className="space-y-2">
+					<Label htmlFor="contactPhone">Contact Phone</Label>
 					<Input
-						id='contactPhone'
-						type='tel'
-						{...register('contactPhone')}
-						placeholder='e.g., 08012345678'
+						id="contactPhone"
+						type="tel"
+						{...register("contactPhone")}
+						placeholder="e.g., 08012345678"
 						disabled={isPending}
 					/>
 					{errors.contactPhone && (
-						<p className='text-sm text-destructive'>
+						<p className="text-sm text-destructive">
 							{errors.contactPhone.message}
 						</p>
 					)}
 				</div>
 
 				{/* Contact Email */}
-				<div className='space-y-2'>
-					<Label htmlFor='contactEmail'>Contact Email</Label>
+				<div className="space-y-2">
+					<Label htmlFor="contactEmail">Contact Email</Label>
 					<Input
-						id='contactEmail'
-						type='email'
-						{...register('contactEmail')}
-						placeholder='email@example.com'
+						id="contactEmail"
+						type="email"
+						{...register("contactEmail")}
+						placeholder="email@example.com"
 						disabled={isPending}
 					/>
 					{errors.contactEmail && (
-						<p className='text-sm text-destructive'>
+						<p className="text-sm text-destructive">
 							{errors.contactEmail.message}
 						</p>
 					)}
@@ -378,84 +398,95 @@ export function MassIntentionForm({
 			</div>
 
 			{/* Parishioner Selection (Optional) */}
-			<div className='space-y-2'>
-				<Label htmlFor='parishionerId'>
+			<div className="space-y-2">
+				<Label htmlFor="parishionerId">
 					Link to Parishioner (Optional)
 				</Label>
-				<Controller
-					name='parishionerId'
-					control={control}
-					render={({ field }) => (
-						<Select
-							value={field.value || 'none'}
-							onValueChange={(val) =>
-								field.onChange(val === 'none' ? '' : val)
-							}
-							disabled={isPending || isLoadingParishioners}
-						>
-							<SelectTrigger id='parishionerId'>
-								<SelectValue
-									placeholder={
-										isLoadingParishioners
-											? 'Loading parishioners...'
-											: 'Select parishioner (optional)'
+				{isParishioner ?
+					<div className="rounded-md border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+						This booking will be linked to your parishioner record
+						automatically.
+					</div>
+				:	<>
+						<Controller
+							name="parishionerId"
+							control={control}
+							render={({ field }) => (
+								<Select
+									value={field.value || "none"}
+									onValueChange={(val) =>
+										field.onChange(
+											val === "none" ? "" : val,
+										)
 									}
-								/>
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value='none'>None</SelectItem>
-								{parishioners.map((parishioner) => (
-									<SelectItem
-										key={parishioner.id}
-										value={parishioner.id}
-									>
-										{parishioner.firstName}{' '}
-										{parishioner.lastName}
-									</SelectItem>
-								))}
-							</SelectContent>
-						</Select>
-					)}
-				/>
-				{errors.parishionerId && (
-					<p className='text-sm text-destructive'>
-						{errors.parishionerId.message}
-					</p>
-				)}
+									disabled={
+										isPending || isLoadingParishioners
+									}
+								>
+									<SelectTrigger id="parishionerId">
+										<SelectValue
+											placeholder={
+												isLoadingParishioners ?
+													"Loading parishioners..."
+												:	"Select parishioner (optional)"
+											}
+										/>
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value="none">
+											None
+										</SelectItem>
+										{parishioners.map((parishioner) => (
+											<SelectItem
+												key={parishioner.id}
+												value={parishioner.id}
+											>
+												{parishioner.firstName}{" "}
+												{parishioner.lastName}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+							)}
+						/>
+						{errors.parishionerId && (
+							<p className="text-sm text-destructive">
+								{errors.parishionerId.message}
+							</p>
+						)}
+					</>
+				}
 			</div>
 
 			{/* Notes */}
-			<div className='space-y-2'>
-				<Label htmlFor='notes'>Additional Notes</Label>
+			<div className="space-y-2">
+				<Label htmlFor="notes">Additional Notes</Label>
 				<Textarea
-					id='notes'
-					{...register('notes')}
-					placeholder='Any additional information...'
+					id="notes"
+					{...register("notes")}
+					placeholder="Any additional information..."
 					disabled={isPending}
 					rows={3}
 				/>
 				{errors.notes && (
-					<p className='text-sm text-destructive'>
+					<p className="text-sm text-destructive">
 						{errors.notes.message}
 					</p>
 				)}
 			</div>
 
 			{/* Submit Buttons */}
-			<div className='flex justify-end gap-3 border-t border-border pt-4'>
+			<div className="flex justify-end gap-3 border-t border-border pt-4">
 				<Button
-					type='button'
-					variant='outline'
+					type="button"
+					variant="outline"
 					onClick={() => reset()}
 					disabled={isPending}
 				>
 					Reset
 				</Button>
-				<Button
-					type='submit'
-					disabled={isPending}
-				>
-					{isPending ? 'Booking...' : 'Book Intention'}
+				<Button type="submit" disabled={isPending}>
+					{isPending ? "Booking..." : "Book Intention"}
 				</Button>
 			</div>
 		</form>
