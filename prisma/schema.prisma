@@ -88,6 +88,10 @@ model User {
   role                 UserRole
   isActive             Boolean              @default(true)
   lastLogin            DateTime?
+  failedLoginAttempts  Int                  @default(0)
+  lastFailedLoginAt    DateTime?
+  lockedUntil          DateTime?
+  sessionVersion       Int                  @default(1)
   createdAt            DateTime             @default(now())
   updatedAt            DateTime             @updatedAt
   organizationId       String
@@ -98,11 +102,28 @@ model User {
   societyLed           Society?             @relation("SocietyPresident")
   societyAssisted      Society?             @relation("SocietySecretary")
   reviewedJoinRequests SocietyJoinRequest[] @relation("JoinRequestReviewer")
+  sessions             UserSession[]
   organization         Organization         @relation(fields: [organizationId], references: [id])
 
   @@index([organizationId])
   @@index([email])
   @@index([phone])
+}
+
+model UserSession {
+  id         String    @id @default(uuid())
+  userId     String
+  tokenId    String    @unique
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime  @default(now())
+  lastSeenAt DateTime  @default(now())
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, revokedAt])
+  @@index([expiresAt])
 }
 
 model PasswordResetToken {

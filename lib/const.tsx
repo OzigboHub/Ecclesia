@@ -8,18 +8,15 @@ import {
 	LayoutDashboard,
 	Megaphone,
 	Settings,
+	Shield,
 	UserCog,
 	Users,
 } from "lucide-react";
 import { FaMoneyBill } from "react-icons/fa";
-import { FaUserGroup } from "react-icons/fa6";
+import { FaCalendarDay, FaHandshakeSimple, FaUserGroup } from "react-icons/fa6";
 import { HiSpeakerphone } from "react-icons/hi";
-import { RiLiveFill } from "react-icons/ri";
-import { MdGroups2 } from "react-icons/md";
-import { FaCalendarDay } from "react-icons/fa6";
-import { MdNotificationsActive } from "react-icons/md";
-import { RiFileEditFill } from "react-icons/ri";
-import { FaHandshakeSimple } from "react-icons/fa6";
+import { MdGroups2, MdNotificationsActive } from "react-icons/md";
+import { RiFileEditFill, RiLiveFill } from "react-icons/ri";
 
 export const SIDEBAR = [
 	{
@@ -66,6 +63,11 @@ export const SIDEBAR = [
 		icon: <Settings className=" w-5 h-5" />,
 		name: "Settings",
 		href: "/settings",
+	},
+	{
+		icon: <Shield className=" w-5 h-5" />,
+		name: "Sessions",
+		href: "/sessions",
 	},
 ];
 

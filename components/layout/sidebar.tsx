@@ -85,7 +85,7 @@ export default function Sidebar() {
 	});
 
 	return (
-		<div className=" hidden bg-secondary w-[20%] py-[20px] px-[10px] justify-start items-center   lg:flex flex-col gap-8 overflow-y-auto">
+		<div className="hidden bg-secondary w-[20%] h-screen shrink-0 py-[20px] px-[10px] justify-start items-center lg:flex flex-col gap-8 overflow-y-auto">
 			<Link href="/dashboard">
 				<Image
 					src={"/standalone-golden-yellow-logo-typography.png"}

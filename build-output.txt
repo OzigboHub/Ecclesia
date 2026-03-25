@@ -1,96 +1,10 @@
 
-> ecclesia@0.1.0 build
+> ecclesia@0.1.0 build C:\Users\USER\Documents\Projects\[frontend]\Work\Ecclesia
 > next build
 
 ▲ Next.js 16.1.1 (Turbopack)
 - Environments: .env
 
-⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
   Creating an optimized production build ...
-✓ Compiled successfully in 25.6s
+✓ Compiled successfully in 39.2s
   Running TypeScript ...
-  Collecting page data using 7 workers ...
-  Generating static pages using 7 workers (0/40) ...
-  Generating static pages using 7 workers (10/40) 
-  Generating static pages using 7 workers (20/40) 
-  Generating static pages using 7 workers (30/40) 
-✓ Generating static pages using 7 workers (40/40) in 4.1s
-  Finalizing page optimization ...
-
-Route (app)
-┌ ○ /
-├ ○ /_not-found
-├ ƒ /announcements
-├ ƒ /api/auth/[...nextauth]
-├ ƒ /api/upload
-├ ƒ /appointments
-├ ƒ /appointments/[id]
-├ ƒ /appointments/[id]/edit
-├ ƒ /appointments/calendar
-├ ○ /auth/forgot-password
-├ ○ /auth/login
-├ ○ /auth/register
-├ ○ /auth/reset-password
-├ ƒ /dashboard
-├ ƒ /dashboard/admin/audit-logs
-├ ƒ /dashboard/admin/global-actions
-├ ƒ /dashboard/admin/organizations
-├ ƒ /dashboard/admin/organizations/[id]
-├ ƒ /dashboard/admin/organizations/[id]/edit
-├ ƒ /dashboard/admin/organizations/[id]/new-outstation
-├ ƒ /dashboard/admin/organizations/[id]/outstations
-├ ƒ /dashboard/admin/organizations/[id]/parishioners
-├ ƒ /dashboard/admin/organizations/[id]/settings
-├ ƒ /dashboard/admin/organizations/[id]/societies
-├ ƒ /dashboard/admin/organizations/[id]/users
-├ ƒ /dashboard/admin/organizations/new
-├ ƒ /dashboard/admin/overview
-├ ƒ /dashboard/announcements
-├ ○ /dashboard/mass-intentions/book
-├ ƒ /dashboard/parishioners
-├ ƒ /dashboard/parishioners/[id]
-├ ƒ /dashboard/parishioners/[id]/edit
-├ ƒ /dashboard/parishioners/new
-├ ƒ /dashboard/payments
-├ ƒ /dashboard/payments/[id]
-├ ƒ /dashboard/payments/new
-├ ƒ /dashboard/societies
-├ ƒ /dashboard/societies/[id]
-├ ƒ /dashboard/societies/[id]/edit
-├ ƒ /dashboard/societies/new
-├ ƒ /donate/[campaignId]
-├ ƒ /mass-intentions
-├ ƒ /mass-intentions/calendar
-├ ƒ /mass-schedule
-├ ƒ /masses
-├ ƒ /p
-├ ƒ /p/[parishId]
-├ ƒ /p/[parishId]/campaigns
-├ ƒ /p/[parishId]/campaigns/[id]
-├ ƒ /p/[parishId]/events
-├ ƒ /p/[parishId]/events/[id]
-├ ○ /parish/login
-├ ƒ /parishioners
-├ ƒ /parishioners/[id]
-├ ƒ /parishioners/[id]/edit
-├ ƒ /parishioners/new
-├ ƒ /payments
-├ ƒ /payments/[id]
-├ ƒ /payments/new
-├ ○ /perish/login
-├ ƒ /settings
-├ ƒ /societies
-├ ƒ /societies/[id]
-├ ƒ /societies/[id]/edit
-├ ƒ /societies/new
-├ ƒ /users
-├ ƒ /users/[id]/edit
-├ ƒ /users/[id]/password
-└ ƒ /users/new
-
-
-ƒ Proxy (Middleware)
-
-○  (Static)   prerendered as static content
-ƒ  (Dynamic)  server-rendered on demand
-

@@ -1,6 +1,6 @@
 "use server";
 
-import { signIn, signOut } from "@/auth";
+import { auth, signIn, signOut } from "@/auth";
 import db from "@/lib/db";
 import {
 	loginSchema,
@@ -8,11 +8,50 @@ import {
 	resetPasswordSchema,
 } from "@/lib/validators/auth.schema";
 import type { ActionResponse } from "@/types";
+import type { Prisma } from "@prisma/client";
 import { UserRole } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import { AuthError } from "next-auth";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+
+function minutesUntil(date: Date): number {
+	const diffMs = date.getTime() - Date.now();
+	if (diffMs <= 0) return 0;
+	return Math.ceil(diffMs / 60000);
+}
+
+async function getActionIpAddress(): Promise<string | null> {
+	const requestHeaders = await headers();
+	const forwardedFor = requestHeaders.get("x-forwarded-for");
+	if (forwardedFor) {
+		return forwardedFor.split(",")[0]?.trim() ?? null;
+	}
+	return requestHeaders.get("x-real-ip");
+}
+
+async function logAuthAction(params: {
+	action: "LOGIN" | "LOGOUT" | "PASSWORD_CHANGE" | "PERMISSION_CHANGE";
+	entityId: string;
+	performedBy: string;
+	details?: Prisma.InputJsonValue;
+}) {
+	try {
+		await db.auditLog.create({
+			data: {
+				action: params.action,
+				entityType: "Auth",
+				entityId: params.entityId,
+				performedBy: params.performedBy,
+				ipAddress: await getActionIpAddress(),
+				details: params.details,
+			},
+		});
+	} catch (error) {
+		console.error("Failed to write auth action log:", error);
+	}
+}
 
 /**
  * Login action - authenticates user with email and password
@@ -32,6 +71,35 @@ export async function login(data: {
 			};
 		}
 
+		const normalizedEmail = parsed.data.email.toLowerCase().trim();
+
+		const user = await db.user.findUnique({
+			where: { email: normalizedEmail },
+			select: {
+				id: true,
+				isActive: true,
+				lockedUntil: true,
+			},
+		});
+
+		if (user && !user.isActive) {
+			return {
+				success: false,
+				message: "Access denied. Your account is inactive.",
+			};
+		}
+
+		if (user?.lockedUntil && user.lockedUntil > new Date()) {
+			const remaining = minutesUntil(user.lockedUntil);
+			return {
+				success: false,
+				message:
+					remaining > 0 ?
+						`Account temporarily locked. Try again in ${remaining} minute(s).`
+					:	"Account temporarily locked. Try again shortly.",
+			};
+		}
+
 		const result = await signIn("credentials", {
 			email: parsed.data.email,
 			password: parsed.data.password,
@@ -39,6 +107,25 @@ export async function login(data: {
 		});
 
 		if (!result || result.error) {
+			if (user) {
+				const refreshed = await db.user.findUnique({
+					where: { id: user.id },
+					select: { lockedUntil: true },
+				});
+				if (
+					refreshed?.lockedUntil &&
+					refreshed.lockedUntil > new Date()
+				) {
+					const remaining = minutesUntil(refreshed.lockedUntil);
+					return {
+						success: false,
+						message:
+							remaining > 0 ?
+								`Too many failed attempts. Try again in ${remaining} minute(s).`
+							:	"Too many failed attempts. Try again shortly.",
+					};
+				}
+			}
 			return {
 				success: false,
 				message: "Invalid email or password",
@@ -73,6 +160,27 @@ export async function login(data: {
  */
 export async function logout(): Promise<ActionResponse> {
 	try {
+		const session = await auth();
+		if (session?.user?.id) {
+			if (session.user.sessionId) {
+				await db.userSession.updateMany({
+					where: {
+						tokenId: session.user.sessionId,
+						userId: session.user.id,
+						revokedAt: null,
+					},
+					data: { revokedAt: new Date() },
+				});
+			}
+
+			await logAuthAction({
+				action: "LOGOUT",
+				entityId: session.user.id,
+				performedBy: session.user.id,
+				details: { role: session.user.role },
+			});
+		}
+
 		await signOut({ redirect: false });
 		redirect("/auth/login");
 	} catch (error) {
@@ -317,7 +425,13 @@ export async function resetPassword(data: {
 		await db.$transaction([
 			db.user.update({
 				where: { id: resetToken.userId },
-				data: { password: hashedPassword },
+				data: {
+					password: hashedPassword,
+					sessionVersion: { increment: 1 },
+					failedLoginAttempts: 0,
+					lastFailedLoginAt: null,
+					lockedUntil: null,
+				},
 			}),
 			db.passwordResetToken.update({
 				where: { id: resetToken.id },
@@ -325,9 +439,164 @@ export async function resetPassword(data: {
 			}),
 		]);
 
+		await logAuthAction({
+			action: "PASSWORD_CHANGE",
+			entityId: resetToken.userId,
+			performedBy: resetToken.userId,
+			details: { source: "PASSWORD_RESET" },
+		});
+
 		return { success: true, message: "Password reset successfully" };
 	} catch (error) {
 		console.error("Password reset error:", error);
 		return { success: false, message: "Failed to reset password" };
+	}
+}
+
+/**
+ * Revoke all active sessions for the currently authenticated user.
+ */
+export async function revokeMySessions(): Promise<ActionResponse> {
+	try {
+		const session = await auth();
+		if (!session?.user?.id) {
+			return { success: false, message: "Unauthorized" };
+		}
+
+		await db.userSession.updateMany({
+			where: {
+				userId: session.user.id,
+				revokedAt: null,
+			},
+			data: { revokedAt: new Date() },
+		});
+
+		await db.user.update({
+			where: { id: session.user.id },
+			data: { sessionVersion: { increment: 1 } },
+		});
+
+		await logAuthAction({
+			action: "PERMISSION_CHANGE",
+			entityId: session.user.id,
+			performedBy: session.user.id,
+			details: {
+				type: "SESSION_REVOKE",
+				target: "ALL_DEVICES",
+			},
+		});
+
+		await signOut({ redirect: false });
+		return {
+			success: true,
+			message: "All sessions revoked successfully. Please sign in again.",
+		};
+	} catch (error) {
+		console.error("Revoke sessions error:", error);
+		return { success: false, message: "Failed to revoke sessions" };
+	}
+}
+
+export interface ActiveSession {
+	id: string;
+	ipAddress: string | null;
+	userAgent: string | null;
+	createdAt: Date;
+	lastSeenAt: Date;
+	expiresAt: Date;
+	isCurrent: boolean;
+}
+
+/**
+ * Get active sessions for the current user.
+ */
+export async function getMyActiveSessions(): Promise<
+	ActionResponse<ActiveSession[]>
+> {
+	try {
+		const session = await auth();
+		if (!session?.user?.id || !session.user.sessionId) {
+			return { success: false, message: "Unauthorized" };
+		}
+
+		const now = new Date();
+		const sessions = await db.userSession.findMany({
+			where: {
+				userId: session.user.id,
+				revokedAt: null,
+				expiresAt: { gt: now },
+			},
+			orderBy: { lastSeenAt: "desc" },
+		});
+
+		return {
+			success: true,
+			message: "Active sessions retrieved",
+			data: sessions.map((item) => ({
+				id: item.tokenId,
+				ipAddress: item.ipAddress,
+				userAgent: item.userAgent,
+				createdAt: item.createdAt,
+				lastSeenAt: item.lastSeenAt,
+				expiresAt: item.expiresAt,
+				isCurrent: item.tokenId === session.user.sessionId,
+			})),
+		};
+	} catch (error) {
+		console.error("Get active sessions error:", error);
+		return { success: false, message: "Failed to fetch active sessions" };
+	}
+}
+
+/**
+ * Revoke a specific active session for current user.
+ */
+export async function revokeMySession(
+	sessionId: string,
+): Promise<ActionResponse<{ revokedCurrent: boolean }>> {
+	try {
+		const session = await auth();
+		if (!session?.user?.id || !session.user.sessionId) {
+			return { success: false, message: "Unauthorized" };
+		}
+
+		const active = await db.userSession.findFirst({
+			where: {
+				tokenId: sessionId,
+				userId: session.user.id,
+				revokedAt: null,
+				expiresAt: { gt: new Date() },
+			},
+			select: { tokenId: true },
+		});
+
+		if (!active) {
+			return { success: false, message: "Session not found" };
+		}
+
+		await db.userSession.update({
+			where: { tokenId: sessionId },
+			data: { revokedAt: new Date() },
+		});
+
+		await logAuthAction({
+			action: "PERMISSION_CHANGE",
+			entityId: session.user.id,
+			performedBy: session.user.id,
+			details: {
+				type: "SESSION_REVOKE",
+				target: "SINGLE_SESSION",
+				sessionId,
+			},
+		});
+
+		return {
+			success: true,
+			message: "Session revoked successfully",
+			data: { revokedCurrent: sessionId === session.user.sessionId },
+		};
+	} catch (error) {
+		console.error("Revoke session error:", error);
+		return { success: false, message: "Failed to revoke session" };
 	}
 }
