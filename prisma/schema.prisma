@@ -23,6 +23,7 @@ model Organization {
   maxMassesPerDay            Int                          @default(5)
   minMassesPerDay            Int                          @default(1)
   appointments               Appointment[]
+  appointmentAvailabilities  AppointmentAvailability[]
   baptisms                   Baptism[]
   confirmations              Confirmation[]
   donations                  Donation[]
@@ -77,8 +78,8 @@ model OrganizationFeatureSettings {
 }
 
 model User {
-  id                   String               @id @default(uuid())
-  email                String               @unique
+  id                   String                    @id @default(uuid())
+  email                String                    @unique
   password             String
   firstName            String
   lastName             String
@@ -86,23 +87,45 @@ model User {
   address              String?
   dateOfBirth          DateTime?
   role                 UserRole
-  isActive             Boolean              @default(true)
+  isActive             Boolean                   @default(true)
   lastLogin            DateTime?
-  createdAt            DateTime             @default(now())
-  updatedAt            DateTime             @updatedAt
+  failedLoginAttempts  Int                       @default(0)
+  lastFailedLoginAt    DateTime?
+  lockedUntil          DateTime?
+  sessionVersion       Int                       @default(1)
+  createdAt            DateTime                  @default(now())
+  updatedAt            DateTime                  @updatedAt
   organizationId       String
-  appointmentsAssigned Appointment[]        @relation("AppointmentAssignee")
-  appointmentsMade     Appointment[]        @relation("AppointmentCreator")
+  appointmentsAssigned Appointment[]             @relation("AppointmentAssignee")
+  availabilitySlots    AppointmentAvailability[] @relation("AppointmentAvailabilityAssignee")
+  appointmentsMade     Appointment[]             @relation("AppointmentCreator")
   passwordResetTokens  PasswordResetToken[]
-  paymentsRecorded     Payment[]            @relation("PaymentRecorder")
-  societyLed           Society?             @relation("SocietyPresident")
-  societyAssisted      Society?             @relation("SocietySecretary")
-  reviewedJoinRequests SocietyJoinRequest[] @relation("JoinRequestReviewer")
-  organization         Organization         @relation(fields: [organizationId], references: [id])
+  paymentsRecorded     Payment[]                 @relation("PaymentRecorder")
+  societyLed           Society?                  @relation("SocietyPresident")
+  societyAssisted      Society?                  @relation("SocietySecretary")
+  reviewedJoinRequests SocietyJoinRequest[]      @relation("JoinRequestReviewer")
+  sessions             UserSession[]
+  organization         Organization              @relation(fields: [organizationId], references: [id])
 
   @@index([organizationId])
   @@index([email])
   @@index([phone])
+}
+
+model UserSession {
+  id         String    @id @default(uuid())
+  userId     String
+  tokenId    String    @unique
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime  @default(now())
+  lastSeenAt DateTime  @default(now())
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, revokedAt])
+  @@index([expiresAt])
 }
 
 model PasswordResetToken {
@@ -443,29 +466,60 @@ model Payment {
 }
 
 model Appointment {
-  id             String            @id @default(uuid())
-  title          String
-  description    String?
-  startTime      DateTime
-  endTime        DateTime
-  type           AppointmentType
-  status         AppointmentStatus @default(PENDING)
-  parishionerId  String
-  assignedToId   String?
-  requestedById  String
-  createdAt      DateTime          @default(now())
-  updatedAt      DateTime          @updatedAt
-  organizationId String
-  assignedTo     User?             @relation("AppointmentAssignee", fields: [assignedToId], references: [id])
-  organization   Organization      @relation(fields: [organizationId], references: [id])
-  parishioner    Parishioner       @relation("ParishionerAppointment", fields: [parishionerId], references: [id])
-  requestedBy    User              @relation("AppointmentCreator", fields: [requestedById], references: [id])
+  id                   String                   @id @default(uuid())
+  title                String
+  description          String?
+  startTime            DateTime
+  endTime              DateTime
+  type                 AppointmentType
+  status               AppointmentStatus        @default(PENDING)
+  source               AppointmentSource        @default(INTERNAL)
+  parishionerId        String?
+  assignedToId         String?
+  requestedById        String?
+  availabilityId       String?
+  publicRequesterName  String?
+  publicRequesterEmail String?
+  publicRequesterPhone String?
+  createdAt            DateTime                 @default(now())
+  updatedAt            DateTime                 @updatedAt
+  organizationId       String
+  assignedTo           User?                    @relation("AppointmentAssignee", fields: [assignedToId], references: [id])
+  availability         AppointmentAvailability? @relation(fields: [availabilityId], references: [id])
+  organization         Organization             @relation(fields: [organizationId], references: [id])
+  parishioner          Parishioner?             @relation("ParishionerAppointment", fields: [parishionerId], references: [id])
+  requestedBy          User?                    @relation("AppointmentCreator", fields: [requestedById], references: [id])
 
   @@index([parishionerId])
   @@index([assignedToId])
   @@index([requestedById])
+  @@index([availabilityId])
   @@index([organizationId])
   @@index([startTime])
+  @@index([source])
+}
+
+model AppointmentAvailability {
+  id             String          @id @default(uuid())
+  title          String
+  type           AppointmentType
+  startTime      DateTime
+  endTime        DateTime
+  maxBookings    Int             @default(1)
+  isActive       Boolean         @default(true)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  organizationId String
+  assignedToId   String?
+  appointments   Appointment[]
+  assignedTo     User?           @relation("AppointmentAvailabilityAssignee", fields: [assignedToId], references: [id])
+  organization   Organization    @relation(fields: [organizationId], references: [id])
+
+  @@unique([organizationId, startTime, endTime])
+  @@index([organizationId])
+  @@index([assignedToId])
+  @@index([startTime])
+  @@index([isActive])
 }
 
 model LiveStream {
@@ -721,6 +775,11 @@ enum AppointmentStatus {
   CONFIRMED
   CANCELLED
   COMPLETED
+}
+
+enum AppointmentSource {
+  INTERNAL
+  PUBLIC
 }
 
 enum AuditAction {

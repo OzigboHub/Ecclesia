@@ -1,18 +1,18 @@
-'use client';
+"use client";
 
-import { useState, useTransition } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
-import { Button } from '@/components/ui/button';
-import { Building2, X } from 'lucide-react';
-import { toast } from 'sonner';
-import { setOrganizationContext } from '@/app/actions/super-admin.actions';
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { Building2, X } from "lucide-react";
+import { toast } from "sonner";
+import { setOrganizationContext } from "@/app/actions/super-admin.actions";
 
 interface OrganizationContextSwitcherProps {
 	organizations: { id: string; name: string }[];
@@ -26,7 +26,7 @@ export function OrganizationContextSwitcher({
 	const router = useRouter();
 	const [isPending, startTransition] = useTransition();
 	const [selectedOrgId, setSelectedOrgId] = useState<string | undefined>(
-		currentOrgId || undefined
+		currentOrgId || undefined,
 	);
 
 	const handleSwitch = (value: string) => {
@@ -35,13 +35,15 @@ export function OrganizationContextSwitcher({
 			try {
 				const result = await setOrganizationContext(value);
 				if (result.success) {
-					toast.success(`Switching context to ${organizations.find(o => o.id === value)?.name}`);
+					toast.success(
+						`Switching context to ${organizations.find((o) => o.id === value)?.name}`,
+					);
 					router.refresh();
 				} else {
 					toast.error(result.message);
 				}
 			} catch (error) {
-				toast.error('Failed to switch context');
+				toast.error("Failed to switch context");
 			}
 		});
 	};
@@ -52,29 +54,29 @@ export function OrganizationContextSwitcher({
 			try {
 				const result = await setOrganizationContext(null);
 				if (result.success) {
-					toast.success('Context cleared');
+					toast.success("Context cleared");
 					router.refresh();
 				} else {
 					toast.error(result.message);
 				}
 			} catch (error) {
-				toast.error('Failed to clear context');
+				toast.error("Failed to clear context");
 			}
 		});
 	};
 
 	return (
-		<div className='flex items-center gap-2 w-full'>
+		<div className="flex items-center gap-2 w-full">
 			<Select
 				value={selectedOrgId}
 				onValueChange={handleSwitch}
 				disabled={isPending}
 			>
-				<SelectTrigger className='w-full'>
-					<Building2 className='h-4 w-4 mr-2 text-muted-foreground' />
-					<SelectValue placeholder='Select Organization Context' />
+				<SelectTrigger className="w-full">
+					<Building2 className="h-4 w-4 mr-2 text-muted-foreground" />
+					<SelectValue placeholder="Select Organization Context" />
 				</SelectTrigger>
-				<SelectContent>
+				<SelectContent className=" bg-secondary">
 					{organizations.map((org) => (
 						<SelectItem key={org.id} value={org.id}>
 							{org.name}
@@ -84,13 +86,13 @@ export function OrganizationContextSwitcher({
 			</Select>
 			{selectedOrgId && (
 				<Button
-					variant='ghost'
-					size='sm'
+					variant="ghost"
+					size="sm"
 					onClick={handleClear}
 					disabled={isPending}
-					title='Clear Context'
+					title="Clear Context"
 				>
-					<X className='h-4 w-4' />
+					<X className="h-4 w-4" />
 				</Button>
 			)}
 		</div>
