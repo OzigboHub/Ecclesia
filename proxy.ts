@@ -1,17 +1,34 @@
-import NextAuth from "next-auth";
 import { authProxyConfig } from "@/auth.proxy.config";
+import NextAuth from "next-auth";
 import { NextResponse } from "next/server";
 
 const { auth } = NextAuth(authProxyConfig);
 
+const protectedPrefixes = [
+	"/dashboard",
+	"/announcements",
+	"/appointments",
+	"/mass-intentions",
+	"/mass-schedule",
+	"/masses",
+	"/parishioners",
+	"/payments",
+	"/sessions",
+	"/settings",
+	"/societies",
+	"/users",
+];
+
 export default auth((req) => {
 	// NextAuth middleware injects auth info onto the request as `req.auth`
 	const session = (req as any).auth;
-	const isLoggedIn = !!session;
+	const isLoggedIn = !!session?.user;
 	const pathname = req.nextUrl.pathname;
 
-	const isOnDashboard = pathname.startsWith("/dashboard");
 	const isOnAuth = pathname.startsWith("/auth");
+	const isProtectedRoute = protectedPrefixes.some(
+		(prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+	);
 	const isOnPublic =
 		pathname === "/" ||
 		pathname.startsWith("/p") ||
@@ -23,7 +40,7 @@ export default auth((req) => {
 	}
 
 	// Redirect unauthenticated users to login (but not on public pages)
-	if (!isLoggedIn && isOnDashboard) {
+	if (!isLoggedIn && isProtectedRoute && !isOnPublic) {
 		return NextResponse.redirect(new URL("/auth/login", req.url));
 	}
 

@@ -1,3 +1,5 @@
+import { getPublicAppointmentAvailabilities } from "@/app/actions/appointment.actions";
+import { PublicAppointmentBooking } from "@/components/features/appointments/public-appointment-booking";
 import { Button } from "@/components/ui/button";
 import db from "@/lib/db";
 import { format } from "date-fns";
@@ -129,6 +131,9 @@ export default async function ParishPage({
 		}),
 	);
 
+	const appointmentAvailabilityResult =
+		await getPublicAppointmentAvailabilities(parishId);
+
 	return (
 		<div className="min-h-screen pt-[60px] bg-background">
 			{/* Hero section */}
@@ -221,6 +226,24 @@ export default async function ParishPage({
 			</section>
 
 			<div className="mx-auto max-w-6xl space-y-12 px-4 py-12">
+				{appointmentAvailabilityResult.success && (
+					<section className="space-y-6">
+						<div className="flex items-center gap-2">
+							<Calendar className="h-5 w-5 text-primary" />
+							<h2 className="text-2xl font-bold">
+								Book an Appointment
+							</h2>
+						</div>
+						<PublicAppointmentBooking
+							organizationId={parishId}
+							organizationName={org.name}
+							availabilities={
+								appointmentAvailabilityResult.data ?? []
+							}
+						/>
+					</section>
+				)}
+
 				{/* Livestream Section */}
 				{(liveNow.length > 0 ||
 					upcomingStreams.length > 0 ||

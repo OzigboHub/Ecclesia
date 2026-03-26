@@ -101,7 +101,7 @@ export async function login(data: {
 		}
 
 		const result = await signIn("credentials", {
-			email: parsed.data.email,
+			email: normalizedEmail,
 			password: parsed.data.password,
 			redirect: false,
 		});
@@ -217,7 +217,7 @@ export async function register(data: {
 
 		// Check if user already exists
 		const existingUser = await db.user.findUnique({
-			where: { email: parsed.data.email },
+			where: { email: parsed.data.email.toLowerCase().trim() },
 		});
 
 		if (existingUser) {
@@ -244,7 +244,7 @@ export async function register(data: {
 			data: {
 				firstName: parsed.data.firstName,
 				lastName: parsed.data.lastName,
-				email: parsed.data.email,
+				email: parsed.data.email.toLowerCase().trim(),
 				phone: parsed.data.phone,
 				address: parsed.data.address || null,
 				dateOfBirth: new Date(parsed.data.dateOfBirth),

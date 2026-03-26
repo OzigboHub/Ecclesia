@@ -50,6 +50,22 @@ async function handleFailedLogin(params: {
 	currentAttempts?: number;
 }) {
 	if (params.userId) {
+		if (params.reason === "ACCOUNT_LOCKED") {
+			await logAuthEvent({
+				action: "LOGIN",
+				entityId: params.userId,
+				performedBy: params.userId,
+				ipAddress: params.ipAddress,
+				details: {
+					status: "FAILED",
+					reason: params.reason,
+					email: params.email,
+					failedLoginAttempts: params.currentAttempts ?? 0,
+				},
+			});
+			return;
+		}
+
 		const attempts = (params.currentAttempts ?? 0) + 1;
 		const shouldLock = attempts >= MAX_FAILED_LOGIN_ATTEMPTS;
 		const lockedUntil =
@@ -135,7 +151,6 @@ export const authConfig: NextAuthConfig = {
 							email: normalizedEmail,
 							ipAddress,
 							reason: "INACTIVE_ACCOUNT",
-							currentAttempts: user.failedLoginAttempts,
 						});
 						return null;
 					}
