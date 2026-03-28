@@ -1146,6 +1146,112 @@ export async function setAppointmentBookingWindow(params: {
 	}
 }
 
+export async function getAppointmentUnavailableDays(params?: {
+  from?: string | Date;
+  to?: string | Date;
+}): Promise<ActionResponse<AppointmentUnavailableDates>> {
+  try {
+    const session = await auth();
+    if (!session?.user) {
+      return { success: false, message: "Unauthorized" };
+    }
+
+    const fromDate = params?.from ? new Date(params.from) : new Date();
+    const toDate = params?.to
+      ? new Date(params.to)
+      : new Date(Date.now() + 60 * 86400000);
+
+    const unavailableDays = await db.$queryRaw<Array<{ date: Date }>>(
+      Prisma.sql`
+        SELECT "date"
+        FROM "AppointmentUnavailableDay"
+        WHERE "organizationId" = ${session.user.organizationId}
+          AND "date" >= ${toDayStartUtc(fromDate)}
+          AND "date" <= ${toDayStartUtc(toDate)}
+        ORDER BY "date" ASC
+      `,
+    );
+
+    return {
+      success: true,
+      message: "Unavailable appointment days retrieved",
+      data: {
+        dates: unavailableDays.map((item) => toDayKey(item.date)),
+      },
+    };
+  } catch (error) {
+    console.error("Failed to get unavailable appointment days:", error);
+    return {
+      success: false,
+      message: "Failed to retrieve unavailable appointment days",
+    };
+  }
+}
+
+export async function setAppointmentDayUnavailable(params: {
+  date: string | Date;
+  unavailable: boolean;
+}): Promise<ActionResponse<{ date: string; unavailable: boolean }>> {
+  try {
+    const session = await auth();
+    if (!session?.user) {
+      return { success: false, message: "Unauthorized" };
+    }
+
+    const allowedRoles = ["SUPER_ADMIN", "PARISH_ADMIN", "PARISH_SECRETARY"];
+    if (!allowedRoles.includes(session.user.role)) {
+      return { success: false, message: "Permission denied" };
+    }
+
+    const normalizedDate = toDayStartUtc(params.date);
+    if (!isWeekday(normalizedDate)) {
+      return {
+        success: false,
+        message: "Only Monday to Friday dates can be changed",
+      };
+    }
+
+    if (params.unavailable) {
+      await db.$executeRaw(
+        Prisma.sql`
+          INSERT INTO "AppointmentUnavailableDay"
+            ("id", "date", "organizationId", "createdAt", "updatedAt")
+          VALUES
+            (${randomUUID()}, ${normalizedDate}, ${session.user.organizationId}, NOW(), NOW())
+          ON CONFLICT ("organizationId", "date") DO NOTHING
+        `,
+      );
+    } else {
+      await db.$executeRaw(
+        Prisma.sql`
+          DELETE FROM "AppointmentUnavailableDay"
+          WHERE "organizationId" = ${session.user.organizationId}
+            AND "date" = ${normalizedDate}
+        `,
+      );
+    }
+
+    revalidatePath("/appointments");
+
+    return {
+      success: true,
+      message: params.unavailable
+        ? "Day set as unavailable"
+        : "Day set as available",
+      data: {
+        date: toDayKey(normalizedDate),
+        unavailable: params.unavailable,
+      },
+    };
+  } catch (error) {
+    console.error("Failed to update appointment day availability:", error);
+    return {
+      success: false,
+      message: "Failed to update day availability",
+    };
+  }
+}
+
 // ============================================
 // UPDATE OPERATIONS
 // ============================================

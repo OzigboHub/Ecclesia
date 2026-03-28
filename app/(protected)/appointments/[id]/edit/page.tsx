@@ -7,7 +7,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 interface PageProps {
-	params: Promise<{ id: string }>;
+  params: Promise<{ id: string }>;
 }
 
 export default async function EditAppointmentPage({ params }: PageProps) {
@@ -16,14 +16,14 @@ export default async function EditAppointmentPage({ params }: PageProps) {
 		redirect("/auth/login");
 	}
 
-	const { id } = await params;
-	const result = await getAppointment(id);
+  const { id } = await params;
+  const result = await getAppointment(id);
 
-	if (!result.success || !result.data) {
-		notFound();
-	}
+  if (!result.success || !result.data) {
+    notFound();
+  }
 
-	const appointment = result.data;
+  const appointment = result.data;
 
 	// Check if user has permission to edit appointments
 	const allowedRoles = [

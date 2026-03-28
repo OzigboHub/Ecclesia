@@ -70,22 +70,36 @@ type AppointmentWithRelations = {
 };
 
 interface AppointmentsListClientProps {
-	children?: React.ReactNode;
-	initialAppointments?: AppointmentWithRelations[];
-	total?: number;
-	searchParams?: { [key: string]: string | undefined };
+  children?: React.ReactNode;
+  initialAppointments?: AppointmentWithRelations[];
+  total?: number;
+  searchParams?: { [key: string]: string | undefined };
+  userRole?: string;
+  allowScheduling?: boolean;
 }
 
 export default function AppointmentsListClient({
-	children,
-	initialAppointments = [],
-	total = 0,
-	searchParams = {},
+  children,
+  initialAppointments = [],
+  total = 0,
+  searchParams = {},
+  userRole,
+  allowScheduling = true,
 }: AppointmentsListClientProps) {
-	const router = useRouter();
-	const params = useSearchParams();
-	const [isScheduleModalOpen, setIsScheduleModalOpen] = React.useState(false);
-	const [isPending, startTransition] = useTransition();
+  const router = useRouter();
+  const params = useSearchParams();
+  const [isScheduleModalOpen, setIsScheduleModalOpen] = React.useState(false);
+  const [isPending, startTransition] = useTransition();
+  const showScheduledOnly = userRole === "PARISH_ADMIN";
+
+  // Filter state
+  const [search, setSearch] = React.useState(searchParams.search || "");
+  const [statusFilter, setStatusFilter] = React.useState(
+    showScheduledOnly ? "CONFIRMED" : searchParams.status || "all",
+  );
+  const [typeFilter, setTypeFilter] = React.useState(
+    searchParams.type || "all",
+  );
 
 	// Filter state
 	const [search, setSearch] = React.useState(searchParams.search || "");
@@ -110,22 +124,20 @@ export default function AppointmentsListClient({
 		);
 	}, [search, statusFilter, typeFilter, router]);
 
-	// Debounce search
-	React.useEffect(() => {
-		const timer = setTimeout(() => {
-			updateFilters();
-		}, 500);
-		return () => clearTimeout(timer);
-	}, [search, updateFilters]);
+  React.useEffect(() => {
+    updateFilters();
+  }, [statusFilter, typeFilter, updateFilters]);
 
-	React.useEffect(() => {
-		updateFilters();
-	}, [statusFilter, typeFilter, updateFilters]);
+  React.useEffect(() => {
+    if (showScheduledOnly) {
+      setStatusFilter("CONFIRMED");
+    }
+  }, [showScheduledOnly]);
 
-	const handleScheduleSuccess = () => {
-		setIsScheduleModalOpen(false);
-		router.refresh();
-	};
+  const handleScheduleSuccess = () => {
+    setIsScheduleModalOpen(false);
+    router.refresh();
+  };
 
 	const handleApprove = (id: string) => {
 		startTransition(async () => {
@@ -253,13 +265,11 @@ export default function AppointmentsListClient({
 		},
 	];
 
-	return (
-		<>
-			{children && (
-				<div onClick={() => setIsScheduleModalOpen(true)}>
-					{children}
-				</div>
-			)}
+  return (
+    <>
+      {children && allowScheduling && (
+        <div onClick={() => setIsScheduleModalOpen(true)}>{children}</div>
+      )}
 
 			{/* Filters */}
 			<div className="bg-background border border-border rounded-lg shadow-sm p-4">

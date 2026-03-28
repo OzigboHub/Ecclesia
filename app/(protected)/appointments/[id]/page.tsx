@@ -20,7 +20,7 @@ import { notFound, redirect } from "next/navigation";
 import AppointmentDetailClient from "./appointment-detail-client";
 
 interface PageProps {
-	params: Promise<{ id: string }>;
+  params: Promise<{ id: string }>;
 }
 
 export default async function AppointmentDetailPage({ params }: PageProps) {
@@ -29,14 +29,14 @@ export default async function AppointmentDetailPage({ params }: PageProps) {
 		redirect("/auth/login");
 	}
 
-	const { id } = await params;
-	const result = await getAppointment(id);
+  const { id } = await params;
+  const result = await getAppointment(id);
 
-	if (!result.success || !result.data) {
-		notFound();
-	}
+  if (!result.success || !result.data) {
+    notFound();
+  }
 
-	const appointment = result.data;
+  const appointment = result.data;
 
 	// Format date and time
 	const formatDateTime = (date: Date | string) => {
@@ -219,7 +219,7 @@ export default async function AppointmentDetailPage({ params }: PageProps) {
 						</div>
 					</div>
 
-					<Separator />
+          <Separator />
 
 					{/* Participants */}
 					<div>
@@ -324,7 +324,7 @@ export default async function AppointmentDetailPage({ params }: PageProps) {
 						</div>
 					</div>
 
-					<Separator />
+          <Separator />
 
 					{/* Description */}
 					{appointment.description && (

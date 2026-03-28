@@ -7,8 +7,7 @@ import { auth } from "@/auth";
 import { AppointmentAvailabilityManager } from "@/components/features/dashboard/appointment-availability-manager";
 import { AppointmentBookingWindow } from "@/components/features/dashboard/appointment-booking-window";
 import { Button } from "@/components/ui/button";
-import { Calendar as CalendarIcon, Plus } from "lucide-react";
-import Link from "next/link";
+import { Plus } from "lucide-react";
 import { redirect } from "next/navigation";
 import AppointmentsListClient from "./appointments-list-client";
 

@@ -2,7 +2,10 @@
 
 import { auth } from "@/auth";
 import db from "@/lib/db";
-import { generateMassesForPeriod } from "@/lib/services/mass.service";
+import {
+  generateMassesForPeriod,
+  generateMassesFromExistingMasses,
+} from "@/lib/services/mass.service";
 import type { ActionResponse } from "@/types";
 import { MassType } from "@prisma/client";
 import { addDays, endOfDay, format, startOfDay } from "date-fns";

@@ -31,15 +31,15 @@ type AppointmentWithRelations = {
 };
 
 interface AppointmentsCalendarClientProps {
-	appointments: AppointmentWithRelations[];
-	initialMonth: number;
-	initialYear: number;
+  appointments: AppointmentWithRelations[];
+  initialMonth: number;
+  initialYear: number;
 }
 
 export default function AppointmentsCalendarClient({
-	appointments,
-	initialMonth,
-	initialYear,
+  appointments,
+  initialMonth,
+  initialYear,
 }: AppointmentsCalendarClientProps) {
 	const router = useRouter();
 	const params = useSearchParams();
@@ -70,14 +70,14 @@ export default function AppointmentsCalendarClient({
 		return appointmentsByDate.get(dateKey) || [];
 	}, [selectedDate, appointmentsByDate]);
 
-	// Custom day renderer to show appointment count
-	const modifiers = React.useMemo(() => {
-		const modifiers: Record<string, Date[]> = {};
-		appointmentsByDate.forEach((apts, dateKey) => {
-			modifiers[`has-appointments-${apts.length}`] = [new Date(dateKey)];
-		});
-		return modifiers;
-	}, [appointmentsByDate]);
+  // Custom day renderer to show appointment count
+  const modifiers = React.useMemo(() => {
+    const modifiers: Record<string, Date[]> = {};
+    appointmentsByDate.forEach((apts, dateKey) => {
+      modifiers[`has-appointments-${apts.length}`] = [new Date(dateKey)];
+    });
+    return modifiers;
+  }, [appointmentsByDate]);
 
 	const modifiersClassNames = React.useMemo(() => {
 		const classNames: Record<string, string> = {};
