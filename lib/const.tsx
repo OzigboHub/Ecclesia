@@ -1,16 +1,16 @@
 import {
-	Calendar,
-	CalendarDays,
-	CirclePile,
-	ClipboardList,
-	Coins,
-	FolderKanban,
-	LayoutDashboard,
-	Megaphone,
-	Settings,
-	Shield,
-	UserCog,
-	Users,
+  Calendar,
+  CalendarDays,
+  CirclePile,
+  ClipboardList,
+  Coins,
+  FolderKanban,
+  LayoutDashboard,
+  Megaphone,
+  Settings,
+  Shield,
+  UserCog,
+  Users,
 } from "lucide-react";
 import { FaMoneyBill } from "react-icons/fa";
 import { FaCalendarDay, FaHandshakeSimple, FaUserGroup } from "react-icons/fa6";
@@ -19,56 +19,56 @@ import { MdGroups2, MdNotificationsActive } from "react-icons/md";
 import { RiFileEditFill, RiLiveFill } from "react-icons/ri";
 
 export const SIDEBAR = [
-	{
-		icon: <LayoutDashboard className=" w-5 h-5" />,
-		name: "Dashboard",
-		href: "/dashboard",
-	},
-	{
-		icon: <Users className=" w-5 h-5" />,
-		name: "Parishioners",
-		href: "/parishioners",
-	},
-	{
-		icon: <Coins className=" w-5 h-5" />,
-		name: "Payments",
-		href: "/payments",
-	},
-	{
-		icon: <ClipboardList className=" w-5 h-5" />,
-		name: "Mass Intentions",
-		href: "/mass-intentions",
-	},
-	{
-		icon: <CalendarDays className=" w-5 h-5" />,
-		name: "Mass Calendar",
-		href: "/masses",
-	},
-	{
-		icon: <Calendar className=" w-5 h-5" />,
-		name: "Appointments",
-		href: "/appointments",
-	},
-	{
-		icon: <Megaphone className=" w-5 h-5" />,
-		name: "Announcements",
-		href: "/announcements",
-	},
-	{
-		icon: <CirclePile className=" w-5 h-5" />,
-		name: "Societies",
-		href: "/dashboard/societies",
-	},
-	{
-		icon: <Settings className=" w-5 h-5" />,
-		name: "Settings",
-		href: "/settings",
-	},
-	{
-		icon: <Shield className=" w-5 h-5" />,
-		name: "Sessions",
-		href: "/sessions",
-	},
+  {
+    icon: <LayoutDashboard className=" w-5 h-5" />,
+    name: "Dashboard",
+    href: "/dashboard",
+  },
+  {
+    icon: <Users className=" w-5 h-5" />,
+    name: "Parishioners",
+    href: "/parishioners",
+  },
+  {
+    icon: <ClipboardList className=" w-5 h-5" />,
+    name: "Mass Intentions",
+    href: "/mass-intentions",
+  },
+  {
+    icon: <CalendarDays className=" w-5 h-5" />,
+    name: "Mass Calendar",
+    href: "/masses",
+  },
+  {
+    icon: <Calendar className=" w-5 h-5" />,
+    name: "Appointments",
+    href: "/appointments",
+  },
+  {
+    icon: <Megaphone className=" w-5 h-5" />,
+    name: "Announcements",
+    href: "/announcements",
+  },
+  {
+    icon: <CirclePile className=" w-5 h-5" />,
+    name: "Societies",
+    href: "/dashboard/societies",
+  },
+  {
+    icon: <Settings className=" w-5 h-5" />,
+    name: "Settings",
+    href: "/settings",
+  },
+  {
+    icon: <Coins className=" w-5 h-5" />,
+    name: "Payments",
+    href: "/payments",
+  },
+  {
+    icon: <Shield className=" w-5 h-5" />,
+    name: "Sessions",
+    href: "/sessions",
+  },
 ];
 
 export const ADMIN_EXTENDED = [
