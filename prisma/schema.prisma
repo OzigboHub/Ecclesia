@@ -14,16 +14,17 @@ model Organization {
   address                    String?
   contactEmail               String?
   contactPhone               String?
-  appointmentBookingOpensAt  DateTime?
-  appointmentBookingClosesAt DateTime?
   createdAt                  DateTime                     @default(now())
   updatedAt                  DateTime                     @updatedAt
   autoGenerateMasses         Boolean                      @default(true)
   generateDaysInAdvance      Int                          @default(90)
   maxMassesPerDay            Int                          @default(5)
   minMassesPerDay            Int                          @default(1)
+  appointmentBookingClosesAt DateTime?
+  appointmentBookingOpensAt  DateTime?
   appointments               Appointment[]
   appointmentAvailabilities  AppointmentAvailability[]
+  appointmentUnavailableDays AppointmentUnavailableDay[]
   baptisms                   Baptism[]
   confirmations              Confirmation[]
   donations                  Donation[]
@@ -42,7 +43,6 @@ model Organization {
   sacraments                 Sacrament[]
   societies                  Society[]
   users                      User[]
-  appointmentUnavailableDays AppointmentUnavailableDay[]
 
   @@index([parentId])
 }
@@ -84,29 +84,29 @@ model User {
   password             String
   firstName            String
   lastName             String
-  phone                String?
-  address              String?
-  dateOfBirth          DateTime?
   role                 UserRole
   isActive             Boolean                   @default(true)
   lastLogin            DateTime?
+  createdAt            DateTime                  @default(now())
+  updatedAt            DateTime                  @updatedAt
+  organizationId       String
+  address              String?
+  dateOfBirth          DateTime?
+  phone                String?
   failedLoginAttempts  Int                       @default(0)
   lastFailedLoginAt    DateTime?
   lockedUntil          DateTime?
   sessionVersion       Int                       @default(1)
-  createdAt            DateTime                  @default(now())
-  updatedAt            DateTime                  @updatedAt
-  organizationId       String
   appointmentsAssigned Appointment[]             @relation("AppointmentAssignee")
-  availabilitySlots    AppointmentAvailability[] @relation("AppointmentAvailabilityAssignee")
   appointmentsMade     Appointment[]             @relation("AppointmentCreator")
+  availabilitySlots    AppointmentAvailability[] @relation("AppointmentAvailabilityAssignee")
   passwordResetTokens  PasswordResetToken[]
   paymentsRecorded     Payment[]                 @relation("PaymentRecorder")
   societyLed           Society?                  @relation("SocietyPresident")
   societyAssisted      Society?                  @relation("SocietySecretary")
   reviewedJoinRequests SocietyJoinRequest[]      @relation("JoinRequestReviewer")
-  sessions             UserSession[]
   organization         Organization              @relation(fields: [organizationId], references: [id])
+  sessions             UserSession[]
 
   @@index([organizationId])
   @@index([email])
@@ -207,8 +207,8 @@ model Society {
   organization    Organization         @relation(fields: [organizationId], references: [id])
   president       User?                @relation("SocietyPresident", fields: [presidentId], references: [id])
   secretary       User?                @relation("SocietySecretary", fields: [secretaryId], references: [id])
-  members         SocietyMembership[]
   joinRequests    SocietyJoinRequest[]
+  members         SocietyMembership[]
 
   @@unique([name, organizationId])
   @@index([organizationId])
@@ -244,8 +244,8 @@ model Parishioner {
   organization       Organization         @relation(fields: [organizationId], references: [id])
   payments           Payment[]
   sacraments         Sacrament[]
-  societyMemberships SocietyMembership[]
   joinRequests       SocietyJoinRequest[]
+  societyMemberships SocietyMembership[]
 
   @@index([organizationId])
   @@index([email])
@@ -263,8 +263,8 @@ model SocietyJoinRequest {
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
   parishioner   Parishioner       @relation(fields: [parishionerId], references: [id])
-  society       Society           @relation(fields: [societyId], references: [id])
   reviewedBy    User?             @relation("JoinRequestReviewer", fields: [reviewedById], references: [id])
+  society       Society           @relation(fields: [societyId], references: [id])
 
   @@unique([parishionerId, societyId])
   @@index([societyId])
@@ -474,17 +474,17 @@ model Appointment {
   endTime              DateTime
   type                 AppointmentType
   status               AppointmentStatus        @default(PENDING)
-  source               AppointmentSource        @default(INTERNAL)
   parishionerId        String?
   assignedToId         String?
   requestedById        String?
-  availabilityId       String?
-  publicRequesterName  String?
-  publicRequesterEmail String?
-  publicRequesterPhone String?
   createdAt            DateTime                 @default(now())
   updatedAt            DateTime                 @updatedAt
   organizationId       String
+  availabilityId       String?
+  publicRequesterEmail String?
+  publicRequesterName  String?
+  publicRequesterPhone String?
+  source               AppointmentSource        @default(INTERNAL)
   assignedTo           User?                    @relation("AppointmentAssignee", fields: [assignedToId], references: [id])
   availability         AppointmentAvailability? @relation(fields: [availabilityId], references: [id])
   organization         Organization             @relation(fields: [organizationId], references: [id])
@@ -557,14 +557,14 @@ model Announcement {
   id             String           @id @default(uuid())
   title          String
   content        String
-  imageUrl       String?
   targetLevels   HierarchyLevel[]
   isPublished    Boolean          @default(false)
   publishedAt    DateTime?
-  expiresAt      DateTime?
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
   organizationId String
+  expiresAt      DateTime?
+  imageUrl       String?
 
   @@index([organizationId])
   @@index([isPublished])

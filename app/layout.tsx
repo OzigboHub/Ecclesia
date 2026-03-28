@@ -1,6 +1,6 @@
 import { AuthProvider } from "@/components/providers/auth-provider";
 import type { Metadata } from "next";
-import { Geist } from "next/font/google";
+import { Geist, Montserrat } from "next/font/google";
 import NextTopLoader from "nextjs-toploader";
 import { Toaster } from "sonner";
 import "./globals.css";
@@ -25,7 +25,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${montserrat.className} scroll-smooth text-[13px] antialiased`}
+        className={`${Montserrat} scroll-smooth text-[13px] antialiased`}
         suppressHydrationWarning>
         <AuthProvider>
           <NextTopLoader

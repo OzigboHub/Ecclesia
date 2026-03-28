@@ -4,10 +4,7 @@ import { useTransition, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm, Controller, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  CreatesocietyInput,
-  createsocietySchema,
-} from "@/lib/validators/society.schema";
+
 import { createSociety, updateSociety } from "@/app/actions/society.actions";
 import { getUsers } from "@/app/actions/user.actions";
 import { Button } from "@/components/ui/button";
@@ -22,6 +19,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import {
+  CreateSocietyInput,
+  createSocietySchema,
+} from "@/lib/validators/society.schema";
 
 interface SocietyFormProps {
   initialData?: {
@@ -43,8 +44,8 @@ export function SocietyForm({ initialData, onSuccess }: SocietyFormProps) {
   >([]);
   const router = useRouter();
 
-  const form = useForm<CreatesocietyInput>({
-    resolver: zodResolver(createsocietySchema) as Resolver<CreatesocietyInput>,
+  const form = useForm<CreateSocietyInput>({
+    resolver: zodResolver(createSocietySchema) as Resolver<CreateSocietyInput>,
     defaultValues: {
       name: initialData?.name ?? "",
       description: initialData?.description ?? "",
@@ -81,7 +82,7 @@ export function SocietyForm({ initialData, onSuccess }: SocietyFormProps) {
     fetchUsers();
   }, []);
 
-  const onSubmit = (data: CreatesocietyInput) => {
+  const onSubmit = (data: CreateSocietyInput) => {
     startTransition(async () => {
       const result = initialData?.id
         ? await updateSociety(initialData.id, data)
@@ -99,7 +100,7 @@ export function SocietyForm({ initialData, onSuccess }: SocietyFormProps) {
         if (result.errors) {
           Object.entries(result.errors).forEach(([field, messages]) => {
             if (Array.isArray(messages) && messages.length > 0) {
-              setError(field as keyof CreatesocietyInput, {
+              setError(field as keyof CreateSocietyInput, {
                 type: "server",
                 message: messages[0],
               });
