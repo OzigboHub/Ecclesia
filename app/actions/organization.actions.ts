@@ -3,30 +3,75 @@
 import { auth } from '@/auth';
 import db from '@/lib/db';
 import type { ActionResponse } from '@/types';
+import bcrypt from 'bcryptjs';
 import type { OrganizationFeatureSettings } from '@prisma/client';
 import type { FeatureName } from '@/lib/features';
 import { featureDependencies } from '@/lib/features';
+import { isFeatureEnabled } from '@/lib/features.server';
+
+/**
+ * Get public information about an organization
+ */
+export async function getPublicOrganization(id: string): Promise<ActionResponse<any>> {
+	try {
+		const organization = await db.organization.findUnique({
+			where: { id },
+			select: {
+				id: true,
+				name: true,
+				address: true,
+				contactEmail: true,
+				contactPhone: true,
+				level: true,
+			},
+		});
+
+		if (!organization) {
+			return { success: false, message: 'Organization not found' };
+		}
+
+		return {
+			success: true,
+			message: 'Organization retrieved',
+			data: organization,
+		};
+	} catch (error) {
+		console.error('Get public organization error:', error);
+		return { success: false, message: 'Failed to fetch organization' };
+	}
+}
 
 /**
  * Get organization feature settings for the current user's organization
  */
-export async function getOrganizationFeatures(): Promise<
-	ActionResponse<OrganizationFeatureSettings>
-> {
+export async function getOrganizationFeatures(
+	targetOrganizationId?: string
+): Promise<ActionResponse<OrganizationFeatureSettings>> {
 	try {
 		const session = await auth();
-		if (!session?.user?.organizationId) {
+		if (!session?.user) {
 			return { success: false, message: 'Unauthorized' };
 		}
 
+		let organizationId = session.user.organizationId;
+
+		// Super admin override
+		if (targetOrganizationId && session.user.role === 'SUPER_ADMIN') {
+			organizationId = targetOrganizationId;
+		}
+
+		if (!organizationId) {
+			return { success: false, message: 'No organization context' };
+		}
+
 		let settings = await db.organizationFeatureSettings.findUnique({
-			where: { organizationId: session.user.organizationId },
+			where: { organizationId },
 		});
 
 		// Create default settings if they don't exist
 		if (!settings) {
 			settings = await db.organizationFeatureSettings.create({
-				data: { organizationId: session.user.organizationId },
+				data: { organizationId },
 			});
 		}
 
@@ -44,18 +89,33 @@ export async function getOrganizationFeatures(): Promise<
 /**
  * Update organization feature settings (Admin only)
  */
+/**
+ * Update organization feature settings (Admin only)
+ * or a specific organization if the user is a super admin
+ */
 export async function updateOrganizationFeatures(
-	updates: Partial<Record<FeatureName, boolean>>
+	updates: Partial<Record<FeatureName, boolean>>,
+	targetOrganizationId?: string
 ): Promise<ActionResponse<OrganizationFeatureSettings>> {
 	try {
 		const session = await auth();
-		if (!session?.user?.organizationId) {
+		if (!session?.user) {
 			return { success: false, message: 'Unauthorized' };
 		}
 
-		// Only admins can update feature settings
-		const allowedRoles = ['SUPER_ADMIN', 'PARISH_ADMIN'];
-		if (!allowedRoles.includes(session.user.role)) {
+		let organizationId = session.user.organizationId;
+
+		// Super admin override
+		if (targetOrganizationId && session.user.role === 'SUPER_ADMIN') {
+			organizationId = targetOrganizationId;
+		}
+
+		if (!organizationId) {
+			return { success: false, message: 'No organization context' };
+		}
+
+		// Only Super Admin / System Admin can update feature settings
+		if (session.user.role !== 'SUPER_ADMIN') {
 			return {
 				success: false,
 				message:
@@ -72,10 +132,7 @@ export async function updateOrganizationFeatures(
 					// Check if dependency is being enabled in this update or already enabled
 					const depEnabled =
 						updates[dep] ??
-						(await isFeatureCurrentlyEnabled(
-							session.user.organizationId,
-							dep
-						));
+						(await isFeatureEnabled(organizationId, dep));
 					if (!depEnabled) {
 						return {
 							success: false,
@@ -88,14 +145,14 @@ export async function updateOrganizationFeatures(
 
 		// Ensure settings exist
 		await db.organizationFeatureSettings.upsert({
-			where: { organizationId: session.user.organizationId },
-			create: { organizationId: session.user.organizationId },
+			where: { organizationId },
+			create: { organizationId },
 			update: {},
 		});
 
 		// Update settings
 		const settings = await db.organizationFeatureSettings.update({
-			where: { organizationId: session.user.organizationId },
+			where: { organizationId },
 			data: updates,
 		});
 
@@ -115,9 +172,10 @@ export async function updateOrganizationFeatures(
  */
 export async function toggleFeature(
 	feature: FeatureName,
-	enabled: boolean
+	enabled: boolean,
+	targetOrganizationId?: string
 ): Promise<ActionResponse<OrganizationFeatureSettings>> {
-	return updateOrganizationFeatures({ [feature]: enabled });
+	return updateOrganizationFeatures({ [feature]: enabled }, targetOrganizationId);
 }
 
 /**
@@ -188,9 +246,8 @@ export async function updateOrganization(data: {
 			return { success: false, message: 'Unauthorized' };
 		}
 
-		// Only admins can update organization
-		const allowedRoles = ['SUPER_ADMIN', 'PARISH_ADMIN'];
-		if (!allowedRoles.includes(session.user.role)) {
+		// Only Super Admin / System Admin can update organization details (Settings)
+		if (session.user.role !== 'SUPER_ADMIN') {
 			return {
 				success: false,
 				message:
@@ -220,15 +277,138 @@ export async function updateOrganization(data: {
 	}
 }
 
-// Helper function
-async function isFeatureCurrentlyEnabled(
+
+// ============================================
+// ORGANIZATION PAGINATION HELPERS
+// ============================================
+
+/**
+ * Get paginated users for an organization
+ */
+export async function getOrganizationUsers(
 	organizationId: string,
-	feature: FeatureName
-): Promise<boolean> {
-	const settings = await db.organizationFeatureSettings.findUnique({
-		where: { organizationId },
-	});
-	return settings?.[feature] ?? false;
+	limit: number = 20,
+	offset: number = 0
+): Promise<ActionResponse<{ users: any[]; total: number }>> {
+	try {
+		const session = await auth();
+		if (!session?.user) {
+			return { success: false, message: 'Unauthorized' };
+		}
+
+		// Only super admins or users from the same organization
+		if (
+			session.user.role !== 'SUPER_ADMIN' &&
+			session.user.organizationId !== organizationId
+		) {
+			return { success: false, message: 'Unauthorized' };
+		}
+
+		const [users, total] = await Promise.all([
+			db.user.findMany({
+				where: { organizationId },
+				orderBy: { createdAt: 'desc' },
+				skip: offset,
+				take: limit,
+			}),
+			db.user.count({ where: { organizationId } }),
+		]);
+
+		return {
+			success: true,
+			message: 'Users retrieved',
+			data: { users, total },
+		};
+	} catch (error) {
+		console.error('Get organization users error:', error);
+		return { success: false, message: 'Failed to fetch users' };
+	}
+}
+
+/**
+ * Get paginated parishioners for an organization
+ */
+export async function getOrganizationParishioners(
+	organizationId: string,
+	limit: number = 20,
+	offset: number = 0
+): Promise<ActionResponse<{ parishioners: any[]; total: number }>> {
+	try {
+		const session = await auth();
+		if (!session?.user) {
+			return { success: false, message: 'Unauthorized' };
+		}
+
+		// Only super admins or users from the same organization
+		if (
+			session.user.role !== 'SUPER_ADMIN' &&
+			session.user.organizationId !== organizationId
+		) {
+			return { success: false, message: 'Unauthorized' };
+		}
+
+		const [parishioners, total] = await Promise.all([
+			db.parishioner.findMany({
+				where: { organizationId },
+				orderBy: { createdAt: 'desc' },
+				skip: offset,
+				take: limit,
+			}),
+			db.parishioner.count({ where: { organizationId } }),
+		]);
+
+		return {
+			success: true,
+			message: 'Parishioners retrieved',
+			data: { parishioners, total },
+		};
+	} catch (error) {
+		console.error('Get organization parishioners error:', error);
+		return { success: false, message: 'Failed to fetch parishioners' };
+	}
+}
+
+/**
+ * Get paginated societies for an organization
+ */
+export async function getOrganizationSocieties(
+	organizationId: string,
+	limit: number = 20,
+	offset: number = 0
+): Promise<ActionResponse<{ societies: any[]; total: number }>> {
+	try {
+		const session = await auth();
+		if (!session?.user) {
+			return { success: false, message: 'Unauthorized' };
+		}
+
+		// Only super admins or users from the same organization
+		if (
+			session.user.role !== 'SUPER_ADMIN' &&
+			session.user.organizationId !== organizationId
+		) {
+			return { success: false, message: 'Unauthorized' };
+		}
+
+		const [societies, total] = await Promise.all([
+			db.society.findMany({
+				where: { organizationId },
+				orderBy: { createdAt: 'desc' },
+				skip: offset,
+				take: limit,
+			}),
+			db.society.count({ where: { organizationId } }),
+		]);
+
+		return {
+			success: true,
+			message: 'Societies retrieved',
+			data: { societies, total },
+		};
+	} catch (error) {
+		console.error('Get organization societies error:', error);
+		return { success: false, message: 'Failed to fetch societies' };
+	}
 }
 
 // ============================================
@@ -348,20 +528,53 @@ export async function createParish(
 			};
 		}
 
-		// Create parish
-		const parish = await db.organization.create({
-			data: {
-				name: parsed.data.name,
-				level: 'PARISH',
-				address: parsed.data.address,
-				contactEmail: parsed.data.contactEmail,
-				contactPhone: parsed.data.contactPhone,
-			},
+		const { parishAdmin } = parsed.data;
+
+		// Check if parish admin email already exists
+		const existingAdmin = await db.user.findUnique({
+			where: { email: parishAdmin.email },
+		});
+		if (existingAdmin) {
+			return {
+				success: false,
+				message: 'A user with this parish admin email already exists',
+				errors: {
+					'parishAdmin.email': ['This email is already registered'],
+				},
+			};
+		}
+
+		// Create parish and parish admin in a transaction
+		const parish = await db.$transaction(async (tx) => {
+			const newParish = await tx.organization.create({
+				data: {
+					name: parsed.data.name,
+					level: 'PARISH',
+					address: parsed.data.address,
+					contactEmail: parsed.data.contactEmail,
+					contactPhone: parsed.data.contactPhone,
+				},
+			});
+
+			const hashedPassword = await bcrypt.hash(parishAdmin.password, 12);
+			await tx.user.create({
+				data: {
+					firstName: parishAdmin.firstName,
+					lastName: parishAdmin.lastName,
+					email: parishAdmin.email,
+					password: hashedPassword,
+					role: 'PARISH_ADMIN',
+					organizationId: newParish.id,
+					isActive: true,
+				},
+			});
+
+			return newParish;
 		});
 
 		return {
 			success: true,
-			message: 'Parish created successfully',
+			message: 'Parish created successfully with parish admin',
 			data: { id: parish.id, name: parish.name },
 		};
 	} catch (error) {

@@ -7,9 +7,9 @@ import { ArrowLeft } from 'lucide-react';
 import { AdminOrganizationForm } from '@/components/forms/admin-organization-form';
 
 interface NewOutstationPageProps {
-	params: {
+	params: Promise<{
 		id: string;
-	};
+	}>;
 }
 
 export default async function NewOutstationPage({
@@ -21,15 +21,10 @@ export default async function NewOutstationPage({
 		redirect('/dashboard');
 	}
 
-	// Get all parishes for the dropdown
-	const parishes = await db.organization.findMany({
-		where: { level: 'PARISH' },
-		select: { id: true, name: true },
-		orderBy: { name: 'asc' },
-	});
+	const { id } = await params;
 
 	const currentParish = await db.organization.findUnique({
-		where: { id: params.id },
+		where: { id },
 	});
 
 	if (!currentParish || currentParish.level !== 'PARISH') {
@@ -39,7 +34,7 @@ export default async function NewOutstationPage({
 	return (
 		<div className='space-y-6'>
 			<div>
-				<Link href={`/dashboard/admin/organizations/${params.id}`}>
+				<Link href={`/dashboard/admin/organizations/${id}`}>
 					<Button
 						variant='ghost'
 						size='sm'
@@ -58,11 +53,12 @@ export default async function NewOutstationPage({
 			</div>
 
 			<div className='flex justify-center'>
-				<AdminOrganizationForm
-					type='outstation'
-					parishes={[currentParish, ...parishes]}
-				/>
-			</div>
+			<AdminOrganizationForm
+				type='outstation'
+				parishes={[currentParish]}
+				defaultParentId={id}
+			/>
+		</div>
 		</div>
 	);
 }

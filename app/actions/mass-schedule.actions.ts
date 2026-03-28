@@ -31,14 +31,12 @@ export async function createMassScheduleTemplate(
 ): Promise<ActionResponse<MassScheduleTemplate>> {
     try {
         const session = await auth();
-        console.log('Creating template, data:', data);
         if (!session || !['SUPER_ADMIN', 'PARISH_ADMIN'].includes(session.user.role)) {
             return { success: false, message: 'Unauthorized' };
         }
 
         const validated = massScheduleTemplateSchema.safeParse(data);
         if (!validated.success) {
-            console.log('Validation failed:', validated.error.flatten().fieldErrors);
             return {
                 success: false,
                 message: 'Validation failed',
@@ -63,7 +61,6 @@ export async function createMassScheduleTemplate(
         revalidatePath('/dashboard/mass-schedule');
         return { success: true, message: 'Template created successfully', data: template };
     } catch (error) {
-        console.error('Failed to create template:', error);
         return {
             success: false,
             message: error instanceof Error ? error.message : 'Failed to create template'
@@ -74,7 +71,6 @@ export async function createMassScheduleTemplate(
 export async function getMassScheduleTemplates(): Promise<ActionResponse<MassScheduleTemplate[]>> {
     try {
         const session = await auth();
-        console.log('Fetching templates, session user:', session?.user);
         if (!session) return { success: false, message: 'Unauthorized' };
 
         const templates = await db.massScheduleTemplate.findMany({
@@ -82,10 +78,8 @@ export async function getMassScheduleTemplates(): Promise<ActionResponse<MassSch
             orderBy: [{ dayOfWeek: 'asc' }, { time: 'asc' }],
         });
 
-        console.log(`Successfully retrieved ${templates.length} templates for org ${session.user.organizationId}`);
         return { success: true, message: 'Templates retrieved', data: templates };
     } catch (error) {
-        console.error('Failed to get templates:', error);
         return {
             success: false,
             message: error instanceof Error ? `Failed to get templates: ${error.message}` : 'Failed to get templates'

@@ -35,12 +35,12 @@ This epic covers the management of organizational hierarchy (Parish and Outstati
 
 **Acceptance Criteria:**
 
--   [ ] Form captures: parish name, address, contact email, phone
--   [ ] Parish level is set to "PARISH"
--   [ ] Default feature settings are created
--   [ ] Parish admin user can be assigned during creation
--   [ ] Validation ensures unique parish name
--   [ ] Success confirmation with option to add outstations
+- [ ] Form captures: parish name, address, contact email, phone
+- [ ] Parish level is set to "PARISH"
+- [ ] Default feature settings are created
+- [ ] Parish admin user can be assigned during creation
+- [ ] Validation ensures unique parish name
+- [ ] Success confirmation with option to add outstations
 
 **Priority:** P0
 **Story Points:** 5
@@ -56,12 +56,12 @@ This epic covers the management of organizational hierarchy (Parish and Outstati
 
 **Acceptance Criteria:**
 
--   [ ] Form captures: outstation name, address, contact info
--   [ ] Outstation level is set to "OUTSTATION"
--   [ ] Parent parish is automatically set to admin's parish
--   [ ] Feature settings inherit from parent parish
--   [ ] Outstation admin can be assigned
--   [ ] Validation ensures unique name within parish
+- [ ] Form captures: outstation name, address, contact info
+- [ ] Outstation level is set to "OUTSTATION"
+- [ ] Parent parish is automatically set to admin's parish
+- [ ] Feature settings inherit from parent parish
+- [ ] Outstation admin can be assigned
+- [ ] Validation ensures unique name within parish
 
 **Priority:** P0
 **Story Points:** 5
@@ -77,11 +77,11 @@ This epic covers the management of organizational hierarchy (Parish and Outstati
 
 **Acceptance Criteria:**
 
--   [ ] Tree view showing parish at root
--   [ ] Outstations listed under parish
--   [ ] Each node shows: name, admin, member count
--   [ ] Click to view organization details
--   [ ] Visual distinction between parish and outstations
+- [ ] Tree view showing parish at root
+- [ ] Outstations listed under parish
+- [ ] Each node shows: name, admin, member count
+- [ ] Click to view organization details
+- [ ] Visual distinction between parish and outstations
 
 **Priority:** P1
 **Story Points:** 3
@@ -97,12 +97,12 @@ This epic covers the management of organizational hierarchy (Parish and Outstati
 
 **Acceptance Criteria:**
 
--   [ ] Edit form for: name, address, email, phone
--   [ ] Parish admin can edit parish and all outstations
--   [ ] Outstation admin can only edit their outstation
--   [ ] Validation on all fields
--   [ ] Audit log captures changes
--   [ ] Success notification on save
+- [ ] Edit form for: name, address, email, phone
+- [ ] Parish admin can edit parish and all outstations
+- [ ] Outstation admin can only edit their outstation
+- [ ] Validation on all fields
+- [ ] Audit log captures changes
+- [ ] Success notification on save
 
 **Priority:** P1
 **Story Points:** 3
@@ -118,10 +118,10 @@ This epic covers the management of organizational hierarchy (Parish and Outstati
 
 **Acceptance Criteria:**
 
--   [ ] Cannot set an outstation as parent of its own parish
--   [ ] Validation error shown for invalid hierarchy
--   [ ] Database constraints prevent circular references
--   [ ] Only two levels allowed (Parish → Outstation)
+- [ ] Cannot set an outstation as parent of its own parish
+- [ ] Validation error shown for invalid hierarchy
+- [ ] Database constraints prevent circular references
+- [ ] Only two levels allowed (Parish → Outstation)
 
 **Priority:** P0
 **Story Points:** 2
@@ -137,11 +137,11 @@ This epic covers the management of organizational hierarchy (Parish and Outstati
 
 **Acceptance Criteria:**
 
--   [ ] Dashboard shows aggregated stats from parish + outstations
--   [ ] Parishioner list includes all from parish hierarchy
--   [ ] Payment reports aggregate across hierarchy
--   [ ] Filter option to view specific organization data
--   [ ] Clear indication of which organization data belongs to
+- [ ] Dashboard shows aggregated stats from parish + outstations
+- [ ] Parishioner list includes all from parish hierarchy
+- [ ] Payment reports aggregate across hierarchy
+- [ ] Filter option to view specific organization data
+- [ ] Clear indication of which organization data belongs to
 
 **Priority:** P0
 **Story Points:** 5
@@ -157,11 +157,11 @@ This epic covers the management of organizational hierarchy (Parish and Outstati
 
 **Acceptance Criteria:**
 
--   [ ] Dashboard shows only outstation stats
--   [ ] Parishioner list shows only outstation members
--   [ ] Cannot view other outstations' data
--   [ ] Cannot view parish-level aggregate data
--   [ ] Clear indication of current organization context
+- [ ] Dashboard shows only outstation stats
+- [ ] Parishioner list shows only outstation members
+- [ ] Cannot view other outstations' data
+- [ ] Cannot view parish-level aggregate data
+- [ ] Clear indication of current organization context
 
 **Priority:** P0
 **Story Points:** 3
@@ -179,17 +179,17 @@ This epic covers the management of organizational hierarchy (Parish and Outstati
 
 **Acceptance Criteria:**
 
--   [ ] Feature settings page accessible from dashboard
--   [ ] All features listed with current status (enabled/disabled)
--   [ ] Features grouped by category:
-    -   Core (Parishioner, Sacraments, Financial)
-    -   Payments (Offerings, Tithes, Campaigns, Custom)
-    -   Spiritual (Mass Intentions, Appointments, Confession)
-    -   Communication (Live Streaming, Announcements, SMS, Email)
-    -   Organizations (Pious Orgs, Events)
-    -   Advanced (Online Payments, Recurring, Mobile)
--   [ ] Description for each feature
--   [ ] Mobile-responsive layout
+- [ ] Feature settings page accessible from dashboard
+- [ ] All features listed with current status (enabled/disabled)
+- [ ] Features grouped by category:
+  - Core (Parishioner, Sacraments, Financial)
+  - Payments (Offerings, Tithes, Campaigns, Custom)
+  - Spiritual (Mass Intentions, Appointments, Confession)
+  - Communication (Live Streaming, Announcements, SMS, Email)
+  - Organizations (Pious Orgs, Events)
+  - Advanced (Online Payments, Recurring, Mobile)
+- [ ] Description for each feature
+- [ ] Mobile-responsive layout
 
 **Priority:** P0
 **Story Points:** 5
@@ -205,12 +205,12 @@ This epic covers the management of organizational hierarchy (Parish and Outstati
 
 **Acceptance Criteria:**
 
--   [ ] Toggle switch for each feature
--   [ ] Confirmation dialog before disabling
--   [ ] Warning about dependent features
--   [ ] Changes take effect immediately
--   [ ] Audit log captures toggle changes
--   [ ] Success/error toast notifications
+- [ ] Toggle switch for each feature
+- [ ] Confirmation dialog before disabling
+- [ ] Warning about dependent features
+- [ ] Changes take effect immediately
+- [ ] Audit log captures toggle changes
+- [ ] Success/error toast notifications
 
 **Priority:** P0
 **Story Points:** 5
@@ -226,11 +226,11 @@ This epic covers the management of organizational hierarchy (Parish and Outstati
 
 **Acceptance Criteria:**
 
--   [ ] Sidebar hides links to disabled features
--   [ ] Dashboard hides widgets for disabled features
--   [ ] Forms hide options for disabled features
--   [ ] Feature check happens on page load
--   [ ] Graceful fallback if feature settings unavailable
+- [ ] Sidebar hides links to disabled features
+- [ ] Dashboard hides widgets for disabled features
+- [ ] Forms hide options for disabled features
+- [ ] Feature check happens on page load
+- [ ] Graceful fallback if feature settings unavailable
 
 **Priority:** P0
 **Story Points:** 5
@@ -246,11 +246,11 @@ This epic covers the management of organizational hierarchy (Parish and Outstati
 
 **Acceptance Criteria:**
 
--   [ ] Server Actions check feature status before execution
--   [ ] Returns appropriate error for disabled features
--   [ ] Error message: "Feature not enabled for your organization"
--   [ ] No data modification allowed for disabled features
--   [ ] Audit log captures blocked access attempts
+- [ ] Server Actions check feature status before execution
+- [ ] Returns appropriate error for disabled features
+- [ ] Error message: "Feature not enabled for your organization"
+- [ ] No data modification allowed for disabled features
+- [ ] Audit log captures blocked access attempts
 
 **Priority:** P0
 **Story Points:** 5
@@ -266,10 +266,10 @@ This epic covers the management of organizational hierarchy (Parish and Outstati
 
 **Acceptance Criteria:**
 
--   [ ] Default enabled: Parishioner Management, Sacraments, Financial, Mass Intentions, Appointments, Announcements, Email, Pious Orgs, Events, Public Website
--   [ ] Default disabled: Live Streaming, SMS, Online Payments, Recurring Donations, Mobile App
--   [ ] Settings record created automatically with organization
--   [ ] Admin can modify after creation
+- [ ] Default enabled: Parishioner Management, Sacraments, Financial, Mass Intentions, Appointments, Announcements, Email, Pious Orgs, Events, Public Website
+- [ ] Default disabled: Live Streaming, SMS, Online Payments, Recurring Donations, Mobile App
+- [ ] Settings record created automatically with organization
+- [ ] Admin can modify after creation
 
 **Priority:** P0
 **Story Points:** 3
@@ -285,12 +285,12 @@ This epic covers the management of organizational hierarchy (Parish and Outstati
 
 **Acceptance Criteria:**
 
--   [ ] Cannot enable Online Payments without Financial Management
--   [ ] Cannot enable Mass Intentions without Financial Management
--   [ ] Cannot enable Recurring Donations without Online Payments
--   [ ] Cannot enable SMS Notifications without Communication feature
--   [ ] Warning shown when disabling a feature that others depend on
--   [ ] Dependent features auto-disabled when parent disabled
+- [ ] Cannot enable Online Payments without Financial Management
+- [ ] Cannot enable Mass Intentions without Financial Management
+- [ ] Cannot enable Recurring Donations without Online Payments
+- [ ] Cannot enable SMS Notifications without Communication feature
+- [ ] Warning shown when disabling a feature that others depend on
+- [ ] Dependent features auto-disabled when parent disabled
 
 **Priority:** P0
 **Story Points:** 5
@@ -306,11 +306,11 @@ This epic covers the management of organizational hierarchy (Parish and Outstati
 
 **Acceptance Criteria:**
 
--   [ ] New outstations inherit parent parish settings
--   [ ] Outstation cannot enable features disabled at parish level
--   [ ] Outstation can disable features enabled at parish level
--   [ ] Visual indicator for inherited vs overridden settings
--   [ ] Parish admin can reset outstation to inherit
+- [ ] New outstations inherit parent parish settings
+- [ ] Outstation cannot enable features disabled at parish level
+- [ ] Outstation can disable features enabled at parish level
+- [ ] Visual indicator for inherited vs overridden settings
+- [ ] Parish admin can reset outstation to inherit
 
 **Priority:** P1
 **Story Points:** 5
@@ -328,11 +328,11 @@ This epic covers the management of organizational hierarchy (Parish and Outstati
 
 **Acceptance Criteria:**
 
--   [ ] Settings form for: address, phone, email, website
--   [ ] Mass schedule information
--   [ ] Office hours
--   [ ] Validation for email and phone formats
--   [ ] Changes saved with confirmation
+- [ ] Settings form for: address, phone, email, website
+- [ ] Mass schedule information
+- [ ] Office hours
+- [ ] Validation for email and phone formats
+- [ ] Changes saved with confirmation
 
 **Priority:** P1
 **Story Points:** 3
@@ -348,10 +348,10 @@ This epic covers the management of organizational hierarchy (Parish and Outstati
 
 **Acceptance Criteria:**
 
--   [ ] Default currency: Nigerian Naira (₦)
--   [ ] Currency symbol displayed consistently
--   [ ] Number formatting: Nigerian locale (comma thousands, period decimals)
--   [ ] Setting is read-only (Naira only for v1.0)
+- [ ] Default currency: Nigerian Naira (₦)
+- [ ] Currency symbol displayed consistently
+- [ ] Number formatting: Nigerian locale (comma thousands, period decimals)
+- [ ] Setting is read-only (Naira only for v1.0)
 
 **Priority:** P1
 **Story Points:** 2
@@ -367,13 +367,13 @@ This epic covers the management of organizational hierarchy (Parish and Outstati
 
 **Acceptance Criteria:**
 
--   [ ] Total parishioners count
--   [ ] Total revenue (this month)
--   [ ] Pending mass intentions
--   [ ] Upcoming appointments
--   [ ] Recent activity feed
--   [ ] Quick action buttons
--   [ ] Data scoped to organization hierarchy
+- [ ] Total parishioners count
+- [ ] Total revenue (this month)
+- [ ] Pending mass intentions
+- [ ] Upcoming appointments
+- [ ] Recent activity feed
+- [ ] Quick action buttons
+- [ ] Data scoped to organization hierarchy
 
 **Priority:** P1
 **Story Points:** 5
@@ -389,11 +389,11 @@ This epic covers the management of organizational hierarchy (Parish and Outstati
 
 **Acceptance Criteria:**
 
--   [ ] Organization selector in header
--   [ ] Can view any parish and its outstations
--   [ ] Context clearly indicated in UI
--   [ ] Data updates when context changes
--   [ ] Session remembers last selected organization
+- [ ] Organization selector in header
+- [ ] Can view any parish and its outstations
+- [ ] Context clearly indicated in UI
+- [ ] Data updates when context changes
+- [ ] Session remembers last selected organization
 
 **Priority:** P1
 **Story Points:** 3
@@ -405,17 +405,17 @@ This epic covers the management of organizational hierarchy (Parish and Outstati
 
 ### Multi-Tenancy Implementation
 
--   All queries must include `organizationId` filter
--   Use `session.user.organizationId` for scoping
--   Parish admins: query with `organizationId IN (parish, ...outstations)`
--   Never trust client-provided organizationId
+- All queries must include `organizationId` filter
+- Use `session.user.organizationId` for scoping
+- Parish admins: query with `organizationId IN (parish, ...outstations)`
+- Never trust client-provided organizationId
 
 ### Feature Toggle Implementation
 
--   Cache feature settings in session or Zustand store
--   Check features in Server Actions before operations
--   Check features in Client Components for UI rendering
--   Use `useFeatureSettings()` hook for client-side checks
+- Cache feature settings in session or Zustand store
+- Check features in Server Actions before operations
+- Check features in Client Components for UI rendering
+- Use `useFeatureSettings()` hook for client-side checks
 
 ### Database Schema
 
@@ -469,7 +469,7 @@ model OrganizationFeatureSettings {
   enableEmailNotifications    Boolean      @default(true)
 
   // Organization Features
-  enablesocietys    Boolean      @default(true)
+  enableSocieties    Boolean      @default(true)
   enableEventManagement       Boolean      @default(true)
 
   // Advanced Features
@@ -485,22 +485,22 @@ model OrganizationFeatureSettings {
 
 ### Files to Create/Modify
 
--   `app/dashboard/settings/organization/page.tsx` - Org settings
--   `app/dashboard/settings/features/page.tsx` - Feature toggles
--   `app/actions/organization.actions.ts` - Organization CRUD
--   `lib/features.ts` - Feature toggle helpers
--   `hooks/use-feature-settings.ts` - Client-side feature hook
--   `lib/validators/organization.schema.ts` - Zod schemas
+- `app/dashboard/settings/organization/page.tsx` - Org settings
+- `app/dashboard/settings/features/page.tsx` - Feature toggles
+- `app/actions/organization.actions.ts` - Organization CRUD
+- `lib/features.ts` - Feature toggle helpers
+- `hooks/use-feature-settings.ts` - Client-side feature hook
+- `lib/validators/organization.schema.ts` - Zod schemas
 
 ---
 
 ## Dependencies
 
--   **EPIC-01**: User Management (authentication, roles)
+- **EPIC-01**: User Management (authentication, roles)
 
 ## Dependent Epics
 
--   All other epics depend on organization scoping and feature toggles
+- All other epics depend on organization scoping and feature toggles
 
 ---
 

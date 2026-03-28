@@ -1,16 +1,6 @@
 "use client";
 
-import { useState, useTransition, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import {
-	registerSchema,
-	type RegisterInput,
-} from "@/lib/validators/auth.schema";
-import { register, getOrganizations } from "@/app/actions/auth.actions";
-import { toast } from "sonner";
+import { getOrganizations, register } from "@/app/actions/auth.actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,7 +11,17 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import { Eye, EyeOff, Check, X, ArrowLeft } from "lucide-react";
+import {
+	registerSchema,
+	type RegisterInput,
+} from "@/lib/validators/auth.schema";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Check, Eye, EyeOff, X } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect, useState, useTransition } from "react";
+import { useForm, useWatch } from "react-hook-form";
+import { toast } from "sonner";
 
 interface Organization {
 	id: string;
@@ -43,6 +43,9 @@ export default function RegisterPage() {
 			firstName: "",
 			lastName: "",
 			email: "",
+			phone: "",
+			dateOfBirth: "",
+			address: "",
 			password: "",
 			confirmPassword: "",
 		},
@@ -52,12 +55,13 @@ export default function RegisterPage() {
 		register: registerField,
 		handleSubmit,
 		formState: { errors },
-		watch,
-		setValue,
 		setError,
 	} = form;
 
-	const password = watch("password");
+	const password = useWatch({
+		control: form.control,
+		name: "password",
+	});
 
 	// Password requirements check
 	const passwordRequirements = [
@@ -123,29 +127,10 @@ export default function RegisterPage() {
 	};
 
 	return (
-		<div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-pSrimary/10 via-background to-accent/20 p-4">
-			<div className="w-full max-w-md">
-				{/* Back to Login */}
-				<Link
-					href="/auth/login"
-					className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-4"
-				>
-					<ArrowLeft className="mr-2 h-4 w-4" />
-					Back to Login
-				</Link>
-
-				{/* Logo/Branding */}
-				<div className="text-center mb-6">
-					<h1 className="text-4xl font-bold text-primary mb-2">
-						Ecclesia
-					</h1>
-					<p className="text-muted-foreground">
-						Digital Parish Manager
-					</p>
-				</div>
-
+		<div className="min-h-screen flex items-center justify-center bg-linear-to-br from-primary/10 via-background to-accent/20 p-4">
+			<div className="w-full max-w-lg mt-[100px]">
 				{/* Register Card */}
-				<div className="bg-background/80 backdrop-blur-sm border border-border rounded-lg shadow-2xl p-8">
+				<div className="bg-background/80  backdrop-blur-sm border border-border rounded-lg shadow-2xl p-8">
 					<h2 className="text-2xl font-semibold mb-6 text-center">
 						Create Account
 					</h2>
@@ -153,6 +138,7 @@ export default function RegisterPage() {
 					<form
 						onSubmit={handleSubmit(onSubmit)}
 						className="space-y-4"
+						autoComplete="off"
 					>
 						{/* Name Fields */}
 						<div className="grid grid-cols-2 gap-4">
@@ -163,6 +149,7 @@ export default function RegisterPage() {
 									{...registerField("firstName")}
 									placeholder="John"
 									disabled={isPending}
+									autoComplete="given-name"
 									aria-invalid={!!errors.firstName}
 								/>
 								{errors.firstName && (
@@ -179,6 +166,7 @@ export default function RegisterPage() {
 									{...registerField("lastName")}
 									placeholder="Doe"
 									disabled={isPending}
+									autoComplete="family-name"
 									aria-invalid={!!errors.lastName}
 								/>
 								{errors.lastName && (
@@ -208,6 +196,63 @@ export default function RegisterPage() {
 							)}
 						</div>
 
+						<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+							<div className="space-y-2">
+								<Label htmlFor="phone">Phone Number *</Label>
+								<Input
+									id="phone"
+									type="tel"
+									{...registerField("phone")}
+									placeholder="08012345678"
+									disabled={isPending}
+									autoComplete="tel"
+									aria-invalid={!!errors.phone}
+								/>
+								{errors.phone && (
+									<p className="text-xs text-destructive">
+										{errors.phone.message}
+									</p>
+								)}
+							</div>
+
+							<div className="space-y-2">
+								<Label htmlFor="dateOfBirth">
+									Date of Birth *
+								</Label>
+								<Input
+									id="dateOfBirth"
+									type="date"
+									{...registerField("dateOfBirth")}
+									disabled={isPending}
+									autoComplete="bday"
+									max={new Date().toISOString().split("T")[0]}
+									aria-invalid={!!errors.dateOfBirth}
+								/>
+								{errors.dateOfBirth && (
+									<p className="text-xs text-destructive">
+										{errors.dateOfBirth.message}
+									</p>
+								)}
+							</div>
+						</div>
+
+						<div className="space-y-2">
+							<Label htmlFor="address">Resident Address</Label>
+							<Input
+								id="address"
+								{...registerField("address")}
+								placeholder="Enter your resident address"
+								disabled={isPending}
+								autoComplete="address-line1"
+								aria-invalid={!!errors.address}
+							/>
+							{errors.address && (
+								<p className="text-xs text-destructive">
+									{errors.address.message}
+								</p>
+							)}
+						</div>
+
 						{/* Organization Select */}
 						<div className="space-y-2">
 							<Label htmlFor="organization">
@@ -227,7 +272,7 @@ export default function RegisterPage() {
 										}
 									/>
 								</SelectTrigger>
-								<SelectContent>
+								<SelectContent className=" bg-secondary">
 									{organizations.map((org) => (
 										<SelectItem key={org.id} value={org.id}>
 											{org.name}

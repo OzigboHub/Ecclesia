@@ -65,7 +65,9 @@ export async function getPaymentReceiptData(
 			transactionRef: payment.transactionRef || '',
 			status: payment.paymentStatus,
 			notes: payment.notes || '',
-			recordedByName: `${payment.recordedBy.firstName} ${payment.recordedBy.lastName}`,
+			recordedByName: payment.recordedBy
+				? `${payment.recordedBy.firstName} ${payment.recordedBy.lastName}`
+				: 'Digital Transaction',
 			recordedAt: new Date(payment.createdAt).toLocaleDateString(
 				'en-NG',
 				{
@@ -79,14 +81,14 @@ export async function getPaymentReceiptData(
 				: null,
 			massIntention: payment.massIntention
 				? {
-						type: payment.massIntention.intentionType,
-						intention: payment.massIntention.intention,
-						requestedDate: payment.massIntention.mass
-							? new Date(
-									payment.massIntention.mass.date
-							  ).toLocaleDateString('en-NG')
-							: 'Not scheduled',
-				  }
+					type: payment.massIntention.intentionType,
+					intention: payment.massIntention.intention,
+					requestedDate: payment.massIntention.mass
+						? new Date(
+							payment.massIntention.mass.date
+						).toLocaleDateString('en-NG')
+						: 'Not scheduled',
+				}
 				: null,
 			campaignName: payment.donationCampaign?.name || null,
 		};

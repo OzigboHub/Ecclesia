@@ -20,6 +20,8 @@ export const createPaymentSchema = z
 			'MASS_INTENTION',
 			'DONATION_CAMPAIGN',
 			'CUSTOM_DONATION',
+			'SOCIETY_DUES',
+			'EVENT_PAYMENT',
 			'OTHER',
 		]),
 		month: z.number().int().min(1).max(12).optional(),
@@ -31,24 +33,18 @@ export const createPaymentSchema = z
 			'CHECK',
 		]),
 		parishionerId: z.string().uuid('Invalid parishioner ID').optional(),
-		payerName: z
-			.string()
-			.min(2, 'Payer name must be at least 2 characters')
-			.max(100, 'Payer name must not exceed 100 characters'),
-		onBehalfOf: z
-			.string()
-			.max(100, 'On behalf of must not exceed 100 characters')
-			.optional(),
-		payerEmail: z.string().email('Invalid email address').optional(),
+		payerName: z.string().min(2).max(100).optional(),
+		onBehalfOf: z.string().max(100).optional(),
+		payerEmail: z.string().email().optional().or(z.literal('')),
 		payerPhone: z
 			.string()
-			.regex(
-				/^(\+234|0)[789][01]\d{8}$/,
-				'Enter a valid Nigerian phone number'
-			)
-			.optional(),
+			.regex(/^(\+234|0)[789][01]\d{8}$/, 'Invalid Nigerian phone')
+			.optional()
+			.or(z.literal('')),
 		massIntentionId: z.string().uuid().optional(),
 		donationCampaignId: z.string().uuid().optional(),
+		eventId: z.string().uuid().optional(),
+		paymentGateway: z.string().optional(),
 		notes: z
 			.string()
 			.max(1000, 'Notes must not exceed 1000 characters')
@@ -71,6 +67,14 @@ export const createPaymentSchema = z
 		{
 			message: 'Donation campaign is required for campaign donations',
 			path: ['donationCampaignId'],
+		}
+	)
+	.refine(
+		(data) =>
+			data.purpose !== 'EVENT_PAYMENT' || data.eventId,
+		{
+			message: 'Event is required for event payments',
+			path: ['eventId'],
 		}
 	);
 
@@ -105,19 +109,21 @@ export const paymentQuerySchema = z.object({
 	page: z.coerce.number().int().positive().default(1),
 	limit: z.coerce.number().int().min(1).max(100).default(20),
 	search: z.string().optional(),
-	purpose: z
+		purpose: z
 		.enum([
 			'OFFERING',
 			'TITHE',
 			'MASS_INTENTION',
 			'DONATION_CAMPAIGN',
 			'CUSTOM_DONATION',
+			'SOCIETY_DUES',
+			'EVENT_PAYMENT',
 			'OTHER',
 		])
 		.optional(),
 	status: z.enum(['PENDING', 'COMPLETED', 'FAILED', 'REFUNDED']).optional(),
 	method: z
-		.enum(['BANK_TRANSFER', 'CARD', 'MOBILE_MONEY', 'CHECK'])
+		.enum(['BANK_TRANSFER', 'CARD', 'MOBILE_MONEY', 'CHECK', 'CASH'])
 		.optional(),
 	parishionerId: z.string().uuid().optional(),
 	month: z.coerce.number().int().min(1).max(12).optional(),
@@ -144,6 +150,8 @@ export const paystackInitializeSchema = z.object({
 		'MASS_INTENTION',
 		'DONATION_CAMPAIGN',
 		'CUSTOM_DONATION',
+		'SOCIETY_DUES',
+		'EVENT_PAYMENT',
 		'OTHER',
 	]),
 	parishionerId: z.string().uuid().optional(),
@@ -151,6 +159,7 @@ export const paystackInitializeSchema = z.object({
 	month: z.number().int().min(1).max(12).optional(),
 	massIntentionId: z.string().uuid().optional(),
 	donationCampaignId: z.string().uuid().optional(),
+	eventId: z.string().uuid().optional(),
 });
 
 export type PaystackInitializeInput = z.infer<typeof paystackInitializeSchema>;

@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import ProtectedNavbar from "@/components/layout/protected-navbar";
 import Sidebar from "@/components/layout/sidebar";
+import { AuthProvider } from "@/components/providers/auth-provider";
 import { redirect } from "next/navigation";
 
 export default async function DashboardLayout({
@@ -9,21 +10,22 @@ export default async function DashboardLayout({
 	children: React.ReactNode;
 }) {
 	const session = await auth();
-	const user = session?.user;
+
+	if (!session?.user) {
+		redirect("/auth/login");
+	}
 
 	return (
-		// <ProtectedRoute>
-		<div className=" h-screen overflow-hidden   ">
-			<div className="   flex flex-row">
-				<Sidebar />
-				<div className=" overflow-y-scroll h-screen w-full  ">
-					<ProtectedNavbar user={user} />
-					<div className="pt-[70px] pb-[30px] px-[20px] ">
-						{children}
+		<AuthProvider session={session}>
+			<div className=" h-screen overflow-hidden   ">
+				<div className="   flex flex-row">
+					<Sidebar />
+					<div className=" overflow-y-scroll h-screen w-full  ">
+						<ProtectedNavbar />
+						<div className="pt-32 pb-7.5 px-5 ">{children}</div>
 					</div>
 				</div>
 			</div>
-		</div>
-		// </ProtectedRoute>
+		</AuthProvider>
 	);
 }

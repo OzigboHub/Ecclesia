@@ -1,0 +1,10 @@
+
+> ecclesia@0.1.0 build C:\Users\USER\Documents\Projects\[frontend]\Work\Ecclesia
+> next build
+
+▲ Next.js 16.1.1 (Turbopack)
+- Environments: .env
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 39.2s
+  Running TypeScript ...

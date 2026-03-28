@@ -7,9 +7,9 @@ import { ArrowLeft } from 'lucide-react';
 import { OrganizationEditForm } from '@/components/forms/organization-edit-form';
 
 interface OrganizationEditPageProps {
-	params: {
+	params: Promise<{
 		id: string;
-	};
+	}>;
 }
 
 export default async function OrganizationEditPage({
@@ -21,8 +21,10 @@ export default async function OrganizationEditPage({
 		redirect('/dashboard');
 	}
 
+	const { id } = await params;
+
 	const organization = await db.organization.findUnique({
-		where: { id: params.id },
+		where: { id },
 	});
 
 	if (!organization) {

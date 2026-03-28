@@ -37,16 +37,16 @@ This epic covers all financial operations including payment recording, donation 
 
 **Acceptance Criteria:**
 
--   [ ] Form captures: amount, purpose, method, date
--   [ ] Amount in Nigerian Naira (₦) with proper formatting
--   [ ] Purpose options: Offering, Tithe, Mass Intention, Donation Campaign, Custom Donation, Other
--   [ ] Method options: Cash, Bank Transfer, Card, Mobile Money, Check
--   [ ] Optional parishioner selection (search/autocomplete)
--   [ ] Optional payer name for non-parishioners
--   [ ] Optional notes field
--   [ ] Transaction reference for digital payments
--   [ ] Recorder automatically captured from session
--   [ ] Organization automatically set from session
+- [ ] Form captures: amount, purpose, method, date
+- [ ] Amount in Nigerian Naira (₦) with proper formatting
+- [ ] Purpose options: Offering, Tithe, Mass Intention, Donation Campaign, Custom Donation, Other
+- [ ] Method options: Cash, Bank Transfer, Card, Mobile Money, Check
+- [ ] Optional parishioner selection (search/autocomplete)
+- [ ] Optional payer name for non-parishioners
+- [ ] Optional notes field
+- [ ] Transaction reference for digital payments
+- [ ] Recorder automatically captured from session
+- [ ] Organization automatically set from session
 
 **Priority:** P0
 **Story Points:** 5
@@ -62,79 +62,15 @@ This epic covers all financial operations including payment recording, donation 
 
 **Acceptance Criteria:**
 
--   [ ] Option to select "Anonymous" or "Guest"
--   [ ] Capture payer name, email, phone if not registered
--   [ ] Payment still linked to organization
--   [ ] Clear attribution in records
--   [ ] Searchable by payer name
+- [ ] Option to select "Anonymous" or "Guest"
+- [ ] Capture payer name, email, phone if not registered
+- [ ] Payment still linked to organization
+- [ ] Clear attribution in records
+- [ ] Searchable by payer name
 
 **Priority:** P0
 **Story Points:** 3
 **PRD Ref:** FR-FM-005
-
----
-
-#### US-04-003: View Payment List
-
-**As a** Parish Staff
-**I want to** view a list of all payments
-**So that** I can track financial activity
-
-**Acceptance Criteria:**
-
--   [ ] Paginated list (20 per page)
--   [ ] Columns: Date, Payer, Amount, Purpose, Method, Status
--   [ ] Amount formatted with Naira symbol (₦)
--   [ ] Sortable by date, amount
--   [ ] Status badge (Pending, Completed, Failed, Refunded)
--   [ ] Quick view modal for details
--   [ ] Data scoped to organization
-
-**Priority:** P0
-**Story Points:** 5
-**PRD Ref:** FR-FM-001
-
----
-
-#### US-04-004: View Payment Details
-
-**As a** Parish Staff
-**I want to** view complete payment details
-**So that** I can verify transaction information
-
-**Acceptance Criteria:**
-
--   [ ] Full payment information displayed
--   [ ] Linked parishioner details (if applicable)
--   [ ] Linked campaign details (if applicable)
--   [ ] Recorder information
--   [ ] Receipt number
--   [ ] Transaction reference
--   [ ] Print receipt option
-
-**Priority:** P0
-**Story Points:** 3
-**PRD Ref:** FR-FM-001
-
----
-
-#### US-04-005: Track Payment Status
-
-**As a** Parish Secretary
-**I want to** update payment status
-**So that** I can track payment completion
-
-**Acceptance Criteria:**
-
--   [ ] Status options: Pending, Completed, Failed, Refunded
--   [ ] Status change with reason (for failed/refunded)
--   [ ] Audit log captures status changes
--   [ ] Only authorized roles can change status
--   [ ] Completed payments generate receipt number
-
-**Priority:** P0
-**Story Points:** 3
-**PRD Ref:** FR-FM-004
 
 ---
 
@@ -146,11 +82,11 @@ This epic covers all financial operations including payment recording, donation 
 
 **Acceptance Criteria:**
 
--   [ ] Auto-generated on payment completion
--   [ ] Format: ORG-YYYY-NNNNNN (e.g., ABC-2026-000001)
--   [ ] Sequential within organization
--   [ ] Unique across system
--   [ ] Displayed on receipt
+- [ ] Auto-generated on payment completion
+- [ ] Format: ORG-YYYY-NNNNNN (e.g., ABC-2026-000001)
+- [ ] Sequential within organization
+- [ ] Unique across system
+- [ ] Displayed on receipt
 
 **Priority:** P0
 **Story Points:** 2
@@ -161,15 +97,14 @@ This epic covers all financial operations including payment recording, donation 
 #### US-04-007: Track Transaction Reference
 
 **As a** Parish Secretary
-**I want to** record transaction references for digital payments
-**So that** payments can be reconciled with bank records
+**I want to** query transactions
 
 **Acceptance Criteria:**
 
--   [ ] Optional field for bank transfer, card, mobile money
--   [ ] Validation for format (if applicable)
--   [ ] Searchable by reference
--   [ ] Displayed in payment details
+- [ ] Optional field for bank transfer, card, mobile money
+- [ ] Validation for format (if applicable)
+- [ ] Searchable by reference
+- [ ] Displayed in payment details
 
 **Priority:** P1
 **Story Points:** 2
@@ -185,10 +120,10 @@ This epic covers all financial operations including payment recording, donation 
 
 **Acceptance Criteria:**
 
--   [ ] Month selector (1-12) for offering payments
--   [ ] Optional - not required for non-offering payments
--   [ ] Reports can group by offering month
--   [ ] Year implied from payment date
+- [ ] Month selector (1-12) for offering payments
+- [ ] Optional - not required for non-offering payments
+- [ ] Reports can group by offering month
+- [ ] Year implied from payment date
 
 **Priority:** P1
 **Story Points:** 2
@@ -204,30 +139,16 @@ This epic covers all financial operations including payment recording, donation 
 
 **Acceptance Criteria:**
 
--   [ ] Recorder ID stored with payment
--   [ ] Recorder name displayed in details
--   [ ] Cannot be changed after creation
--   [ ] Audit log for all modifications
+- [ ] Recorder ID stored with payment
+- [ ] Recorder name displayed in details
+- [ ] Cannot be changed after creation
+- [ ] Audit log for all modifications
 
 **Priority:** P0
 **Story Points:** 2
 **PRD Ref:** FR-FM-009
 
 ---
-
-#### US-04-010: Edit Payment Details
-
-**As a** Parish Admin
-**I want to** edit payment details
-**So that** errors can be corrected
-
-**Acceptance Criteria:**
-
--   [ ] Only PARISH_ADMIN can edit
--   [ ] Editable: payer info, notes, reference
--   [ ] NOT editable: amount, purpose (create reversal instead)
--   [ ] Audit log captures all changes
--   [ ] Confirmation dialog
 
 **Priority:** P1
 **Story Points:** 3
@@ -243,12 +164,12 @@ This epic covers all financial operations including payment recording, donation 
 
 **Acceptance Criteria:**
 
--   [ ] Soft delete (mark as voided) only
--   [ ] Reason required for voiding
--   [ ] Voided payments shown separately
--   [ ] Voided payments excluded from reports
--   [ ] Audit log captures voids
--   [ ] Only PARISH_ADMIN can void
+- [ ] Soft delete (mark as voided) only
+- [ ] Reason required for voiding
+- [ ] Voided payments shown separately
+- [ ] Voided payments excluded from reports
+- [ ] Audit log captures voids
+- [ ] Only PARISH_ADMIN can void
 
 **Priority:** P1
 **Story Points:** 3
@@ -266,12 +187,12 @@ This epic covers all financial operations including payment recording, donation 
 
 **Acceptance Criteria:**
 
--   [ ] Form captures: name, description, target amount
--   [ ] Start date and end date
--   [ ] Target amount in Naira
--   [ ] Campaign status: Draft, Active, Completed, Cancelled
--   [ ] Campaign image/banner (optional, future)
--   [ ] Unique name within organization
+- [ ] Form captures: name, description, target amount
+- [ ] Start date and end date
+- [ ] Target amount in Naira
+- [ ] Campaign status: Draft, Active, Completed, Cancelled
+- [ ] Campaign image/banner (optional, future)
+- [ ] Unique name within organization
 
 **Priority:** P1
 **Story Points:** 5
@@ -287,11 +208,11 @@ This epic covers all financial operations including payment recording, donation 
 
 **Acceptance Criteria:**
 
--   [ ] List of all campaigns
--   [ ] Shows: name, target, raised, progress %, status
--   [ ] Progress bar visualization
--   [ ] Filter by status (Active, Completed, etc.)
--   [ ] Sort by date, progress
+- [ ] List of all campaigns
+- [ ] Shows: name, target, raised, progress %, status
+- [ ] Progress bar visualization
+- [ ] Filter by status (Active, Completed, etc.)
+- [ ] Sort by date, progress
 
 **Priority:** P1
 **Story Points:** 3
@@ -307,12 +228,12 @@ This epic covers all financial operations including payment recording, donation 
 
 **Acceptance Criteria:**
 
--   [ ] Total raised calculated from linked payments
--   [ ] Progress percentage toward target
--   [ ] Number of donors
--   [ ] Average donation amount
--   [ ] Days remaining
--   [ ] Donor list (optional view)
+- [ ] Total raised calculated from linked payments
+- [ ] Progress percentage toward target
+- [ ] Number of donors
+- [ ] Average donation amount
+- [ ] Days remaining
+- [ ] Donor list (optional view)
 
 **Priority:** P1
 **Story Points:** 5
@@ -328,10 +249,10 @@ This epic covers all financial operations including payment recording, donation 
 
 **Acceptance Criteria:**
 
--   [ ] Campaign selector on payment form (when purpose is Donation Campaign)
--   [ ] Only active campaigns shown
--   [ ] Payment contributes to campaign total
--   [ ] Campaign linkage shown in payment details
+- [ ] Campaign selector on payment form (when purpose is Donation Campaign)
+- [ ] Only active campaigns shown
+- [ ] Payment contributes to campaign total
+- [ ] Campaign linkage shown in payment details
 
 **Priority:** P1
 **Story Points:** 3
@@ -347,11 +268,11 @@ This epic covers all financial operations including payment recording, donation 
 
 **Acceptance Criteria:**
 
--   [ ] Status transitions: Draft → Active → Completed
--   [ ] Can cancel at any status
--   [ ] Completed campaigns stop accepting donations
--   [ ] End date auto-triggers completion (optional)
--   [ ] Audit log captures status changes
+- [ ] Status transitions: Draft → Active → Completed
+- [ ] Can cancel at any status
+- [ ] Completed campaigns stop accepting donations
+- [ ] End date auto-triggers completion (optional)
+- [ ] Audit log captures status changes
 
 **Priority:** P1
 **Story Points:** 3
@@ -367,12 +288,12 @@ This epic covers all financial operations including payment recording, donation 
 
 **Acceptance Criteria:**
 
--   [ ] PDF report with campaign details
--   [ ] Total raised and percentage
--   [ ] Donor list (optional)
--   [ ] Payment breakdown by method
--   [ ] Organization letterhead
--   [ ] Export to PDF
+- [ ] PDF report with campaign details
+- [ ] Total raised and percentage
+- [ ] Donor list (optional)
+- [ ] Payment breakdown by method
+- [ ] Organization letterhead
+- [ ] Export to PDF
 
 **Priority:** P2
 **Story Points:** 5
@@ -388,10 +309,10 @@ This epic covers all financial operations including payment recording, donation 
 
 **Acceptance Criteria:**
 
--   [ ] Payment with purpose "Other" or "Custom Donation"
--   [ ] No campaign linkage required
--   [ ] Still tracked in financial reports
--   [ ] Can add custom description
+- [ ] Payment with purpose "Other" or "Custom Donation"
+- [ ] No campaign linkage required
+- [ ] Still tracked in financial reports
+- [ ] Can add custom description
 
 **Priority:** P1
 **Story Points:** 2
@@ -409,10 +330,10 @@ This epic covers all financial operations including payment recording, donation 
 
 **Acceptance Criteria:**
 
--   [ ] Form: name, description
--   [ ] Unique name within organization
--   [ ] Active/inactive status
--   [ ] Examples: Building Fund, Youth Ministry, Charity
+- [ ] Form: name, description
+- [ ] Unique name within organization
+- [ ] Active/inactive status
+- [ ] Examples: Building Fund, Youth Ministry, Charity
 
 **Priority:** P1
 **Story Points:** 3
@@ -428,10 +349,10 @@ This epic covers all financial operations including payment recording, donation 
 
 **Acceptance Criteria:**
 
--   [ ] List of custom types
--   [ ] Shows name, description, status
--   [ ] Active types shown in payment form
--   [ ] Inactive types hidden from selection
+- [ ] List of custom types
+- [ ] Shows name, description, status
+- [ ] Active types shown in payment form
+- [ ] Inactive types hidden from selection
 
 **Priority:** P1
 **Story Points:** 2
@@ -447,10 +368,10 @@ This epic covers all financial operations including payment recording, donation 
 
 **Acceptance Criteria:**
 
--   [ ] Edit name and description
--   [ ] Validate unique name
--   [ ] Audit log captures changes
--   [ ] Success notification
+- [ ] Edit name and description
+- [ ] Validate unique name
+- [ ] Audit log captures changes
+- [ ] Success notification
 
 **Priority:** P1
 **Story Points:** 2
@@ -466,10 +387,10 @@ This epic covers all financial operations including payment recording, donation 
 
 **Acceptance Criteria:**
 
--   [ ] Toggle active status
--   [ ] Inactive types hidden from payment form
--   [ ] Historical payments retain type reference
--   [ ] Cannot deactivate type with pending payments
+- [ ] Toggle active status
+- [ ] Inactive types hidden from payment form
+- [ ] Historical payments retain type reference
+- [ ] Cannot deactivate type with pending payments
 
 **Priority:** P1
 **Story Points:** 2
@@ -485,10 +406,10 @@ This epic covers all financial operations including payment recording, donation 
 
 **Acceptance Criteria:**
 
--   [ ] Check for existing payments before deletion
--   [ ] Show error if payments exist
--   [ ] Suggest deactivation instead
--   [ ] Allow deletion only if no payments
+- [ ] Check for existing payments before deletion
+- [ ] Show error if payments exist
+- [ ] Suggest deactivation instead
+- [ ] Allow deletion only if no payments
 
 **Priority:** P1
 **Story Points:** 2
@@ -506,12 +427,12 @@ This epic covers all financial operations including payment recording, donation 
 
 **Acceptance Criteria:**
 
--   [ ] Date range selector
--   [ ] Total income by period
--   [ ] Breakdown by purpose
--   [ ] Breakdown by method
--   [ ] Comparison to previous period (optional)
--   [ ] Export to PDF and Excel
+- [ ] Date range selector
+- [ ] Total income by period
+- [ ] Breakdown by purpose
+- [ ] Breakdown by method
+- [ ] Comparison to previous period (optional)
+- [ ] Export to PDF and Excel
 
 **Priority:** P0
 **Story Points:** 8
@@ -527,11 +448,11 @@ This epic covers all financial operations including payment recording, donation 
 
 **Acceptance Criteria:**
 
--   [ ] Pie/bar chart by purpose
--   [ ] Table with amounts per purpose
--   [ ] Percentage breakdown
--   [ ] Filter by date range
--   [ ] Compare across periods
+- [ ] Pie/bar chart by purpose
+- [ ] Table with amounts per purpose
+- [ ] Percentage breakdown
+- [ ] Filter by date range
+- [ ] Compare across periods
 
 **Priority:** P0
 **Story Points:** 5
@@ -547,10 +468,10 @@ This epic covers all financial operations including payment recording, donation 
 
 **Acceptance Criteria:**
 
--   [ ] Chart by payment method
--   [ ] Cash vs digital breakdown
--   [ ] Trend over time
--   [ ] Filter by date range
+- [ ] Chart by payment method
+- [ ] Cash vs digital breakdown
+- [ ] Trend over time
+- [ ] Filter by date range
 
 **Priority:** P1
 **Story Points:** 3
@@ -566,11 +487,11 @@ This epic covers all financial operations including payment recording, donation 
 
 **Acceptance Criteria:**
 
--   [ ] Monthly totals for offerings
--   [ ] Year-over-year comparison
--   [ ] Chart visualization
--   [ ] Average per month
--   [ ] Top contributing months
+- [ ] Monthly totals for offerings
+- [ ] Year-over-year comparison
+- [ ] Chart visualization
+- [ ] Average per month
+- [ ] Top contributing months
 
 **Priority:** P1
 **Story Points:** 5
@@ -586,10 +507,10 @@ This epic covers all financial operations including payment recording, donation 
 
 **Acceptance Criteria:**
 
--   [ ] List all campaigns with progress
--   [ ] Highlight behind-schedule campaigns
--   [ ] Total raised across campaigns
--   [ ] Filter by status, date range
+- [ ] List all campaigns with progress
+- [ ] Highlight behind-schedule campaigns
+- [ ] Total raised across campaigns
+- [ ] Filter by status, date range
 
 **Priority:** P1
 **Story Points:** 3
@@ -605,12 +526,12 @@ This epic covers all financial operations including payment recording, donation 
 
 **Acceptance Criteria:**
 
--   [ ] Professional formatting
--   [ ] Organization letterhead
--   [ ] Date generated
--   [ ] Page numbers
--   [ ] Charts and tables included
--   [ ] Print-ready format
+- [ ] Professional formatting
+- [ ] Organization letterhead
+- [ ] Date generated
+- [ ] Page numbers
+- [ ] Charts and tables included
+- [ ] Print-ready format
 
 **Priority:** P1
 **Story Points:** 5
@@ -626,11 +547,11 @@ This epic covers all financial operations including payment recording, donation 
 
 **Acceptance Criteria:**
 
--   [ ] Proper column headers
--   [ ] Formatted amounts
--   [ ] Multiple sheets if needed
--   [ ] Filter-friendly format
--   [ ] Summary row
+- [ ] Proper column headers
+- [ ] Formatted amounts
+- [ ] Multiple sheets if needed
+- [ ] Filter-friendly format
+- [ ] Summary row
 
 **Priority:** P1
 **Story Points:** 3
@@ -646,11 +567,11 @@ This epic covers all financial operations including payment recording, donation 
 
 **Acceptance Criteria:**
 
--   [ ] List all payments by parishioner
--   [ ] Total contributions for period
--   [ ] Breakdown by purpose
--   [ ] Downloadable statement
--   [ ] Date range filter
+- [ ] List all payments by parishioner
+- [ ] Total contributions for period
+- [ ] Breakdown by purpose
+- [ ] Downloadable statement
+- [ ] Date range filter
 
 **Priority:** P1
 **Story Points:** 3
@@ -661,18 +582,18 @@ This epic covers all financial operations including payment recording, donation 
 #### US-04-032: Print Payment Receipt
 
 **As a** Parish Secretary
-**I want to** print payment receipts
+**I want to** view payment receipts
 **So that** parishioners have proof of payment
 
 **Acceptance Criteria:**
 
--   [ ] Receipt with all payment details
--   [ ] Receipt number
--   [ ] Organization info
--   [ ] Date and amount
--   [ ] Purpose and method
--   [ ] Print-optimized layout
--   [ ] Duplicate prevention (same receipt)
+- [ ] Receipt with all payment details
+- [ ] Receipt number
+- [ ] Organization info
+- [ ] Date and amount
+- [ ] Purpose and method
+- [ ] Print-optimized layout
+- [ ] Duplicate prevention (same receipt)
 
 **Priority:** P0
 **Story Points:** 5
@@ -684,17 +605,17 @@ This epic covers all financial operations including payment recording, donation 
 
 ### Currency Handling
 
--   All amounts stored as Decimal in database
--   Display with Nigerian Naira symbol: ₦
--   Format: ₦1,234,567.89
--   Use `formatNaira()` utility function
+- All amounts stored as Decimal in database
+- Display with Nigerian Naira symbol: ₦
+- Format: ₦1,234,567.89
+- Use `formatNaira()` utility function
 
 ### Feature Toggle Integration
 
--   Check `enableFinancialManagement` before all operations
--   Check `enableOfferings`, `enableTithes`, etc. for specific purposes
--   Check `enableDonationCampaigns` for campaign features
--   Check `enableCustomDonationTypes` for custom types
+- Check `enableFinancialManagement` before all operations
+- Check `enableOfferings`, `enableTithes`, etc. for specific purposes
+- Check `enableDonationCampaigns` for campaign features
+- Check `enableCustomDonationTypes` for custom types
 
 ### Database Schema
 
@@ -791,30 +712,30 @@ model CustomDonationType {
 
 ### Files to Create/Modify
 
--   `app/dashboard/payments/page.tsx` - Payment list
--   `app/dashboard/payments/new/page.tsx` - Record payment
--   `app/dashboard/payments/[id]/page.tsx` - Payment details
--   `app/dashboard/campaigns/page.tsx` - Campaign list
--   `app/dashboard/campaigns/new/page.tsx` - Create campaign
--   `app/dashboard/campaigns/[id]/page.tsx` - Campaign details
--   `app/dashboard/reports/financial/page.tsx` - Financial reports
--   `app/actions/payment.actions.ts` - Payment CRUD
--   `app/actions/campaign.actions.ts` - Campaign CRUD
--   `components/forms/payment-form.tsx` - Payment form
--   `lib/validators/payment.schema.ts` - Zod schemas
--   `lib/currency.ts` - Currency formatting utilities
+- `app/dashboard/payments/page.tsx` - Payment list
+- `app/dashboard/payments/new/page.tsx` - Record payment
+- `app/dashboard/payments/[id]/page.tsx` - Payment details
+- `app/dashboard/campaigns/page.tsx` - Campaign list
+- `app/dashboard/campaigns/new/page.tsx` - Create campaign
+- `app/dashboard/campaigns/[id]/page.tsx` - Campaign details
+- `app/dashboard/reports/financial/page.tsx` - Financial reports
+- `app/actions/payment.actions.ts` - Payment CRUD
+- `app/actions/campaign.actions.ts` - Campaign CRUD
+- `components/forms/payment-form.tsx` - Payment form
+- `lib/validators/payment.schema.ts` - Zod schemas
+- `lib/currency.ts` - Currency formatting utilities
 
 ---
 
 ## Dependencies
 
--   **EPIC-01**: User Management (authentication, authorization)
--   **EPIC-02**: Organization Management (org scoping, feature toggles)
--   **EPIC-03**: Parishioner Management (parishioner linking)
+- **EPIC-01**: User Management (authentication, authorization)
+- **EPIC-02**: Organization Management (org scoping, feature toggles)
+- **EPIC-03**: Parishioner Management (parishioner linking)
 
 ## Dependent Epics
 
--   **EPIC-05**: Mass Intention Management (payment linking)
+- **EPIC-05**: Mass Intention Management (payment linking)
 
 ---
 

@@ -3,11 +3,11 @@ import { redirect, notFound } from 'next/navigation';
 import { getUser } from '@/app/actions/user.actions';
 import { ChangePasswordForm } from '@/components/forms/change-password-form';
 import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, AlertTriangle } from 'lucide-react';
@@ -63,8 +63,8 @@ export default async function ChangePasswordPage({
 		PARISH_SECRETARY: 60,
 		PARISH_STAFF: 40,
 		OUTSTATION_ADMIN: 40,
-		ORGANIZATION_PRESIDENT: 30,
-		ORGANIZATION_SECRETARY: 30,
+		SOCIETY_PRESIDENT: 30,
+		SOCIETY_SECRETARY: 30,
 		PARISHIONER: 10,
 	};
 

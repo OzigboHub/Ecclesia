@@ -37,13 +37,13 @@ This epic covers the management of parishioner records, including personal infor
 
 **Acceptance Criteria:**
 
--   [ ] Form captures required fields: first name, last name, email, phone
--   [ ] Form captures optional fields: DOB, gender, marital status, address, occupation
--   [ ] Email and phone validated for Nigerian formats
--   [ ] Email uniqueness enforced within organization
--   [ ] Parishioner assigned to current organization
--   [ ] Success message with option to add another
--   [ ] Form uses React Hook Form with Zod validation
+- [ ] Form captures required fields: first name, last name, email, phone
+- [ ] Form captures optional fields: DOB, gender, marital status, address, occupation
+- [ ] Email and phone validated for Nigerian formats
+- [ ] Email uniqueness enforced within organization
+- [ ] Parishioner assigned to current organization
+- [ ] Success message with option to add another
+- [ ] Form uses React Hook Form with Zod validation
 
 **Priority:** P0
 **Story Points:** 5
@@ -59,14 +59,14 @@ This epic covers the management of parishioner records, including personal infor
 
 **Acceptance Criteria:**
 
--   [ ] Paginated list with 20 items per page
--   [ ] Columns: Name, Email, Phone, Gender, Status
--   [ ] Sortable by name and date added
--   [ ] Quick view modal for details
--   [ ] Action buttons: View, Edit, Delete
--   [ ] Empty state when no parishioners
--   [ ] Loading skeleton during fetch
--   [ ] Data scoped to user's organization
+- [ ] Paginated list with 20 items per page
+- [ ] Columns: Name, Email, Phone, Gender, Status
+- [ ] Sortable by name and date added
+- [ ] Quick view modal for details
+- [ ] Action buttons: View, Edit, Delete
+- [ ] Empty state when no parishioners
+- [ ] Loading skeleton during fetch
+- [ ] Data scoped to user's organization
 
 **Priority:** P0
 **Story Points:** 5
@@ -82,15 +82,15 @@ This epic covers the management of parishioner records, including personal infor
 
 **Acceptance Criteria:**
 
--   [ ] Profile page showing all personal info
--   [ ] Contact information section
--   [ ] Sacraments received section
--   [ ] Organization memberships section
--   [ ] Payment history summary
--   [ ] Mass intentions requested
--   [ ] Appointments history
--   [ ] Edit button for authorized users
--   [ ] Back navigation to list
+- [ ] Profile page showing all personal info
+- [ ] Contact information section
+- [ ] Sacraments received section
+- [ ] Organization memberships section
+- [ ] Payment history summary
+- [ ] Mass intentions requested
+- [ ] Appointments history
+- [ ] Edit button for authorized users
+- [ ] Back navigation to list
 
 **Priority:** P0
 **Story Points:** 5
@@ -106,13 +106,13 @@ This epic covers the management of parishioner records, including personal infor
 
 **Acceptance Criteria:**
 
--   [ ] Pre-populated form with current data
--   [ ] All fields editable except auto-generated IDs
--   [ ] Validation on submit
--   [ ] Audit log captures changes
--   [ ] Success notification on save
--   [ ] Cancel returns to detail page without changes
--   [ ] Only authorized roles can edit
+- [ ] Pre-populated form with current data
+- [ ] All fields editable except auto-generated IDs
+- [ ] Validation on submit
+- [ ] Audit log captures changes
+- [ ] Success notification on save
+- [ ] Cancel returns to detail page without changes
+- [ ] Only authorized roles can edit
 
 **Priority:** P0
 **Story Points:** 3
@@ -128,13 +128,13 @@ This epic covers the management of parishioner records, including personal infor
 
 **Acceptance Criteria:**
 
--   [ ] Confirmation dialog before deletion
--   [ ] Warning about associated data (payments, intentions)
--   [ ] Soft delete (mark as inactive) vs hard delete option
--   [ ] Cannot delete parishioners with financial records (soft delete only)
--   [ ] Audit log captures deletion
--   [ ] Success notification after deletion
--   [ ] Only PARISH_ADMIN role can delete
+- [ ] Confirmation dialog before deletion
+- [ ] Warning about associated data (payments, intentions)
+- [ ] Soft delete (mark as inactive) vs hard delete option
+- [ ] Cannot delete parishioners with financial records (soft delete only)
+- [ ] Audit log captures deletion
+- [ ] Success notification after deletion
+- [ ] Only PARISH_ADMIN role can delete
 
 **Priority:** P1
 **Story Points:** 3
@@ -150,11 +150,11 @@ This epic covers the management of parishioner records, including personal infor
 
 **Acceptance Criteria:**
 
--   [ ] Check email uniqueness on form submission
--   [ ] Check within same organization only
--   [ ] Real-time validation feedback if possible
--   [ ] Clear error message for duplicates
--   [ ] Allow empty email (optional field)
+- [ ] Check email uniqueness on form submission
+- [ ] Check within same organization only
+- [ ] Real-time validation feedback if possible
+- [ ] Clear error message for duplicates
+- [ ] Allow empty email (optional field)
 
 **Priority:** P0
 **Story Points:** 2
@@ -170,11 +170,11 @@ This epic covers the management of parishioner records, including personal infor
 
 **Acceptance Criteria:**
 
--   [ ] Check phone uniqueness on form submission
--   [ ] Normalize phone format (Nigerian)
--   [ ] Check within same organization only
--   [ ] Clear error message for duplicates
--   [ ] Allow empty phone (optional field)
+- [ ] Check phone uniqueness on form submission
+- [ ] Normalize phone format (Nigerian)
+- [ ] Check within same organization only
+- [ ] Clear error message for duplicates
+- [ ] Allow empty phone (optional field)
 
 **Priority:** P1
 **Story Points:** 2
@@ -190,12 +190,12 @@ This epic covers the management of parishioner records, including personal infor
 
 **Acceptance Criteria:**
 
--   [ ] Status toggle on parishioner record
--   [ ] Filter list by status
--   [ ] Inactive parishioners dimmed in list
--   [ ] Count excludes inactive by default
--   [ ] Reason for deactivation (optional)
--   [ ] Reactivation possible
+- [ ] Status toggle on parishioner record
+- [ ] Filter list by status
+- [ ] Inactive parishioners dimmed in list
+- [ ] Count excludes inactive by default
+- [ ] Reason for deactivation (optional)
+- [ ] Reactivation possible
 
 **Priority:** P1
 **Story Points:** 3
@@ -213,17 +213,17 @@ This epic covers the management of parishioner records, including personal infor
 
 **Acceptance Criteria:**
 
--   [ ] Support 5 sacrament types:
-    -   Baptism
-    -   First Communion
-    -   Confirmation
-    -   Marriage
-    -   Anointing of the Sick
--   [ ] Record date received
--   [ ] Record location (organization) where received
--   [ ] Optional notes field
--   [ ] One record per sacrament type per person
--   [ ] Validation prevents duplicate sacrament types
+- [ ] Support 5 sacrament types:
+  - Baptism
+  - First Communion
+  - Confirmation
+  - Marriage
+  - Anointing of the Sick
+- [ ] Record date received
+- [ ] Record location (organization) where received
+- [ ] Optional notes field
+- [ ] One record per sacrament type per person
+- [ ] Validation prevents duplicate sacrament types
 
 **Priority:** P1
 **Story Points:** 5
@@ -239,11 +239,11 @@ This epic covers the management of parishioner records, including personal infor
 
 **Acceptance Criteria:**
 
--   [ ] List on parishioner detail page
--   [ ] Shows: sacrament type, date, location
--   [ ] Visual indicator for completed sacraments
--   [ ] Expandable notes if present
--   [ ] Empty state for no records
+- [ ] List on parishioner detail page
+- [ ] Shows: sacrament type, date, location
+- [ ] Visual indicator for completed sacraments
+- [ ] Expandable notes if present
+- [ ] Empty state for no records
 
 **Priority:** P1
 **Story Points:** 2
@@ -259,10 +259,10 @@ This epic covers the management of parishioner records, including personal infor
 
 **Acceptance Criteria:**
 
--   [ ] Edit date, location, notes
--   [ ] Cannot change sacrament type (delete and recreate)
--   [ ] Audit log captures changes
--   [ ] Success notification on save
+- [ ] Edit date, location, notes
+- [ ] Cannot change sacrament type (delete and recreate)
+- [ ] Audit log captures changes
+- [ ] Success notification on save
 
 **Priority:** P1
 **Story Points:** 2
@@ -278,10 +278,10 @@ This epic covers the management of parishioner records, including personal infor
 
 **Acceptance Criteria:**
 
--   [ ] Confirmation dialog
--   [ ] Audit log captures deletion
--   [ ] Only PARISH_ADMIN can delete
--   [ ] Success notification
+- [ ] Confirmation dialog
+- [ ] Audit log captures deletion
+- [ ] Only PARISH_ADMIN can delete
+- [ ] Success notification
 
 **Priority:** P2
 **Story Points:** 2
@@ -297,13 +297,13 @@ This epic covers the management of parishioner records, including personal infor
 
 **Acceptance Criteria:**
 
--   [ ] Generate PDF certificate
--   [ ] Include: parishioner name, sacrament, date, location
--   [ ] Include parish/organization letterhead
--   [ ] Include signature line
--   [ ] Unique certificate number
--   [ ] Download or print option
--   [ ] Certificate template customizable (future)
+- [ ] Generate PDF certificate
+- [ ] Include: parishioner name, sacrament, date, location
+- [ ] Include parish/organization letterhead
+- [ ] Include signature line
+- [ ] Unique certificate number
+- [ ] Download or print option
+- [ ] Certificate template customizable (future)
 
 **Priority:** P2
 **Story Points:** 5
@@ -321,12 +321,12 @@ This epic covers the management of parishioner records, including personal infor
 
 **Acceptance Criteria:**
 
--   [ ] Search input on parishioner list
--   [ ] Search by first name, last name, or both
--   [ ] Case-insensitive search
--   [ ] Partial match support
--   [ ] Results update as user types (debounced)
--   [ ] Clear search option
+- [ ] Search input on parishioner list
+- [ ] Search by first name, last name, or both
+- [ ] Case-insensitive search
+- [ ] Partial match support
+- [ ] Results update as user types (debounced)
+- [ ] Clear search option
 
 **Priority:** P0
 **Story Points:** 3
@@ -342,10 +342,10 @@ This epic covers the management of parishioner records, including personal infor
 
 **Acceptance Criteria:**
 
--   [ ] Search matches email or phone
--   [ ] Partial match for email domain
--   [ ] Partial match for phone number
--   [ ] Combined with name search
+- [ ] Search matches email or phone
+- [ ] Partial match for email domain
+- [ ] Partial match for phone number
+- [ ] Combined with name search
 
 **Priority:** P1
 **Story Points:** 2
@@ -361,10 +361,10 @@ This epic covers the management of parishioner records, including personal infor
 
 **Acceptance Criteria:**
 
--   [ ] Filter dropdown: All, Male, Female
--   [ ] Combines with other filters
--   [ ] Count updates with filter
--   [ ] URL reflects filter state
+- [ ] Filter dropdown: All, Male, Female
+- [ ] Combines with other filters
+- [ ] Count updates with filter
+- [ ] URL reflects filter state
 
 **Priority:** P1
 **Story Points:** 2
@@ -380,9 +380,9 @@ This epic covers the management of parishioner records, including personal infor
 
 **Acceptance Criteria:**
 
--   [ ] Filter dropdown: All, Single, Married, Widowed, Divorced
--   [ ] Combines with other filters
--   [ ] Count updates with filter
+- [ ] Filter dropdown: All, Single, Married, Widowed, Divorced
+- [ ] Combines with other filters
+- [ ] Count updates with filter
 
 **Priority:** P2
 **Story Points:** 2
@@ -398,10 +398,10 @@ This epic covers the management of parishioner records, including personal infor
 
 **Acceptance Criteria:**
 
--   [ ] Dropdown lists all organizations in parish
--   [ ] Shows parishioners belonging to selected org
--   [ ] Count of members shown
--   [ ] Combines with other filters
+- [ ] Dropdown lists all organizations in parish
+- [ ] Shows parishioners belonging to selected org
+- [ ] Count of members shown
+- [ ] Combines with other filters
 
 **Priority:** P2
 **Story Points:** 3
@@ -417,10 +417,10 @@ This epic covers the management of parishioner records, including personal infor
 
 **Acceptance Criteria:**
 
--   [ ] Multi-select for sacrament types
--   [ ] "Has received" vs "Has not received" toggle
--   [ ] Find unbaptized, unconfirmed, etc.
--   [ ] Useful for sacrament preparation programs
+- [ ] Multi-select for sacrament types
+- [ ] "Has received" vs "Has not received" toggle
+- [ ] Find unbaptized, unconfirmed, etc.
+- [ ] Useful for sacrament preparation programs
 
 **Priority:** P2
 **Story Points:** 3
@@ -438,15 +438,15 @@ This epic covers the management of parishioner records, including personal infor
 
 **Acceptance Criteria:**
 
--   [ ] Upload CSV file interface
--   [ ] Download template CSV
--   [ ] Column mapping: first name, last name, email, phone, DOB, gender, marital status, address
--   [ ] Validation before import
--   [ ] Error report for invalid rows
--   [ ] Skip vs fail options for errors
--   [ ] Progress indicator for large imports
--   [ ] Summary of imported vs skipped records
--   [ ] Audit log captures bulk import
+- [ ] Upload CSV file interface
+- [ ] Download template CSV
+- [ ] Column mapping: first name, last name, email, phone, DOB, gender, marital status, address
+- [ ] Validation before import
+- [ ] Error report for invalid rows
+- [ ] Skip vs fail options for errors
+- [ ] Progress indicator for large imports
+- [ ] Summary of imported vs skipped records
+- [ ] Audit log captures bulk import
 
 **Priority:** P1
 **Story Points:** 8
@@ -462,12 +462,12 @@ This epic covers the management of parishioner records, including personal infor
 
 **Acceptance Criteria:**
 
--   [ ] Export all or filtered list
--   [ ] Select columns to include
--   [ ] Include sacrament status optionally
--   [ ] File downloads to browser
--   [ ] Progress indicator for large exports
--   [ ] Audit log captures export
+- [ ] Export all or filtered list
+- [ ] Select columns to include
+- [ ] Include sacrament status optionally
+- [ ] File downloads to browser
+- [ ] Progress indicator for large exports
+- [ ] Audit log captures export
 
 **Priority:** P1
 **Story Points:** 3
@@ -483,12 +483,12 @@ This epic covers the management of parishioner records, including personal infor
 
 **Acceptance Criteria:**
 
--   [ ] Generate formatted PDF report
--   [ ] Include organization header
--   [ ] Table format with key columns
--   [ ] Date generated footer
--   [ ] Page numbers
--   [ ] Landscape option for more columns
+- [ ] Generate formatted PDF report
+- [ ] Include organization header
+- [ ] Table format with key columns
+- [ ] Date generated footer
+- [ ] Page numbers
+- [ ] Landscape option for more columns
 
 **Priority:** P2
 **Story Points:** 5
@@ -500,16 +500,16 @@ This epic covers the management of parishioner records, including personal infor
 
 ### Data Validation
 
--   Nigerian phone: `/^(\+234|0)[789][01]\d{8}$/`
--   Email: standard email regex
--   DOB: must be in the past
--   Names: 2-100 characters, trimmed
+- Nigerian phone: `/^(\+234|0)[789][01]\d{8}$/`
+- Email: standard email regex
+- DOB: must be in the past
+- Names: 2-100 characters, trimmed
 
 ### Organization Scoping
 
--   All queries filtered by `organizationId`
--   Parish admin sees parish + outstations
--   Outstation admin sees only outstation
+- All queries filtered by `organizationId`
+- Parish admin sees parish + outstations
+- Outstation admin sees only outstation
 
 ### Database Schema
 
@@ -532,7 +532,7 @@ model Parishioner {
   payments       Payment[]
   massIntentions MassIntention[]
   appointments   Appointment[]
-  memberships    societyMember[]
+  memberships    SocietyMembership[]
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -579,29 +579,29 @@ enum SacramentType {
 
 ### Files to Create/Modify
 
--   `app/dashboard/parishioners/page.tsx` - List view
--   `app/dashboard/parishioners/new/page.tsx` - Create form
--   `app/dashboard/parishioners/[id]/page.tsx` - Detail view
--   `app/dashboard/parishioners/[id]/edit/page.tsx` - Edit form
--   `app/dashboard/parishioners/import/page.tsx` - CSV import
--   `app/actions/parishioner.actions.ts` - Server Actions
--   `app/actions/sacrament.actions.ts` - Sacrament CRUD
--   `components/forms/parishioner-form.tsx` - Form component
--   `lib/validators/parishioner.schema.ts` - Zod schemas
+- `app/dashboard/parishioners/page.tsx` - List view
+- `app/dashboard/parishioners/new/page.tsx` - Create form
+- `app/dashboard/parishioners/[id]/page.tsx` - Detail view
+- `app/dashboard/parishioners/[id]/edit/page.tsx` - Edit form
+- `app/dashboard/parishioners/import/page.tsx` - CSV import
+- `app/actions/parishioner.actions.ts` - Server Actions
+- `app/actions/sacrament.actions.ts` - Sacrament CRUD
+- `components/forms/parishioner-form.tsx` - Form component
+- `lib/validators/parishioner.schema.ts` - Zod schemas
 
 ---
 
 ## Dependencies
 
--   **EPIC-01**: User Management (authentication, authorization)
--   **EPIC-02**: Organization Management (org scoping, feature toggles)
+- **EPIC-01**: User Management (authentication, authorization)
+- **EPIC-02**: Organization Management (org scoping, feature toggles)
 
 ## Dependent Epics
 
--   **EPIC-04**: Financial Management (payments linked to parishioners)
--   **EPIC-05**: Mass Intention Management (intentions linked to parishioners)
--   **EPIC-06**: Appointment Management (appointments linked to parishioners)
--   **EPIC-07**: Pious Organization Management (memberships)
+- **EPIC-04**: Financial Management (payments linked to parishioners)
+- **EPIC-05**: Mass Intention Management (intentions linked to parishioners)
+- **EPIC-06**: Appointment Management (appointments linked to parishioners)
+- **EPIC-07**: Pious Organization Management (memberships)
 
 ---
 

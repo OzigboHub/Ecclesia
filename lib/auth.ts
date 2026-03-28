@@ -55,31 +55,5 @@ export async function getAuthorizedSession(allowedRoles: string[]) {
 	return { authorized: true, session } as const;
 }
 
-// Role hierarchy helpers
-export function isAdminRole(role: string): boolean {
-	return ['SUPER_ADMIN', 'PARISH_ADMIN'].includes(role);
-}
 
-export function isStaffRole(role: string): boolean {
-	return [
-		'SUPER_ADMIN',
-		'PARISH_ADMIN',
-		'PARISH_SECRETARY',
-		'PARISH_STAFF',
-		'OUTSTATION_ADMIN',
-	].includes(role);
-}
-
-export function canManageOrganization(role: string): boolean {
-	return ['SUPER_ADMIN', 'PARISH_ADMIN'].includes(role);
-}
-
-export function canRecordPayments(role: string): boolean {
-	return [
-		'SUPER_ADMIN',
-		'PARISH_ADMIN',
-		'PARISH_SECRETARY',
-		'PARISH_STAFF',
-		'OUTSTATION_ADMIN',
-	].includes(role);
-}
+export * from './permissions';

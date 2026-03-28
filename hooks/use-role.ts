@@ -9,8 +9,8 @@ export type UserRole =
 	| 'PARISH_SECRETARY'
 	| 'PARISH_STAFF'
 	| 'OUTSTATION_ADMIN'
-	| 'ORGANIZATION_PRESIDENT'
-	| 'ORGANIZATION_SECRETARY'
+	| 'SOCIETY_PRESIDENT'
+	| 'SOCIETY_SECRETARY'
 	| 'PARISHIONER';
 
 // Admin roles that can manage settings
@@ -25,12 +25,12 @@ const STAFF_ROLES: UserRole[] = [
 	'OUTSTATION_ADMIN',
 ];
 
-// Roles that can manage pious organizations
-const ORG_MANAGEMENT_ROLES: UserRole[] = [
+// Roles that can manage societies
+const SOCIETY_MANAGEMENT_ROLES: UserRole[] = [
 	'SUPER_ADMIN',
 	'PARISH_ADMIN',
-	'ORGANIZATION_PRESIDENT',
-	'ORGANIZATION_SECRETARY',
+	'SOCIETY_PRESIDENT',
+	'SOCIETY_SECRETARY',
 ];
 
 /**
@@ -49,8 +49,8 @@ export function useRole() {
 	const isParishAdmin = role === 'PARISH_ADMIN';
 	const isAdmin = role ? ADMIN_ROLES.includes(role) : false;
 	const isStaff = role ? STAFF_ROLES.includes(role) : false;
-	const canManageOrganizations = role
-		? ORG_MANAGEMENT_ROLES.includes(role)
+	const canManageSocieties = role
+		? SOCIETY_MANAGEMENT_ROLES.includes(role)
 		: false;
 	const isParishioner = role === 'PARISHIONER';
 
@@ -82,8 +82,8 @@ export function useRole() {
 			PARISH_SECRETARY: 60,
 			PARISH_STAFF: 40,
 			OUTSTATION_ADMIN: 40,
-			ORGANIZATION_PRESIDENT: 30,
-			ORGANIZATION_SECRETARY: 30,
+			SOCIETY_PRESIDENT: 30,
+			SOCIETY_SECRETARY: 30,
 			PARISHIONER: 10,
 		};
 
@@ -134,7 +134,7 @@ export function useRole() {
 		isAdmin,
 		isStaff,
 		isParishioner,
-		canManageOrganizations,
+		canManageSocieties,
 
 		// Permission checks
 		canRecordPayments,

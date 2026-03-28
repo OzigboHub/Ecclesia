@@ -1,7 +1,8 @@
 # Feature Toggle System
+
 ## Ecclesia Digital Parish Manager (DPM)
 
-**Version:** 1.0  
+**Version:** 1.0
 **Last Updated:** January 2026
 
 ---
@@ -26,40 +27,40 @@ model OrganizationFeatureSettings {
   id                        String       @id @default(uuid())
   organizationId            String       @unique
   organization              Organization @relation(fields: [organizationId], references: [id])
-  
+
   // Core Features
   enableParishionerManagement Boolean    @default(true)
   enableSacramentalRecords    Boolean    @default(true)
   enableFinancialManagement   Boolean    @default(true)
-  
+
   // Payment Features
   enableOfferings             Boolean    @default(true)
   enableTithes                Boolean    @default(true)
   enableDonationCampaigns     Boolean    @default(true)
   enableCustomDonationTypes   Boolean    @default(true)
   enableMonthlyTracking       Boolean    @default(true)
-  
+
   // Spiritual Features
   enableMassIntentions        Boolean    @default(true)
   enableAppointments          Boolean    @default(true)
   enableConfessionBooking     Boolean    @default(true)
-  
+
   // Communication Features
   enableLiveStreaming         Boolean    @default(false)
   enableAnnouncements         Boolean    @default(true)
   enableSMSNotifications      Boolean    @default(false)
   enableEmailNotifications    Boolean    @default(true)
-  
+
   // Organization Features
-  enablesocietys    Boolean    @default(true)
+  enableSocieties    Boolean    @default(true)
   enableEventManagement       Boolean    @default(true)
-  
+
   // Advanced Features
   enableOnlinePayments        Boolean    @default(false)
   enableRecurringDonations    Boolean    @default(false)
   enableMobileApp             Boolean    @default(false)
   enablePublicWebsite         Boolean    @default(true)
-  
+
   createdAt                   DateTime   @default(now())
   updatedAt                   DateTime   @updatedAt
 
@@ -81,54 +82,54 @@ model OrganizationFeatureSettings {
 
 ### 3.1 Core Features (Default: Enabled)
 
-| Feature | Key | Default | Description | Dependencies |
-|---------|-----|---------|-------------|--------------|
-| Parishioner Management | `enableParishionerManagement` | `true` | Member records, profiles, demographics | None |
-| Sacramental Records | `enableSacramentalRecords` | `true` | Baptism, Confirmation, Marriage tracking | Parishioner Management |
-| Financial Management | `enableFinancialManagement` | `true` | Base financial tracking system | None |
+| Feature                | Key                           | Default | Description                              | Dependencies           |
+| ---------------------- | ----------------------------- | ------- | ---------------------------------------- | ---------------------- |
+| Parishioner Management | `enableParishionerManagement` | `true`  | Member records, profiles, demographics   | None                   |
+| Sacramental Records    | `enableSacramentalRecords`    | `true`  | Baptism, Confirmation, Marriage tracking | Parishioner Management |
+| Financial Management   | `enableFinancialManagement`   | `true`  | Base financial tracking system           | None                   |
 
 ### 3.2 Payment Features (Default: Enabled)
 
-| Feature | Key | Default | Description | Dependencies |
-|---------|-----|---------|-------------|--------------|
-| Offerings | `enableOfferings` | `true` | Sunday and special offerings | Financial Management |
-| Tithes | `enableTithes` | `true` | Tithe tracking and reporting | Financial Management |
-| Donation Campaigns | `enableDonationCampaigns` | `true` | Building funds, special projects | Financial Management |
-| Custom Donation Types | `enableCustomDonationTypes` | `true` | Parish-defined donation categories | Financial Management |
-| Monthly Tracking | `enableMonthlyTracking` | `true` | Month-by-month offering tracking | Financial Management |
+| Feature               | Key                         | Default | Description                        | Dependencies         |
+| --------------------- | --------------------------- | ------- | ---------------------------------- | -------------------- |
+| Offerings             | `enableOfferings`           | `true`  | Sunday and special offerings       | Financial Management |
+| Tithes                | `enableTithes`              | `true`  | Tithe tracking and reporting       | Financial Management |
+| Donation Campaigns    | `enableDonationCampaigns`   | `true`  | Building funds, special projects   | Financial Management |
+| Custom Donation Types | `enableCustomDonationTypes` | `true`  | Parish-defined donation categories | Financial Management |
+| Monthly Tracking      | `enableMonthlyTracking`     | `true`  | Month-by-month offering tracking   | Financial Management |
 
 ### 3.3 Spiritual Features (Default: Enabled)
 
-| Feature | Key | Default | Description | Dependencies |
-|---------|-----|---------|-------------|--------------|
-| Mass Intentions | `enableMassIntentions` | `true` | Book and track mass intentions | None |
-| Appointments | `enableAppointments` | `true` | General appointment booking | None |
-| Confession Booking | `enableConfessionBooking` | `true` | Specific confession scheduling | Appointments |
+| Feature            | Key                       | Default | Description                    | Dependencies |
+| ------------------ | ------------------------- | ------- | ------------------------------ | ------------ |
+| Mass Intentions    | `enableMassIntentions`    | `true`  | Book and track mass intentions | None         |
+| Appointments       | `enableAppointments`      | `true`  | General appointment booking    | None         |
+| Confession Booking | `enableConfessionBooking` | `true`  | Specific confession scheduling | Appointments |
 
 ### 3.4 Communication Features (Mixed Defaults)
 
-| Feature | Key | Default | Description | Dependencies |
-|---------|-----|---------|-------------|--------------|
-| Live Streaming | `enableLiveStreaming` | `false` | Stream masses and events | None |
-| Announcements | `enableAnnouncements` | `true` | Parish-wide announcements | None |
-| SMS Notifications | `enableSMSNotifications` | `false` | SMS reminders and alerts | Third-party service |
-| Email Notifications | `enableEmailNotifications` | `true` | Email confirmations and reminders | Email service |
+| Feature             | Key                        | Default | Description                       | Dependencies        |
+| ------------------- | -------------------------- | ------- | --------------------------------- | ------------------- |
+| Live Streaming      | `enableLiveStreaming`      | `false` | Stream masses and events          | None                |
+| Announcements       | `enableAnnouncements`      | `true`  | Parish-wide announcements         | None                |
+| SMS Notifications   | `enableSMSNotifications`   | `false` | SMS reminders and alerts          | Third-party service |
+| Email Notifications | `enableEmailNotifications` | `true`  | Email confirmations and reminders | Email service       |
 
 ### 3.5 Organization Features (Default: Enabled)
 
-| Feature | Key | Default | Description | Dependencies |
-|---------|-----|---------|-------------|--------------|
-| Pious Organizations | `enablesocietys` | `true` | CWO, CMO, CYON management | Parishioner Management |
-| Event Management | `enableEventManagement` | `true` | Parish events and RSVP | None |
+| Feature             | Key                        | Default | Description               | Dependencies           |
+| ------------------- | -------------------------- | ------- | ------------------------- | ---------------------- |
+| Pious Organizations | `enablePiousOrganizations` | `true`  | CWO, CMO, CYON management | Parishioner Management |
+| Event Management    | `enableEventManagement`    | `true`  | Parish events and RSVP    | None                   |
 
 ### 3.6 Advanced Features (Default: Disabled)
 
-| Feature | Key | Default | Description | Dependencies |
-|---------|-----|---------|-------------|--------------|
-| Online Payments | `enableOnlinePayments` | `false` | Card/mobile money payments | Financial Management, Payment Gateway |
-| Recurring Donations | `enableRecurringDonations` | `false` | Automated monthly giving | Online Payments |
-| Mobile App | `enableMobileApp` | `false` | Native mobile app access | None |
-| Public Website | `enablePublicWebsite` | `true` | Public-facing parish website | None |
+| Feature             | Key                        | Default | Description                  | Dependencies                          |
+| ------------------- | -------------------------- | ------- | ---------------------------- | ------------------------------------- |
+| Online Payments     | `enableOnlinePayments`     | `false` | Card/mobile money payments   | Financial Management, Payment Gateway |
+| Recurring Donations | `enableRecurringDonations` | `false` | Automated monthly giving     | Online Payments                       |
+| Mobile App          | `enableMobileApp`          | `false` | Native mobile app access     | None                                  |
+| Public Website      | `enablePublicWebsite`      | `true`  | Public-facing parish website | None                                  |
 
 ---
 
@@ -140,21 +141,21 @@ model OrganizationFeatureSettings {
 
 ```typescript
 // lib/middleware/featureGuard.ts
-import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 
 export async function featureGuard(
   feature: keyof OrganizationFeatureSettings,
-  organizationId: string
+  organizationId: string,
 ) {
   const settings = await prisma.organizationFeatureSettings.findUnique({
-    where: { organizationId }
+    where: { organizationId },
   });
 
   if (!settings || !settings[feature]) {
     return NextResponse.json(
       { error: `Feature '${feature}' is not enabled for this organization` },
-      { status: 403 }
+      { status: 403 },
     );
   }
 
@@ -166,9 +167,9 @@ export async function featureGuard(
 
 ```typescript
 // app/api/parishioners/route.ts
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { featureGuard } from '@/lib/middleware/featureGuard';
+import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { featureGuard } from "@/lib/middleware/featureGuard";
 
 export async function GET(request: NextRequest) {
   const session = await getServerSession();
@@ -176,15 +177,15 @@ export async function GET(request: NextRequest) {
 
   // Check if feature is enabled
   const featureCheck = await featureGuard(
-    'enableParishionerManagement',
-    organizationId
+    "enableParishionerManagement",
+    organizationId,
   );
-  
+
   if (featureCheck) return featureCheck; // Return 403 if disabled
 
   // Proceed with normal logic
   const parishioners = await prisma.parishioner.findMany({
-    where: { organizationId }
+    where: { organizationId },
   });
 
   return NextResponse.json(parishioners);
@@ -209,11 +210,11 @@ interface FeatureContextType {
 
 const FeatureContext = createContext<FeatureContextType | undefined>(undefined);
 
-export function FeatureProvider({ 
-  children, 
-  features 
-}: { 
-  children: ReactNode; 
+export function FeatureProvider({
+  children,
+  features
+}: {
+  children: ReactNode;
   features: OrganizationFeatureSettings | null;
 }) {
   const isEnabled = (feature: keyof OrganizationFeatureSettings) => {
@@ -250,7 +251,7 @@ export default function ParishionerList() {
 
   if (!isEnabled('enableParishionerManagement')) {
     return (
-      <FeatureDisabled 
+      <FeatureDisabled
         featureName="Parishioner Management"
         settingsLink="/settings/features"
       />
@@ -282,15 +283,15 @@ export default function Navigation() {
       {isEnabled('enableParishionerManagement') && (
         <Link href="/parishioners">Parishioners</Link>
       )}
-      
+
       {isEnabled('enableFinancialManagement') && (
         <Link href="/payments">Payments</Link>
       )}
-      
+
       {isEnabled('enableMassIntentions') && (
         <Link href="/mass-intentions">Mass Intentions</Link>
       )}
-      
+
       {isEnabled('enableLiveStreaming') && (
         <Link href="/live-streams">Live Streams</Link>
       )}
@@ -406,14 +407,14 @@ export default function FeatureSettingsPage() {
   return (
     <div className="max-w-4xl mx-auto p-6">
       <h1 className="text-3xl font-bold mb-6">Feature Settings</h1>
-      
+
       {FEATURE_GROUPS.map(group => (
         <div key={group.title} className="mb-8">
           <h2 className="text-xl font-semibold mb-4">{group.title}</h2>
-          
+
           <div className="space-y-4">
             {group.features.map(feature => (
-              <div 
+              <div
                 key={feature.key}
                 className="border rounded-lg p-4 hover:bg-gray-50"
               >
@@ -423,20 +424,20 @@ export default function FeatureSettingsPage() {
                     <p className="text-sm text-gray-600 mt-1">
                       {feature.description}
                     </p>
-                    
+
                     {feature.dependencies && (
                       <p className="text-xs text-blue-600 mt-2">
                         Requires: {feature.dependencies.join(', ')}
                       </p>
                     )}
-                    
+
                     {feature.impact && (
                       <p className="text-xs text-orange-600 mt-2">
                         ⚠️ {feature.impact}
                       </p>
                     )}
                   </div>
-                  
+
                   <label className="relative inline-flex items-center cursor-pointer">
                     <input
                       type="checkbox"
@@ -452,7 +453,7 @@ export default function FeatureSettingsPage() {
           </div>
         </div>
       ))}
-      
+
       <div className="flex justify-end mt-8">
         <button
           onClick={handleSave}
@@ -485,7 +486,7 @@ Financial Management
 
 Parishioner Management
 ├── Sacramental Records
-└── Pious Organizations
+└── Societies
 
 Appointments
 └── Confession Booking
@@ -507,50 +508,58 @@ None (standalone features)
 // lib/featureValidation.ts
 export function validateFeatureChange(
   currentSettings: OrganizationFeatureSettings,
-  newSettings: Partial<OrganizationFeatureSettings>
+  newSettings: Partial<OrganizationFeatureSettings>,
 ): { valid: boolean; errors: string[] } {
   const errors: string[] = [];
 
   // Rule: Cannot disable Financial Management if payment features are enabled
   if (newSettings.enableFinancialManagement === false) {
     if (currentSettings.enableOfferings) {
-      errors.push('Disable Offerings before disabling Financial Management');
+      errors.push("Disable Offerings before disabling Financial Management");
     }
     if (currentSettings.enableTithes) {
-      errors.push('Disable Tithes before disabling Financial Management');
+      errors.push("Disable Tithes before disabling Financial Management");
     }
     if (currentSettings.enableOnlinePayments) {
-      errors.push('Disable Online Payments before disabling Financial Management');
+      errors.push(
+        "Disable Online Payments before disabling Financial Management",
+      );
     }
   }
 
   // Rule: Cannot disable Parishioner Management if dependent features are enabled
   if (newSettings.enableParishionerManagement === false) {
     if (currentSettings.enableSacramentalRecords) {
-      errors.push('Disable Sacramental Records before disabling Parishioner Management');
+      errors.push(
+        "Disable Sacramental Records before disabling Parishioner Management",
+      );
     }
-    if (currentSettings.enablesocietys) {
-      errors.push('Disable Pious Organizations before disabling Parishioner Management');
+    if (currentSettings.enablePiousOrganizations) {
+      errors.push(
+        "Disable Pious Organizations before disabling Parishioner Management",
+      );
     }
   }
 
   // Rule: Cannot disable Appointments if Confession Booking is enabled
   if (newSettings.enableAppointments === false) {
     if (currentSettings.enableConfessionBooking) {
-      errors.push('Disable Confession Booking before disabling Appointments');
+      errors.push("Disable Confession Booking before disabling Appointments");
     }
   }
 
   // Rule: Cannot disable Online Payments if Recurring Donations is enabled
   if (newSettings.enableOnlinePayments === false) {
     if (currentSettings.enableRecurringDonations) {
-      errors.push('Disable Recurring Donations before disabling Online Payments');
+      errors.push(
+        "Disable Recurring Donations before disabling Online Payments",
+      );
     }
   }
 
   return {
     valid: errors.length === 0,
-    errors
+    errors,
   };
 }
 ```
@@ -565,22 +574,22 @@ export function validateFeatureChange(
 // When features are changed
 await prisma.auditLog.create({
   data: {
-    action: 'PERMISSION_CHANGE',
-    entityType: 'OrganizationFeatureSettings',
+    action: "PERMISSION_CHANGE",
+    entityType: "OrganizationFeatureSettings",
     entityId: organizationId,
     performedBy: userId,
     details: {
       changes: [
         {
-          feature: 'enableLiveStreaming',
+          feature: "enableLiveStreaming",
           oldValue: false,
-          newValue: true
-        }
+          newValue: true,
+        },
       ],
-      reason: 'Enabled for Easter Sunday live mass'
+      reason: "Enabled for Easter Sunday live mass",
     },
-    ipAddress: request.ip
-  }
+    ipAddress: request.ip,
+  },
 });
 ```
 
@@ -605,17 +614,17 @@ export const FEATURE_PRESETS = {
     enablePublicWebsite: true,
     // All others: false
   },
-  
+
   STANDARD: {
     ...FEATURE_PRESETS.BASIC,
     enableDonationCampaigns: true,
     enableCustomDonationTypes: true,
     enableMonthlyTracking: true,
     enableAppointments: true,
-    enablesocietys: true,
+    enablePiousOrganizations: true,
     enableEmailNotifications: true,
   },
-  
+
   PREMIUM: {
     ...FEATURE_PRESETS.STANDARD,
     enableLiveStreaming: true,
@@ -624,8 +633,8 @@ export const FEATURE_PRESETS = {
     enableConfessionBooking: true,
     enableMobileApp: true,
   },
-  
-  CUSTOM: {} // User defines all settings
+
+  CUSTOM: {}, // User defines all settings
 };
 ```
 
@@ -637,14 +646,14 @@ export const FEATURE_PRESETS = {
 
 ```typescript
 // __tests__/features/featureGuard.test.ts
-describe('featureGuard', () => {
-  it('should allow access when feature is enabled', async () => {
-    const result = await featureGuard('enableParishionerManagement', 'org-123');
+describe("featureGuard", () => {
+  it("should allow access when feature is enabled", async () => {
+    const result = await featureGuard("enableParishionerManagement", "org-123");
     expect(result).toBeNull();
   });
 
-  it('should deny access when feature is disabled', async () => {
-    const result = await featureGuard('enableLiveStreaming', 'org-123');
+  it("should deny access when feature is disabled", async () => {
+    const result = await featureGuard("enableLiveStreaming", "org-123");
     expect(result.status).toBe(403);
   });
 });
@@ -718,12 +727,12 @@ describe('Feature Toggle Integration', () => {
 
 ### Pricing Model (Example)
 
-| Tier | Monthly Cost | Included Features |
-|------|--------------|-------------------|
-| Basic | $50 | Core + Payment + Spiritual features |
-| Standard | $100 | Basic + Organizations + Advanced payments |
-| Premium | $200 | All features including Live Streaming, SMS, Mobile |
-| À la carte | Variable | Pay per feature ($10-30/feature) |
+| Tier       | Monthly Cost | Included Features                                  |
+| ---------- | ------------ | -------------------------------------------------- |
+| Basic      | $50          | Core + Payment + Spiritual features                |
+| Standard   | $100         | Basic + Organizations + Advanced payments          |
+| Premium    | $200         | All features including Live Streaming, SMS, Mobile |
+| À la carte | Variable     | Pay per feature ($10-30/feature)                   |
 
 ### Feature-Based Pricing
 
@@ -739,16 +748,16 @@ describe('Feature Toggle Integration', () => {
 
 ### Common Issues
 
-**Issue**: Feature enabled but not showing in UI  
+**Issue**: Feature enabled but not showing in UI
 **Solution**: Clear cache and refresh browser
 
-**Issue**: 403 error when accessing API  
+**Issue**: 403 error when accessing API
 **Solution**: Verify feature is enabled for organization
 
-**Issue**: Cannot disable feature  
+**Issue**: Cannot disable feature
 **Solution**: Check for dependent features and disable them first
 
-**Issue**: Feature settings not saving  
+**Issue**: Feature settings not saving
 **Solution**: Check user permissions and audit logs
 
 ---

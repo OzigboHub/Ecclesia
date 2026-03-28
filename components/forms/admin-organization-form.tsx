@@ -5,14 +5,14 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
-	createParishSchema,
-	createOutstationSchema,
-	type CreateParishInput,
-	type CreateOutstationInput,
+    createParishSchema,
+    createOutstationSchema,
+    type CreateParishInput,
+    type CreateOutstationInput,
 } from '@/lib/validators/organization.schema';
 import {
-	createParish,
-	createOutstation,
+    createParish,
+    createOutstation,
 } from '@/app/actions/organization.actions';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -20,17 +20,18 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
 } from '@/components/ui/select';
 import type { FieldError } from 'react-hook-form';
 
 interface AdminOrganizationFormProps {
 	type: 'parish' | 'outstation';
 	parishes?: Array<{ id: string; name: string }>;
+	defaultParentId?: string;
 	onSuccess?: () => void;
 }
 
@@ -40,11 +41,18 @@ interface FormErrors {
 	contactEmail?: FieldError;
 	contactPhone?: FieldError;
 	parentId?: FieldError;
+	parishAdmin?: {
+		firstName?: FieldError;
+		lastName?: FieldError;
+		email?: FieldError;
+		password?: FieldError;
+	};
 }
 
 export function AdminOrganizationForm({
 	type,
 	parishes = [],
+	defaultParentId,
 	onSuccess,
 }: AdminOrganizationFormProps) {
 	const [isPending, startTransition] = useTransition();
@@ -60,7 +68,15 @@ export function AdminOrganizationForm({
 			address: '',
 			contactEmail: '',
 			contactPhone: '',
-			...(type === 'outstation' && { parentId: '' }),
+			...(type === 'parish' && {
+				parishAdmin: {
+					firstName: '',
+					lastName: '',
+					email: '',
+					password: '',
+				},
+			}),
+			...(type === 'outstation' && { parentId: defaultParentId || '' }),
 		},
 	});
 
@@ -90,9 +106,10 @@ export function AdminOrganizationForm({
 				if (result.errors) {
 					Object.entries(result.errors).forEach(
 						([field, messages]) => {
+							const msg = Array.isArray(messages) ? messages[0] : String(messages);
 							setError(field as any, {
 								type: 'server',
-								message: messages[0],
+								message: msg,
 							});
 						}
 					);
@@ -141,9 +158,17 @@ export function AdminOrganizationForm({
 					</div>
 
 					{/* Parent Parish (for outstations) */}
-					{type === 'outstation' && (
-						<div className='space-y-2'>
-							<Label htmlFor='parentId'>Parent Parish *</Label>
+				{type === 'outstation' && (
+					<div className='space-y-2'>
+						<Label htmlFor='parentId'>Parent Parish *</Label>
+						{defaultParentId ? (
+							<div className='flex items-center justify-between rounded-md border px-3 py-2 bg-muted'>
+								<span className='text-sm'>
+									{parishes.find((p) => p.id === defaultParentId)?.name || 'Selected Parish'}
+								</span>
+								<span className='text-xs text-muted-foreground'>(Pre-selected)</span>
+							</div>
+						) : (
 							<Select
 								value={form.watch('parentId')}
 								onValueChange={(value) =>
@@ -172,16 +197,17 @@ export function AdminOrganizationForm({
 									))}
 								</SelectContent>
 							</Select>
-							{formErrors.parentId && (
-								<p
-									id='parentId-error'
-									className='text-sm text-destructive'
-								>
-									{formErrors.parentId.message}
-								</p>
-							)}
-						</div>
-					)}
+						)}
+						{formErrors.parentId && (
+							<p
+								id='parentId-error'
+								className='text-sm text-destructive'
+							>
+								{formErrors.parentId.message}
+							</p>
+						)}
+					</div>
+				)}
 
 					{/* Address */}
 					<div className='space-y-2'>
@@ -232,6 +258,82 @@ export function AdminOrganizationForm({
 							</p>
 						)}
 					</div>
+
+					{/* Parish Admin (parish only) */}
+					{type === 'parish' && (
+						<>
+							<div className='border-t pt-4 mt-4'>
+								<h3 className='text-sm font-medium mb-3'>Parish Admin (default administrator)</h3>
+								<p className='text-xs text-muted-foreground mb-3'>
+									This user will have full access to manage the parish and its outstations.
+								</p>
+							</div>
+							<div className='grid gap-4 sm:grid-cols-2'>
+								<div className='space-y-2'>
+									<Label htmlFor='parishAdmin.firstName'>First Name *</Label>
+									<Input
+										id='parishAdmin.firstName'
+										{...register('parishAdmin.firstName')}
+										placeholder='Admin first name'
+										disabled={isPending}
+										aria-invalid={!!formErrors.parishAdmin?.firstName}
+									/>
+									{formErrors.parishAdmin?.firstName && (
+										<p className='text-sm text-destructive'>
+											{formErrors.parishAdmin.firstName.message}
+										</p>
+									)}
+								</div>
+								<div className='space-y-2'>
+									<Label htmlFor='parishAdmin.lastName'>Last Name *</Label>
+									<Input
+										id='parishAdmin.lastName'
+										{...register('parishAdmin.lastName')}
+										placeholder='Admin last name'
+										disabled={isPending}
+										aria-invalid={!!formErrors.parishAdmin?.lastName}
+									/>
+									{formErrors.parishAdmin?.lastName && (
+										<p className='text-sm text-destructive'>
+											{formErrors.parishAdmin.lastName.message}
+										</p>
+									)}
+								</div>
+							</div>
+							<div className='space-y-2'>
+								<Label htmlFor='parishAdmin.email'>Parish Admin Email *</Label>
+								<Input
+									id='parishAdmin.email'
+									type='email'
+									{...register('parishAdmin.email')}
+									placeholder='admin@parish.example.com'
+									disabled={isPending}
+									aria-invalid={!!formErrors.parishAdmin?.email}
+								/>
+								{formErrors.parishAdmin?.email && (
+									<p className='text-sm text-destructive'>
+										{formErrors.parishAdmin.email.message}
+									</p>
+								)}
+							</div>
+							<div className='space-y-2'>
+								<Label htmlFor='parishAdmin.password'>Parish Admin Password *</Label>
+								<Input
+									id='parishAdmin.password'
+									type='password'
+									{...register('parishAdmin.password')}
+									placeholder='Min 8 chars, uppercase, number, special character'
+									disabled={isPending}
+									aria-invalid={!!formErrors.parishAdmin?.password}
+								/>
+								{formErrors.parishAdmin?.password && (
+									<p className='text-sm text-destructive'>
+										{formErrors.parishAdmin.password.message}
+									</p>
+								)}
+							</div>
+						</>
+					)}
 
 					{/* Buttons */}
 					<div className='flex justify-end gap-3 pt-4'>

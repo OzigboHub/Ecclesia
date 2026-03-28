@@ -1,0 +1,11 @@
+
+> ecclesia@0.1.0 build C:\Users\USER\ecclesia
+> next build
+
+▲ Next.js 16.1.1 (Turbopack)
+- Environments: .env
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 25.4s
+  Running TypeScript ...
+ ELIFECYCLE  Command failed with exit code 1.

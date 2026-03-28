@@ -1,58 +1,59 @@
-import { auth } from '@/auth';
-import { redirect } from 'next/navigation';
-import { getParishioners } from '@/app/actions/parishioner.actions';
-import { ParishionersList } from '@/components/features/parishioners/parishioners-list';
-import { CsvImportDialog } from '@/components/features/parishioners/csv-import-dialog';
-import { Button } from '@/components/ui/button';
-import { Plus } from 'lucide-react';
-import Link from 'next/link';
+import { auth } from "@/auth";
+import { redirect } from "next/navigation";
+import {
+  getParishioners,
+  type UnifiedParishioner,
+} from "@/app/actions/parishioner.actions";
+import { ParishionersList } from "@/components/features/parishioners/parishioners-list";
+import { CsvImportDialog } from "@/components/features/parishioners/csv-import-dialog";
+import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
+import Link from "next/link";
 
 export default async function ParishionersPage() {
-	const session = await auth();
-	if (!session?.user) {
-		redirect('/auth/login');
-	}
+  const session = await auth();
+  if (!session?.user) {
+    redirect("/auth/login");
+  }
 
-	const result = await getParishioners();
+  const result = await getParishioners();
 
-	if (!result.success) {
-		return (
-			<div className='flex flex-col items-center justify-center py-12'>
-				<h2 className='text-xl font-semibold text-destructive'>
-					Error
-				</h2>
-				<p className='text-muted-foreground mt-2'>{result.message}</p>
-			</div>
-		);
-	}
+  if (!result.success) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12">
+        <h2 className="text-xl font-semibold text-destructive">Error</h2>
+        <p className="text-muted-foreground mt-2">{result.message}</p>
+      </div>
+    );
+  }
 
-	const parishioners = result.data || [];
+  const parishioners = result.data || [];
 
-	return (
-		<div className='space-y-6'>
-			{/* Header */}
-			<div className='flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'>
-				<div>
-					<h1 className='text-2xl md:text-3xl font-bold tracking-tight'>
-						Parishioners
-					</h1>
-					<p className='text-muted-foreground mt-1'>
-						Manage your parish members
-					</p>
-				</div>
-				<div className='flex gap-2'>
-					<CsvImportDialog />
-					<Link href='/dashboard/parishioners/new'>
-						<Button>
-							<Plus className='mr-2 h-4 w-4' />
-							Add Parishioner
-						</Button>
-					</Link>
-				</div>
-			</div>
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
+            Parishioners
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Manage your parish members
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <CsvImportDialog />
+          <Link href="/dashboard/parishioners/new">
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Parishioner
+            </Button>
+          </Link>
+        </div>
+      </div>
 
-			{/* Parishioners List */}
-			<ParishionersList parishioners={parishioners} />
-		</div>
-	);
+      {/* Parishioners List */}
+      <ParishionersList parishioners={parishioners} />
+    </div>
+  );
 }

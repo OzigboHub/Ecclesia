@@ -1,22 +1,26 @@
-'use server';
+"use server";
 
-import { auth } from '@/auth';
-import { revalidatePath } from 'next/cache';
-import db from '@/lib/db';
+import { auth } from "@/auth";
+import db from "@/lib/db";
+import { isFeatureEnabled } from "@/lib/features.server";
 import {
-	createMassIntentionSchema,
-	updateMassIntentionSchema,
-} from '@/lib/validators/mass-intention.schema';
-import type { ActionResponse } from '@/types';
-import { Prisma } from '@prisma/client';
-import { isFeatureEnabled } from '@/lib/features';
+  canBookMassIntentions,
+  canManageMassIntentions,
+} from "@/lib/permissions";
+import {
+  createMassIntentionSchema,
+  updateMassIntentionSchema,
+} from "@/lib/validators/mass-intention.schema";
+import type { ActionResponse } from "@/types";
+import { Prisma } from "@prisma/client";
+import { revalidatePath } from "next/cache";
 
 type MassIntentionWithRelations = Prisma.MassIntentionGetPayload<{
-	include: {
-		parishioner: true;
-		organization: true;
-		mass: true;
-	};
+  include: {
+    parishioner: true;
+    organization: true;
+    mass: true;
+  };
 }>;
 
 // ============================================
@@ -24,84 +28,91 @@ type MassIntentionWithRelations = Prisma.MassIntentionGetPayload<{
 // ============================================
 
 export async function getMassIntentions(): Promise<
-	ActionResponse<MassIntentionWithRelations[]>
+  ActionResponse<MassIntentionWithRelations[]>
 > {
-	try {
-		const session = await auth();
-		if (!session) {
-			return { success: false, message: 'Unauthorized' };
-		}
+  try {
+    const session = await auth();
+    if (!session) {
+      return { success: false, message: "Unauthorized" };
+    }
 
-		// Check feature toggle
-		const enabled = await isFeatureEnabled(
-			session.user.organizationId,
-			'enableMassIntentions'
-		);
-		if (!enabled) {
-			return {
-				success: false,
-				message: 'Mass intentions feature is not enabled',
-			};
-		}
+    if (!canBookMassIntentions(session.user.role)) {
+      return {
+        success: false,
+        message: "You do not have permission to book mass intentions",
+      };
+    }
 
-		const massIntentions = await db.massIntention.findMany({
-			where: { organizationId: session.user.organizationId },
-			include: {
-				parishioner: true,
-				organization: true,
-				mass: true, // Include Mass details
-			},
-			orderBy: { mass: { date: 'asc' } }, // Sort by related Mass date
-		});
+    // Check feature toggle
+    const enabled = await isFeatureEnabled(
+      session.user.organizationId,
+      "enableMassIntentions",
+    );
+    if (!enabled) {
+      return {
+        success: false,
+        message: "Mass intentions feature is not enabled",
+      };
+    }
 
-		return {
-			success: true,
-			message: 'Mass intentions retrieved successfully',
-			data: massIntentions,
-		};
-	} catch (error) {
-		console.error('Failed to get mass intentions:', error);
-		return {
-			success: false,
-			message: 'Failed to retrieve mass intentions',
-		};
-	}
+    const massIntentions = await db.massIntention.findMany({
+      where: { organizationId: session.user.organizationId },
+      include: {
+        parishioner: true,
+        organization: true,
+        mass: true, // Include Mass details
+      },
+      orderBy: { mass: { date: "asc" } }, // Sort by related Mass date
+    });
+
+    return {
+      success: true,
+      message: "Mass intentions retrieved successfully",
+      data: massIntentions,
+    };
+  } catch (error) {
+    console.error("Failed to get mass intentions:", error);
+    return {
+      success: false,
+      message: "Failed to retrieve mass intentions",
+    };
+  }
 }
 
 export async function getMassIntention(
-	id: string
+  id: string,
 ): Promise<ActionResponse<MassIntentionWithRelations>> {
-	try {
-		const session = await auth();
-		if (!session) {
-			return { success: false, message: 'Unauthorized' };
-		}
+  try {
+    const session = await auth();
+    if (!session) {
+      return { success: false, message: "Unauthorized" };
+    }
 
-		const massIntention = await db.massIntention.findFirst({
-			where: {
-				id,
-				organizationId: session.user.organizationId,
-			},
-			include: {
-				parishioner: true,
-				organization: true,
-				mass: true,
-			},
-		});
+    const massIntention = await db.massIntention.findFirst({
+      where: {
+        id,
+        organizationId: session.user.organizationId,
+      },
+      include: {
+        parishioner: true,
+        organization: true,
+        mass: true,
+      },
+    });
 
-		if (!massIntention) {
-			return { success: false, message: 'Mass intention not found' };
-		}
+    if (!massIntention) {
+      return { success: false, message: "Mass intention not found" };
+    }
 
-		return {
-			success: true,
-			message: 'Mass intention retrieved successfully',
-			data: massIntention,
-		};
-	} catch (error) {
-		console.error('Failed to get mass intention:', error);
-		return { success: false, message: 'Failed to retrieve mass intention' };
-	}
+    return {
+      success: true,
+      message: "Mass intention retrieved successfully",
+      data: massIntention,
+    };
+  } catch (error) {
+    console.error("Failed to get mass intention:", error);
+    return { success: false, message: "Failed to retrieve mass intention" };
+  }
 }
 
 // ============================================
@@ -109,124 +120,151 @@ export async function getMassIntention(
 // ============================================
 
 export async function createMassIntention(
-	formData: unknown
+  formData: unknown,
 ): Promise<ActionResponse<MassIntentionWithRelations>> {
-	try {
-		// Authentication
-		const session = await auth();
-		if (!session) {
-			return { success: false, message: 'Unauthorized' };
-		}
+  try {
+    // Authentication
+    const session = await auth();
+    if (!session) {
+      return { success: false, message: "Unauthorized" };
+    }
 
-		// Feature toggle check
-		const enabled = await isFeatureEnabled(
-			session.user.organizationId,
-			'enableMassIntentions'
-		);
-		if (!enabled) {
-			return {
-				success: false,
-				message: 'Mass intentions feature is not enabled',
-			};
-		}
+    // Feature toggle check
+    const enabled = await isFeatureEnabled(
+      session.user.organizationId,
+      "enableMassIntentions",
+    );
+    if (!enabled) {
+      return {
+        success: false,
+        message: "Mass intentions feature is not enabled",
+      };
+    }
 
-		// Validation with Zod
-		const parsed = createMassIntentionSchema.safeParse(formData);
-		if (!parsed.success) {
-			return {
-				success: false,
-				message: 'Validation failed',
-				errors: parsed.error.flatten().fieldErrors,
-			};
-		}
+    // Validation with Zod
+    const parsed = createMassIntentionSchema.safeParse(formData);
+    if (!parsed.success) {
+      return {
+        success: false,
+        message: "Validation failed",
+        errors: parsed.error.flatten().fieldErrors,
+      };
+    }
 
-		const { massId, parishionerId, stipend, ...rest } = parsed.data;
+    const { massId, parishionerId, stipend, ...rest } = parsed.data;
+    const linkedParishionerId =
+      session.user.role === "PARISHIONER"
+        ? session.user.parishionerId
+        : parishionerId;
 
-		// Verify Mass exists and belongs to organization
-		const mass = await db.mass.findUnique({
-			where: { id: massId },
-			include: { _count: { select: { intentions: true } } },
-		});
+    if (session.user.role === "PARISHIONER" && !linkedParishionerId) {
+      return {
+        success: false,
+        message:
+          "Your account is not linked to a parishioner record yet. Contact the parish office.",
+      };
+    }
 
-		if (!mass || mass.organizationId !== session.user.organizationId) {
-			return { success: false, message: 'Invalid Mass selected' };
-		}
+    // Verify Mass exists and belongs to organization
+    const mass = await db.mass.findUnique({
+      where: { id: massId },
+      include: { _count: { select: { intentions: true } } },
+    });
 
-		if (mass.status === 'CANCELLED') {
-			return {
-				success: false,
-				message: 'Selected Mass has been cancelled',
-			};
-		}
+    if (!mass || mass.organizationId !== session.user.organizationId) {
+      return { success: false, message: "Invalid Mass selected" };
+    }
 
-		// Check capacity
-		if (mass._count.intentions >= mass.maxIntentions) {
-			return { success: false, message: 'Mass is fully booked' };
-		}
+    if (mass.status === "CANCELLED") {
+      return {
+        success: false,
+        message: "Selected Mass has been cancelled",
+      };
+    }
 
-		// Create mass intention with optional payment
-		const result = await db.$transaction(async (tx) => {
-			// Create mass intention
-			const massIntention = await tx.massIntention.create({
-				data: {
-					...rest,
-					massId, // Link to Mass
-					organizationId: session.user.organizationId,
-					...(parishionerId && { parishionerId }),
-					status: 'PENDING',
-				},
-				include: {
-					parishioner: true,
-					organization: true,
-					mass: true,
-				},
-			});
+    // Check capacity
+    if (mass._count.intentions >= mass.maxIntentions) {
+      return { success: false, message: "Mass is fully booked" };
+    }
 
-			// Create payment record if stipend provided
-			if (stipend && stipend > 0) {
-				await tx.payment.create({
-					data: {
-						amount: stipend,
-						purpose: 'MASS_INTENTION',
-						paymentMethod: 'CASH',
-						paymentStatus: 'COMPLETED',
-						payerName: rest.requestedBy || 'Anonymous',
-						organizationId: session.user.organizationId,
-						recordedById: session.user.id,
-						...(parishionerId && { parishionerId }),
-						massIntentionId: massIntention.id,
-						notes: `Stipend for mass intention: ${rest.intention}`,
-					},
-				});
-			}
+    // Create mass intention with optional payment
+    const result = await db.$transaction(async (tx) => {
+      // Create mass intention
+      const massIntention = await tx.massIntention.create({
+        data: {
+          ...rest,
+          massId, // Link to Mass
+          organizationId: session.user.organizationId,
+          ...(linkedParishionerId && {
+            parishionerId: linkedParishionerId,
+          }),
+          status: "PENDING",
+        },
+        include: {
+          parishioner: true,
+          organization: true,
+          mass: true,
+        },
+      });
 
-			// Update mass booked count
-			await tx.mass.update({
-				where: { id: massId },
-				data: { bookedIntentions: { increment: 1 } },
-			});
+      // Create payment record if stipend provided
+      if (stipend && stipend > 0) {
+        await tx.payment.create({
+          data: {
+            amount: stipend,
+            purpose: "MASS_INTENTION",
+            paymentMethod: "CASH",
+            paymentStatus: "COMPLETED",
+            payerName: rest.requestedBy || "Anonymous",
+            organizationId: session.user.organizationId,
+            recordedById: session.user.id,
+            ...(linkedParishionerId && {
+              parishionerId: linkedParishionerId,
+            }),
+            massIntentionId: massIntention.id,
+            notes: `Stipend for mass intention: ${rest.intention}`,
+          },
+        });
+      }
 
-			return massIntention;
-		});
+      // Audit Log
+      await tx.auditLog.create({
+        data: {
+          action: "MASS_INTENTION_BOOKED",
+          entityType: "MassIntention",
+          entityId: massIntention.id,
+          performedBy: session.user.id,
+          details: {
+            intention: massIntention.intention,
+            requestedBy: massIntention.requestedBy,
+            massId: massIntention.massId,
+            stipend: stipend || 0,
+          },
+        },
+      });
 
-		revalidatePath('/dashboard/mass-intentions');
-		revalidatePath('/dashboard/payments');
+      return massIntention;
+    });
 
-		return {
-			success: true,
-			message:
-				'Mass intention scheduled successfully' +
-				(stipend && stipend > 0
-					? ` and payment recorded (₦${stipend.toLocaleString(
-							'en-NG'
-					  )})`
-					: ''),
-			data: result,
-		};
-	} catch (error) {
-		console.error('Failed to create mass intention:', error);
-		return { success: false, message: 'Failed to schedule mass intention' };
-	}
+    revalidatePath("/mass-intentions");
+    revalidatePath("/mass-intentions/calendar");
+    revalidatePath("/masses");
+    revalidatePath("/dashboard/mass-intentions");
+    revalidatePath("/dashboard/payments");
+
+    return {
+      success: true,
+      message:
+        "Mass intention scheduled successfully" +
+        (stipend && stipend > 0
+          ? ` and payment recorded (₦${stipend.toLocaleString("en-NG")})`
+          : ""),
+      data: result,
+    };
+  } catch (error) {
+    console.error("Failed to create mass intention:", error);
+    return { success: false, message: "Failed to schedule mass intention" };
+  }
 }
 
 // ============================================
@@ -234,109 +272,122 @@ export async function createMassIntention(
 // ============================================
 
 export async function updateMassIntention(
-	id: string,
-	formData: unknown
+  id: string,
+  formData: unknown,
 ): Promise<ActionResponse<MassIntentionWithRelations>> {
-	try {
-		const session = await auth();
-		if (!session) {
-			return { success: false, message: 'Unauthorized' };
-		}
+  try {
+    const session = await auth();
+    if (!session) {
+      return { success: false, message: "Unauthorized" };
+    }
 
-		// Authorization - staff roles can update mass intentions
-		const allowedRoles = [
-			'SUPER_ADMIN',
-			'PARISH_ADMIN',
-			'PARISH_SECRETARY',
-			'PARISH_STAFF',
-		];
-		if (!allowedRoles.includes(session.user.role)) {
-			return {
-				success: false,
-				message: 'You do not have permission to update mass intentions',
-			};
-		}
+    // Authorization - staff roles can update mass intentions
+    if (!canManageMassIntentions(session.user.role)) {
+      return {
+        success: false,
+        message: "You do not have permission to update mass intentions",
+      };
+    }
 
-		// Validation
-		const parsed = updateMassIntentionSchema.safeParse(formData);
-		if (!parsed.success) {
-			return {
-				success: false,
-				message: 'Validation failed',
-				errors: parsed.error.flatten().fieldErrors,
-			};
-		}
+    // Validation
+    const parsed = updateMassIntentionSchema.safeParse(formData);
+    if (!parsed.success) {
+      return {
+        success: false,
+        message: "Validation failed",
+        errors: parsed.error.flatten().fieldErrors,
+      };
+    }
 
-		// Verify ownership
-		const existing = await db.massIntention.findFirst({
-			where: { id, organizationId: session.user.organizationId },
-		});
-		if (!existing) {
-			return { success: false, message: 'Mass intention not found' };
-		}
+    // Verify ownership
+    const existing = await db.massIntention.findFirst({
+      where: { id, organizationId: session.user.organizationId },
+    });
+    if (!existing) {
+      return { success: false, message: "Mass intention not found" };
+    }
 
-		// Build update data
-		const updateData: Prisma.MassIntentionUpdateInput = {};
+    // Build update data
+    const updateData: Prisma.MassIntentionUpdateInput = {};
 
-		if (parsed.data.intention !== undefined)
-			updateData.intention = parsed.data.intention;
-		if (parsed.data.intentionType !== undefined)
-			updateData.intentionType = parsed.data.intentionType;
-		if (parsed.data.requestedBy !== undefined)
-			updateData.requestedBy = parsed.data.requestedBy;
-		if (parsed.data.contactEmail !== undefined)
-			updateData.contactEmail = parsed.data.contactEmail;
-		if (parsed.data.contactPhone !== undefined)
-			updateData.contactPhone = parsed.data.contactPhone;
-		if (parsed.data.stipend !== undefined)
-			updateData.stipend = parsed.data.stipend;
-		if (parsed.data.notes !== undefined)
-			updateData.notes = parsed.data.notes;
+    if (parsed.data.intention !== undefined)
+      updateData.intention = parsed.data.intention;
+    if (parsed.data.intentionType !== undefined)
+      updateData.intentionType = parsed.data.intentionType;
+    if (parsed.data.requestedBy !== undefined)
+      updateData.requestedBy = parsed.data.requestedBy;
+    if (parsed.data.contactEmail !== undefined)
+      updateData.contactEmail = parsed.data.contactEmail;
+    if (parsed.data.contactPhone !== undefined)
+      updateData.contactPhone = parsed.data.contactPhone;
+    if (parsed.data.stipend !== undefined)
+      updateData.stipend = parsed.data.stipend;
+    if (parsed.data.notes !== undefined) updateData.notes = parsed.data.notes;
 
-		// Handle mass relationship
-		if (parsed.data.massId) {
-			// Validate new mass if changing
-			const mass = await db.mass.findUnique({
-				where: { id: parsed.data.massId },
-			});
-			if (!mass) return { success: false, message: 'Invalid Mass' };
-			updateData.mass = { connect: { id: parsed.data.massId } };
-		}
+    // Handle mass relationship
+    if (parsed.data.massId) {
+      // Validate new mass if changing
+      const mass = await db.mass.findUnique({
+        where: { id: parsed.data.massId },
+      });
+      if (!mass || mass.organizationId !== session.user.organizationId) {
+        return {
+          success: false,
+          message: "Invalid Mass for this organization",
+        };
+      }
+      updateData.mass = { connect: { id: parsed.data.massId } };
+    }
 
-		// Handle parishioner relation
-		if (parsed.data.parishionerId !== undefined) {
-			if (parsed.data.parishionerId) {
-				updateData.parishioner = {
-					connect: { id: parsed.data.parishionerId },
-				};
-			} else {
-				updateData.parishioner = { disconnect: true };
-			}
-		}
+    // Handle parishioner relation
+    if (parsed.data.parishionerId !== undefined) {
+      if (parsed.data.parishionerId) {
+        updateData.parishioner = {
+          connect: { id: parsed.data.parishionerId },
+        };
+      } else {
+        updateData.parishioner = { disconnect: true };
+      }
+    }
 
-		// Update
-		const massIntention = await db.massIntention.update({
-			where: { id },
-			data: updateData,
-			include: {
-				parishioner: true,
-				organization: true,
-				mass: true,
-			},
-		});
+    // Update
+    const massIntention = await db.massIntention.update({
+      where: { id },
+      data: updateData,
+      include: {
+        parishioner: true,
+        organization: true,
+        mass: true,
+      },
+    });
 
-		revalidatePath('/dashboard/mass-intentions');
-		revalidatePath(`/dashboard/mass-intentions/${id}`);
+    // Audit Log
+    await db.auditLog.create({
+      data: {
+        action: "UPDATE",
+        entityType: "MassIntention",
+        entityId: id,
+        performedBy: session.user.id,
+        details: {
+          updatedFields: Object.keys(parsed.data),
+        },
+      },
+    });
 
-		return {
-			success: true,
-			message: 'Mass intention updated successfully',
-			data: massIntention,
-		};
-	} catch (error) {
-		console.error('Failed to update mass intention:', error);
-		return { success: false, message: 'Failed to update mass intention' };
-	}
+    revalidatePath("/mass-intentions");
+    revalidatePath("/mass-intentions/calendar");
+    revalidatePath("/dashboard/mass-intentions");
+    revalidatePath(`/dashboard/mass-intentions/${id}`);
+
+    return {
+      success: true,
+      message: "Mass intention updated successfully",
+      data: massIntention,
+    };
+  } catch (error) {
+    console.error("Failed to update mass intention:", error);
+    return { success: false, message: "Failed to update mass intention" };
+  }
 }
 
 // ============================================
@@ -344,38 +395,54 @@ export async function updateMassIntention(
 // ============================================
 
 export async function deleteMassIntention(id: string): Promise<ActionResponse> {
-	try {
-		const session = await auth();
-		if (!session) {
-			return { success: false, message: 'Unauthorized' };
-		}
+  try {
+    const session = await auth();
+    if (!session) {
+      return { success: false, message: "Unauthorized" };
+    }
 
-		// Only admins can delete
-		if (!['SUPER_ADMIN', 'PARISH_ADMIN'].includes(session.user.role)) {
-			return {
-				success: false,
-				message: 'You do not have permission to delete mass intentions',
-			};
-		}
+    // Only admins can delete
+    if (!["SUPER_ADMIN", "PARISH_ADMIN"].includes(session.user.role)) {
+      return {
+        success: false,
+        message: "You do not have permission to delete mass intentions",
+      };
+    }
 
-		// Verify ownership
-		const existing = await db.massIntention.findFirst({
-			where: { id, organizationId: session.user.organizationId },
-		});
-		if (!existing) {
-			return { success: false, message: 'Mass intention not found' };
-		}
+    // Verify ownership
+    const existing = await db.massIntention.findFirst({
+      where: { id, organizationId: session.user.organizationId },
+    });
+    if (!existing) {
+      return { success: false, message: "Mass intention not found" };
+    }
 
-		await db.massIntention.delete({ where: { id } });
+    await db.massIntention.delete({ where: { id } });
 
-		revalidatePath('/dashboard/mass-intentions');
+    // Audit Log
+    await db.auditLog.create({
+      data: {
+        action: "DELETE",
+        entityType: "MassIntention",
+        entityId: id,
+        performedBy: session.user.id,
+        details: {
+          intention: existing.intention,
+          requestedBy: existing.requestedBy,
+        },
+      },
+    });
 
-		return {
-			success: true,
-			message: 'Mass intention deleted successfully',
-		};
-	} catch (error) {
-		console.error('Failed to delete mass intention:', error);
-		return { success: false, message: 'Failed to delete mass intention' };
-	}
+    revalidatePath("/mass-intentions");
+    revalidatePath("/mass-intentions/calendar");
+    revalidatePath("/dashboard/mass-intentions");
+
+    return {
+      success: true,
+      message: "Mass intention deleted successfully",
+    };
+  } catch (error) {
+    console.error("Failed to delete mass intention:", error);
+    return { success: false, message: "Failed to delete mass intention" };
+  }
 }

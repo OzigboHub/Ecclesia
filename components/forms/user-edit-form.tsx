@@ -5,11 +5,11 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
-	updateUserSchema,
-	type UpdateUserInput,
-	userRoles,
-	roleLabels,
-	roleDescriptions,
+    updateUserSchema,
+    type UpdateUserInput,
+    userRoles,
+    roleLabels,
+    roleDescriptions,
 } from '@/lib/validators/user.schema';
 import { updateUser } from '@/app/actions/user.actions';
 import { toast } from 'sonner';
@@ -17,18 +17,18 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
 } from '@/components/ui/select';
 import {
-	Card,
-	CardContent,
-	CardHeader,
-	CardTitle,
-	CardDescription,
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+    CardDescription,
 } from '@/components/ui/card';
 import { Loader2, Info } from 'lucide-react';
 import type { User } from '@prisma/client';
@@ -74,8 +74,8 @@ export function UserEditForm({
 			PARISH_SECRETARY: 60,
 			PARISH_STAFF: 40,
 			OUTSTATION_ADMIN: 40,
-			ORGANIZATION_PRESIDENT: 30,
-			ORGANIZATION_SECRETARY: 30,
+			SOCIETY_PRESIDENT: 30,
+			SOCIETY_SECRETARY: 30,
 			PARISHIONER: 10,
 		};
 		const currentLevel = roleHierarchy[currentUserRole] ?? 0;

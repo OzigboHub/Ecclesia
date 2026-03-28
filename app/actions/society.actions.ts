@@ -1,23 +1,24 @@
-'use server';
+"use server";
 
-import { auth } from '@/auth';
-import { revalidatePath } from 'next/cache';
-import db from '@/lib/db';
+import { auth } from "@/auth";
+import db from "@/lib/db";
+import { isFeatureEnabled } from "@/lib/features.server";
+import { canManageSocieties } from "@/lib/permissions";
 import {
-	createsocietySchema,
-	updatesocietySchema,
 	addMemberSchema,
 	createMeetingSchema,
-} from '@/lib/validators/pious-organization.schema';
-import type { ActionResponse } from '@/types';
-import { Prisma } from '@prisma/client';
-import { isFeatureEnabled } from '@/lib/features';
+	createsocietySchema,
+	updatesocietySchema,
+} from "@/lib/validators/society.schema";
+import type { ActionResponse } from "@/types";
+import { Prisma } from "@prisma/client";
+import { revalidatePath } from "next/cache";
 
 // ============================================
 // TYPE DEFINITIONS
 // ============================================
 
-export type societyWithRelations = Prisma.societyGetPayload<{
+export type SocietyWithRelations = Prisma.SocietyGetPayload<{
 	include: {
 		president: {
 			select: {
@@ -39,7 +40,7 @@ export type societyWithRelations = Prisma.societyGetPayload<{
 	};
 }>;
 
-export type societyWithDetails = Prisma.societyGetPayload<{
+export type SocietyWithDetails = Prisma.SocietyGetPayload<{
 	include: {
 		president: true;
 		secretary: true;
@@ -56,28 +57,28 @@ export type societyWithDetails = Prisma.societyGetPayload<{
 // READ OPERATIONS
 // ============================================
 
-export async function getsocietys(): Promise<
-	ActionResponse<societyWithRelations[]>
+export async function getSocieties(): Promise<
+	ActionResponse<SocietyWithRelations[]>
 > {
 	try {
 		const session = await auth();
 		if (!session) {
-			return { success: false, message: 'Unauthorized' };
+			return { success: false, message: "Unauthorized" };
 		}
 
 		// Check feature toggle
 		const enabled = await isFeatureEnabled(
 			session.user.organizationId,
-			'enablesocietys'
+			"enableSocieties",
 		);
 		if (!enabled) {
 			return {
 				success: false,
-				message: 'Pious Organizations feature is not enabled',
+				message: "Societies feature is not enabled",
 			};
 		}
 
-		const organizations = await db.society.findMany({
+		const societies = await db.society.findMany({
 			where: { organizationId: session.user.organizationId },
 			include: {
 				president: {
@@ -98,43 +99,43 @@ export async function getsocietys(): Promise<
 					select: { members: true },
 				},
 			},
-			orderBy: { name: 'asc' },
+			orderBy: { name: "asc" },
 		});
 
 		return {
 			success: true,
-			message: 'Organizations retrieved successfully',
-			data: organizations,
+			message: "Societies retrieved successfully",
+			data: societies,
 		};
 	} catch (error) {
-		console.error('Failed to get pious organizations:', error);
-		return { success: false, message: 'Failed to retrieve organizations' };
+		console.error("Failed to get societies:", error);
+		return { success: false, message: "Failed to retrieve societies" };
 	}
 }
 
-export async function getsociety(
-	id: string
-): Promise<ActionResponse<societyWithDetails>> {
+export async function getSociety(
+	id: string,
+): Promise<ActionResponse<SocietyWithDetails>> {
 	try {
 		const session = await auth();
 		if (!session) {
-			return { success: false, message: 'Unauthorized' };
+			return { success: false, message: "Unauthorized" };
 		}
 
 		// Check feature toggle
 		const enabled = await isFeatureEnabled(
 			session.user.organizationId,
-			'enablesocietys'
+			"enableSocieties",
 		);
 		if (!enabled) {
 			return {
 				success: false,
-				message: 'Pious Organizations feature is not enabled',
+				message: "Societies feature is not enabled",
 			};
 		}
 
 		// Verify organization ownership with findFirst
-		const organization = await db.society.findFirst({
+		const society = await db.society.findFirst({
 			where: {
 				id,
 				organizationId: session.user.organizationId, // Organization scoping!
@@ -148,23 +149,23 @@ export async function getsociety(
 					},
 				},
 				events: {
-					orderBy: { startTime: 'asc' },
+					orderBy: { startTime: "asc" },
 				},
 			},
 		});
 
-		if (!organization) {
-			return { success: false, message: 'Organization not found' };
+		if (!society) {
+			return { success: false, message: "Society not found" };
 		}
 
 		return {
 			success: true,
-			message: 'Organization retrieved successfully',
-			data: organization,
+			message: "Society retrieved successfully",
+			data: society,
 		};
 	} catch (error) {
-		console.error('Failed to get pious organization:', error);
-		return { success: false, message: 'Failed to retrieve organization' };
+		console.error("Failed to get society:", error);
+		return { success: false, message: "Failed to retrieve society" };
 	}
 }
 
@@ -172,35 +173,28 @@ export async function getsociety(
 // CREATE OPERATIONS
 // ============================================
 
-export async function createsociety(
-	formData: unknown
-): Promise<ActionResponse<societyWithRelations>> {
+export async function createSociety(
+	formData: unknown,
+): Promise<ActionResponse<SocietyWithRelations>> {
 	try {
 		const session = await auth();
 		if (!session) {
-			return { success: false, message: 'Unauthorized' };
+			return { success: false, message: "Unauthorized" };
 		}
 
-		// Authorization - only staff can create organizations
-		const allowedRoles = [
-			'SUPER_ADMIN',
-			'PARISH_ADMIN',
-			'PARISH_SECRETARY',
-			'PARISH_STAFF',
-		];
-		if (!allowedRoles.includes(session.user.role)) {
-			return { success: false, message: 'Permission denied' };
+		if (!canManageSocieties(session.user.role)) {
+			return { success: false, message: "Permission denied" };
 		}
 
 		// Check feature toggle
 		const enabled = await isFeatureEnabled(
 			session.user.organizationId,
-			'enablesocietys'
+			"enableSocieties",
 		);
 		if (!enabled) {
 			return {
 				success: false,
-				message: 'Pious Organizations feature is not enabled',
+				message: "Societies feature is not enabled",
 			};
 		}
 
@@ -209,16 +203,21 @@ export async function createsociety(
 		if (!parsed.success) {
 			return {
 				success: false,
-				message: 'Validation failed',
+				message: "Validation failed",
 				errors: parsed.error.flatten().fieldErrors,
 			};
 		}
 
-		const organization = await db.society.create({
-			data: {
-				...parsed.data,
-				organizationId: session.user.organizationId,
-			},
+		const { presidentId, secretaryId, ...rest } = parsed.data;
+		const data = {
+			...rest,
+			organizationId: session.user.organizationId,
+			...(presidentId && { presidentId }),
+			...(secretaryId && { secretaryId }),
+		};
+
+		const society = await db.society.create({
+			data,
 			include: {
 				president: {
 					select: {
@@ -240,16 +239,16 @@ export async function createsociety(
 			},
 		});
 
-		revalidatePath('/dashboard/organizations');
+		revalidatePath("/dashboard/societies");
 
 		return {
 			success: true,
-			message: 'Organization created successfully',
-			data: organization,
+			message: "Society created successfully",
+			data: society,
 		};
 	} catch (error) {
-		console.error('Failed to create pious organization:', error);
-		return { success: false, message: 'Failed to create organization' };
+		console.error("Failed to create society:", error);
+		return { success: false, message: "Failed to create society" };
 	}
 }
 
@@ -257,25 +256,18 @@ export async function createsociety(
 // UPDATE OPERATIONS
 // ============================================
 
-export async function updatesociety(
+export async function updateSociety(
 	id: string,
-	formData: unknown
-): Promise<ActionResponse<societyWithRelations>> {
+	formData: unknown,
+): Promise<ActionResponse<SocietyWithRelations>> {
 	try {
 		const session = await auth();
 		if (!session) {
-			return { success: false, message: 'Unauthorized' };
+			return { success: false, message: "Unauthorized" };
 		}
 
-		// Authorization
-		const allowedRoles = [
-			'SUPER_ADMIN',
-			'PARISH_ADMIN',
-			'PARISH_SECRETARY',
-			'PARISH_STAFF',
-		];
-		if (!allowedRoles.includes(session.user.role)) {
-			return { success: false, message: 'Permission denied' };
+		if (!canManageSocieties(session.user.role)) {
+			return { success: false, message: "Permission denied" };
 		}
 
 		// Validation
@@ -283,7 +275,7 @@ export async function updatesociety(
 		if (!parsed.success) {
 			return {
 				success: false,
-				message: 'Validation failed',
+				message: "Validation failed",
 				errors: parsed.error.flatten().fieldErrors,
 			};
 		}
@@ -297,10 +289,10 @@ export async function updatesociety(
 		});
 
 		if (!existing) {
-			return { success: false, message: 'Organization not found' };
+			return { success: false, message: "Society not found" };
 		}
 
-		const organization = await db.society.update({
+		const society = await db.society.update({
 			where: { id },
 			data: parsed.data,
 			include: {
@@ -324,17 +316,17 @@ export async function updatesociety(
 			},
 		});
 
-		revalidatePath(`/dashboard/organizations/${id}`);
-		revalidatePath('/dashboard/organizations');
+		revalidatePath(`/dashboard/societies/${id}`);
+		revalidatePath("/dashboard/societies");
 
 		return {
 			success: true,
-			message: 'Organization updated successfully',
-			data: organization,
+			message: "Society updated successfully",
+			data: society,
 		};
 	} catch (error) {
-		console.error('Failed to update pious organization:', error);
-		return { success: false, message: 'Failed to update organization' };
+		console.error("Failed to update society:", error);
+		return { success: false, message: "Failed to update society" };
 	}
 }
 
@@ -344,12 +336,12 @@ export async function updatesociety(
 
 export async function addMember(
 	societyId: string,
-	formData: unknown
+	formData: unknown,
 ): Promise<ActionResponse> {
 	try {
 		const session = await auth();
 		if (!session) {
-			return { success: false, message: 'Unauthorized' };
+			return { success: false, message: "Unauthorized" };
 		}
 
 		// Validation
@@ -357,21 +349,21 @@ export async function addMember(
 		if (!parsed.success) {
 			return {
 				success: false,
-				message: 'Validation failed',
+				message: "Validation failed",
 				errors: parsed.error.flatten().fieldErrors,
 			};
 		}
 
 		// Verify organization ownership
-		const organization = await db.society.findFirst({
+		const society = await db.society.findFirst({
 			where: {
 				id: societyId,
 				organizationId: session.user.organizationId,
 			},
 		});
 
-		if (!organization) {
-			return { success: false, message: 'Organization not found' };
+		if (!society) {
+			return { success: false, message: "Society not found" };
 		}
 
 		// Check if member already exists
@@ -387,7 +379,7 @@ export async function addMember(
 		if (existingMember) {
 			return {
 				success: false,
-				message: 'Parishioner is already a member of this organization',
+				message: "Parishioner is already a member of this society",
 			};
 		}
 
@@ -399,38 +391,38 @@ export async function addMember(
 			},
 		});
 
-		revalidatePath(`/dashboard/organizations/${societyId}`);
+		revalidatePath(`/dashboard/societies/${societyId}`);
 
 		return {
 			success: true,
-			message: 'Member added successfully',
+			message: "Member added successfully",
 		};
 	} catch (error) {
-		console.error('Failed to add member:', error);
-		return { success: false, message: 'Failed to add member' };
+		console.error("Failed to add member:", error);
+		return { success: false, message: "Failed to add member" };
 	}
 }
 
 export async function removeMember(
 	societyId: string,
-	parishionerId: string
+	parishionerId: string,
 ): Promise<ActionResponse> {
 	try {
 		const session = await auth();
 		if (!session) {
-			return { success: false, message: 'Unauthorized' };
+			return { success: false, message: "Unauthorized" };
 		}
 
 		// Verify organization ownership
-		const organization = await db.society.findFirst({
+		const society = await db.society.findFirst({
 			where: {
 				id: societyId,
 				organizationId: session.user.organizationId,
 			},
 		});
 
-		if (!organization) {
-			return { success: false, message: 'Organization not found' };
+		if (!society) {
+			return { success: false, message: "Society not found" };
 		}
 
 		await db.societyMembership.delete({
@@ -442,15 +434,15 @@ export async function removeMember(
 			},
 		});
 
-		revalidatePath(`/dashboard/organizations/${societyId}`);
+		revalidatePath(`/dashboard/societies/${societyId}`);
 
 		return {
 			success: true,
-			message: 'Member removed successfully',
+			message: "Member removed successfully",
 		};
 	} catch (error) {
-		console.error('Failed to remove member:', error);
-		return { success: false, message: 'Failed to remove member' };
+		console.error("Failed to remove member:", error);
+		return { success: false, message: "Failed to remove member" };
 	}
 }
 
@@ -460,12 +452,12 @@ export async function removeMember(
 
 export async function createMeeting(
 	societyId: string,
-	formData: unknown
+	formData: unknown,
 ): Promise<ActionResponse> {
 	try {
 		const session = await auth();
 		if (!session) {
-			return { success: false, message: 'Unauthorized' };
+			return { success: false, message: "Unauthorized" };
 		}
 
 		// Validation
@@ -473,21 +465,21 @@ export async function createMeeting(
 		if (!parsed.success) {
 			return {
 				success: false,
-				message: 'Validation failed',
+				message: "Validation failed",
 				errors: parsed.error.flatten().fieldErrors,
 			};
 		}
 
 		// Verify organization ownership
-		const organization = await db.society.findFirst({
+		const society = await db.society.findFirst({
 			where: {
 				id: societyId,
 				organizationId: session.user.organizationId,
 			},
 		});
 
-		if (!organization) {
-			return { success: false, message: 'Organization not found' };
+		if (!society) {
+			return { success: false, message: "Society not found" };
 		}
 
 		await db.event.create({
@@ -499,32 +491,32 @@ export async function createMeeting(
 				location: parsed.data.location,
 				organizationId: session.user.organizationId,
 				societyId,
-				type: 'MEETING',
-				status: 'SCHEDULED',
+				type: "MEETING",
+				status: "SCHEDULED",
 			},
 		});
 
-		revalidatePath(`/dashboard/organizations/${societyId}`);
+		revalidatePath(`/dashboard/societies/${societyId}`);
 
 		return {
 			success: true,
-			message: 'Meeting scheduled successfully',
+			message: "Meeting scheduled successfully",
 		};
 	} catch (error) {
-		console.error('Failed to create meeting:', error);
-		return { success: false, message: 'Failed to schedule meeting' };
+		console.error("Failed to create meeting:", error);
+		return { success: false, message: "Failed to schedule meeting" };
 	}
 }
 
 export async function markAttendance(
 	eventId: string,
 	parishionerId: string,
-	status: string
+	status: string,
 ): Promise<ActionResponse> {
 	try {
 		const session = await auth();
 		if (!session) {
-			return { success: false, message: 'Unauthorized' };
+			return { success: false, message: "Unauthorized" };
 		}
 
 		// Verify event belongs to user's organization
@@ -536,7 +528,7 @@ export async function markAttendance(
 		});
 
 		if (!event) {
-			return { success: false, message: 'Event not found' };
+			return { success: false, message: "Event not found" };
 		}
 
 		await db.eventAttendance.upsert({
@@ -558,11 +550,11 @@ export async function markAttendance(
 
 		return {
 			success: true,
-			message: 'Attendance marked successfully',
+			message: "Attendance marked successfully",
 		};
 	} catch (error) {
-		console.error('Failed to mark attendance:', error);
-		return { success: false, message: 'Failed to mark attendance' };
+		console.error("Failed to mark attendance:", error);
+		return { success: false, message: "Failed to mark attendance" };
 	}
 }
 
@@ -570,18 +562,16 @@ export async function markAttendance(
 // DELETE OPERATIONS
 // ============================================
 
-export async function deletesociety(
-	id: string
-): Promise<ActionResponse> {
+export async function deleteSociety(id: string): Promise<ActionResponse> {
 	try {
 		const session = await auth();
 		if (!session) {
-			return { success: false, message: 'Unauthorized' };
+			return { success: false, message: "Unauthorized" };
 		}
 
 		// Only admins can delete
-		if (!['SUPER_ADMIN', 'PARISH_ADMIN'].includes(session.user.role)) {
-			return { success: false, message: 'Permission denied' };
+		if (!["SUPER_ADMIN", "PARISH_ADMIN"].includes(session.user.role)) {
+			return { success: false, message: "Permission denied" };
 		}
 
 		// Verify ownership
@@ -593,7 +583,7 @@ export async function deletesociety(
 		});
 
 		if (!existing) {
-			return { success: false, message: 'Organization not found' };
+			return { success: false, message: "Society not found" };
 		}
 
 		// Delete memberships first (cascade might handle this)
@@ -603,14 +593,373 @@ export async function deletesociety(
 
 		await db.society.delete({ where: { id } });
 
-		revalidatePath('/dashboard/organizations');
+		revalidatePath("/dashboard/societies");
 
 		return {
 			success: true,
-			message: 'Organization deleted successfully',
+			message: "Society deleted successfully",
 		};
 	} catch (error) {
-		console.error('Failed to delete pious organization:', error);
-		return { success: false, message: 'Failed to delete organization' };
+		console.error("Failed to delete society:", error);
+		return { success: false, message: "Failed to delete society" };
+	}
+}
+
+// ============================================
+// JOIN REQUEST OPERATIONS
+// ============================================
+
+export type JoinRequestWithParishioner = Prisma.SocietyJoinRequestGetPayload<{
+	include: {
+		parishioner: {
+			select: {
+				id: true;
+				firstName: true;
+				lastName: true;
+				phone: true;
+				email: true;
+			};
+		};
+	};
+}>;
+
+const JOIN_REQUEST_REVIEWER_ROLES = [
+	"SUPER_ADMIN",
+	"PARISH_ADMIN",
+	"PARISH_SECRETARY",
+	"PARISH_STAFF",
+];
+
+export async function requestToJoinSociety(
+	societyId: string,
+	message?: string,
+): Promise<ActionResponse> {
+	try {
+		const session = await auth();
+		if (!session?.user) {
+			return { success: false, message: "Unauthorized" };
+		}
+
+		if (!session.user.parishionerId) {
+			return {
+				success: false,
+				message: "Only parishioners can request to join a society",
+			};
+		}
+
+		const enabled = await isFeatureEnabled(
+			session.user.organizationId,
+			"enableSocieties",
+		);
+		if (!enabled) {
+			return {
+				success: false,
+				message: "Societies feature is not enabled",
+			};
+		}
+
+		const society = await db.society.findFirst({
+			where: {
+				id: societyId,
+				organizationId: session.user.organizationId,
+			},
+		});
+		if (!society) {
+			return { success: false, message: "Society not found" };
+		}
+
+		// Check if already a member
+		const alreadyMember = await db.societyMembership.findUnique({
+			where: {
+				parishionerId_societyId: {
+					parishionerId: session.user.parishionerId,
+					societyId,
+				},
+			},
+		});
+		if (alreadyMember) {
+			return {
+				success: false,
+				message: "You are already a member of this society",
+			};
+		}
+
+		// Upsert: if previously rejected, allow re-request; prevent duplicate pending
+		const existingRequest = await db.societyJoinRequest.findUnique({
+			where: {
+				parishionerId_societyId: {
+					parishionerId: session.user.parishionerId,
+					societyId,
+				},
+			},
+		});
+
+		if (existingRequest?.status === "PENDING") {
+			return {
+				success: false,
+				message:
+					"You already have a pending join request for this society",
+			};
+		}
+
+		await db.societyJoinRequest.upsert({
+			where: {
+				parishionerId_societyId: {
+					parishionerId: session.user.parishionerId,
+					societyId,
+				},
+			},
+			create: {
+				parishionerId: session.user.parishionerId,
+				societyId,
+				status: "PENDING",
+				message: message || null,
+			},
+			update: {
+				status: "PENDING",
+				message: message || null,
+				reviewedById: null,
+				reviewedAt: null,
+			},
+		});
+
+		revalidatePath("/dashboard/societies");
+		revalidatePath(`/dashboard/societies/${societyId}`);
+
+		return {
+			success: true,
+			message: "Join request submitted successfully",
+		};
+	} catch (error) {
+		console.error("Failed to submit join request:", error);
+		return { success: false, message: "Failed to submit join request" };
+	}
+}
+
+export async function cancelJoinRequest(
+	societyId: string,
+): Promise<ActionResponse> {
+	try {
+		const session = await auth();
+		if (!session?.user || !session.user.parishionerId) {
+			return { success: false, message: "Unauthorized" };
+		}
+
+		const request = await db.societyJoinRequest.findUnique({
+			where: {
+				parishionerId_societyId: {
+					parishionerId: session.user.parishionerId,
+					societyId,
+				},
+			},
+		});
+
+		if (!request || request.status !== "PENDING") {
+			return { success: false, message: "No pending join request found" };
+		}
+
+		await db.societyJoinRequest.delete({
+			where: {
+				parishionerId_societyId: {
+					parishionerId: session.user.parishionerId,
+					societyId,
+				},
+			},
+		});
+
+		revalidatePath("/dashboard/societies");
+		revalidatePath(`/dashboard/societies/${societyId}`);
+
+		return { success: true, message: "Join request cancelled" };
+	} catch (error) {
+		console.error("Failed to cancel join request:", error);
+		return { success: false, message: "Failed to cancel join request" };
+	}
+}
+
+export async function getJoinRequestsForSociety(
+	societyId: string,
+): Promise<ActionResponse<JoinRequestWithParishioner[]>> {
+	try {
+		const session = await auth();
+		if (!session?.user) {
+			return { success: false, message: "Unauthorized" };
+		}
+
+		const isStaff = JOIN_REQUEST_REVIEWER_ROLES.includes(session.user.role);
+
+		const society = await db.society.findFirst({
+			where: {
+				id: societyId,
+				organizationId: session.user.organizationId,
+			},
+			select: { presidentId: true, secretaryId: true },
+		});
+		if (!society) {
+			return { success: false, message: "Society not found" };
+		}
+
+		const isSocietyLeader =
+			society.presidentId === session.user.id ||
+			society.secretaryId === session.user.id;
+
+		if (!isStaff && !isSocietyLeader) {
+			return { success: false, message: "Permission denied" };
+		}
+
+		const requests = await db.societyJoinRequest.findMany({
+			where: { societyId, status: "PENDING" },
+			include: {
+				parishioner: {
+					select: {
+						id: true,
+						firstName: true,
+						lastName: true,
+						phone: true,
+						email: true,
+					},
+				},
+			},
+			orderBy: { createdAt: "asc" },
+		});
+
+		return {
+			success: true,
+			message: "Join requests retrieved",
+			data: requests,
+		};
+	} catch (error) {
+		console.error("Failed to get join requests:", error);
+		return { success: false, message: "Failed to retrieve join requests" };
+	}
+}
+
+export async function approveJoinRequest(
+	requestId: string,
+): Promise<ActionResponse> {
+	try {
+		const session = await auth();
+		if (!session?.user) {
+			return { success: false, message: "Unauthorized" };
+		}
+
+		const isStaff = JOIN_REQUEST_REVIEWER_ROLES.includes(session.user.role);
+
+		const request = await db.societyJoinRequest.findFirst({
+			where: {
+				id: requestId,
+				status: "PENDING",
+				society: { organizationId: session.user.organizationId },
+			},
+			include: {
+				society: { select: { presidentId: true, secretaryId: true } },
+			},
+		});
+
+		if (!request) {
+			return { success: false, message: "Join request not found" };
+		}
+
+		const isSocietyLeader =
+			request.society.presidentId === session.user.id ||
+			request.society.secretaryId === session.user.id;
+
+		if (!isStaff && !isSocietyLeader) {
+			return { success: false, message: "Permission denied" };
+		}
+
+		// Check if already a member (edge case)
+		const alreadyMember = await db.societyMembership.findUnique({
+			where: {
+				parishionerId_societyId: {
+					parishionerId: request.parishionerId,
+					societyId: request.societyId,
+				},
+			},
+		});
+
+		await db.$transaction([
+			db.societyJoinRequest.update({
+				where: { id: requestId },
+				data: {
+					status: "APPROVED",
+					reviewedById: session.user.id,
+					reviewedAt: new Date(),
+				},
+			}),
+			...(alreadyMember ?
+				[]
+			:	[
+					db.societyMembership.create({
+						data: {
+							parishionerId: request.parishionerId,
+							societyId: request.societyId,
+							role: "MEMBER",
+						},
+					}),
+				]),
+		]);
+
+		revalidatePath(`/dashboard/societies/${request.societyId}`);
+
+		return {
+			success: true,
+			message: "Join request approved and member added",
+		};
+	} catch (error) {
+		console.error("Failed to approve join request:", error);
+		return { success: false, message: "Failed to approve join request" };
+	}
+}
+
+export async function rejectJoinRequest(
+	requestId: string,
+): Promise<ActionResponse> {
+	try {
+		const session = await auth();
+		if (!session?.user) {
+			return { success: false, message: "Unauthorized" };
+		}
+
+		const isStaff = JOIN_REQUEST_REVIEWER_ROLES.includes(session.user.role);
+
+		const request = await db.societyJoinRequest.findFirst({
+			where: {
+				id: requestId,
+				status: "PENDING",
+				society: { organizationId: session.user.organizationId },
+			},
+			include: {
+				society: { select: { presidentId: true, secretaryId: true } },
+			},
+		});
+
+		if (!request) {
+			return { success: false, message: "Join request not found" };
+		}
+
+		const isSocietyLeader =
+			request.society.presidentId === session.user.id ||
+			request.society.secretaryId === session.user.id;
+
+		if (!isStaff && !isSocietyLeader) {
+			return { success: false, message: "Permission denied" };
+		}
+
+		await db.societyJoinRequest.update({
+			where: { id: requestId },
+			data: {
+				status: "REJECTED",
+				reviewedById: session.user.id,
+				reviewedAt: new Date(),
+			},
+		});
+
+		revalidatePath(`/dashboard/societies/${request.societyId}`);
+
+		return { success: true, message: "Join request rejected" };
+	} catch (error) {
+		console.error("Failed to reject join request:", error);
+		return { success: false, message: "Failed to reject join request" };
 	}
 }
