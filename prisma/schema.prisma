@@ -42,6 +42,7 @@ model Organization {
   sacraments                 Sacrament[]
   societies                  Society[]
   users                      User[]
+  appointmentUnavailableDays AppointmentUnavailableDay[]
 
   @@index([parentId])
 }
