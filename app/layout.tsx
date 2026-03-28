@@ -1,15 +1,16 @@
 import { AuthProvider } from "@/components/providers/auth-provider";
 import type { Metadata } from "next";
-import { Geist, Montserrat } from "next/font/google";
+import { Montserrat } from "next/font/google";
 import NextTopLoader from "nextjs-toploader";
+
 import { Toaster } from "sonner";
 import "./globals.css";
 import PublicNavbar from "@/components/layout/public-navbar";
 import PublicFooter from "@/components/layout/public-footer";
 
-const geist = Geist({
-  variable: "--font-geist",
-  subsets: ["latin"],
+const montserrat = Montserrat({
+  variable: "--montserrat",
+  weight: ["100", "200", "300", "400", "500", "600", "700", "800", "900"],
 });
 
 export const metadata: Metadata = {
@@ -25,7 +26,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${Montserrat} scroll-smooth text-[13px] antialiased`}
+        className={`${montserrat.className} scroll-smooth text-[13px] antialiased`}
         suppressHydrationWarning>
         <AuthProvider>
           <NextTopLoader
