@@ -11,6 +11,7 @@ import {
 } from "@/lib/validators/appointment.schema";
 import type { ActionResponse } from "@/types";
 import { Prisma } from "@prisma/client";
+import { randomUUID } from "node:crypto";
 import {
   canBypassFeatureToggle,
   isFeatureEnabledForRole,
@@ -50,6 +51,33 @@ type AppointmentBookingWindow = {
   appointmentBookingOpensAt: Date | null;
   appointmentBookingClosesAt: Date | null;
 };
+
+type AppointmentUnavailableDates = {
+  dates: string[];
+};
+
+const BOOKING_START_HOUR = 9;
+const BOOKING_END_HOUR = 15;
+
+function toDayStartUtc(input: Date | string): Date {
+  const date = new Date(input);
+  return new Date(
+    Date.UTC(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0),
+  );
+}
+
+function toDayKey(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
+function isWeekday(date: Date): boolean {
+  const day = date.getDay();
+  return day >= 1 && day <= 5;
+}
+
+function getMinutesOfDay(date: Date): number {
+  return date.getHours() * 60 + date.getMinutes();
+}
 
 async function withDbRetry<T>(
   operation: () => Promise<T>,
@@ -127,7 +155,12 @@ export async function getAppointments(): Promise<
 
     const appointments = await withDbRetry(() =>
       db.appointment.findMany({
-        where: { organizationId: session.user.organizationId },
+        where: {
+          organizationId: session.user.organizationId,
+          ...(session.user.role === "PARISH_ADMIN" && {
+            status: "CONFIRMED",
+          }),
+        },
         include: {
           assignedTo: {
             select: {
@@ -222,11 +255,14 @@ export async function getAppointmentsFiltered(
       sortOrder,
     } = parsedResult.data;
 
+    const enforcedStatus =
+      session.user.role === "PARISH_ADMIN" ? "CONFIRMED" : status;
+
     // Build where clause
     const where: Prisma.AppointmentWhereInput = {
       organizationId: session.user.organizationId,
       ...(type && { type }),
-      ...(status && { status }),
+      ...(enforcedStatus && { status: enforcedStatus }),
       ...(assignedToId && { assignedToId }),
       ...(search && {
         OR: [
@@ -427,6 +463,33 @@ export async function createAppointment(
 
     const { startTime, endTime, notes, ...rest } = parsed.data;
     const startAt = new Date(startTime);
+    const endAt = new Date(endTime);
+
+    if (Number.isNaN(startAt.getTime()) || Number.isNaN(endAt.getTime())) {
+      return {
+        success: false,
+        message: "Invalid appointment date/time",
+      };
+    }
+
+    const startMinutes = getMinutesOfDay(startAt);
+    const endMinutes = getMinutesOfDay(endAt);
+    const startsOnWeekday = isWeekday(startAt);
+    const endsSameDay = toDayKey(startAt) === toDayKey(endAt);
+    const startsInWindow =
+      startMinutes >= BOOKING_START_HOUR * 60 &&
+      startMinutes < BOOKING_END_HOUR * 60;
+    const endsInWindow =
+      endMinutes > BOOKING_START_HOUR * 60 &&
+      endMinutes <= BOOKING_END_HOUR * 60;
+
+    if (!startsOnWeekday || !startsInWindow || !endsInWindow || !endsSameDay) {
+      return {
+        success: false,
+        message:
+          "Appointments can only be booked Monday to Friday between 9:00 AM and 3:00 PM.",
+      };
+    }
 
     if (!canBypassFeatureToggle(session.user.role)) {
       const organization = await db.organization.findUnique({
@@ -458,6 +521,23 @@ export async function createAppointment(
             "Appointment booking is currently closed for this date range",
         };
       }
+
+      const blockedDays = await db.$queryRaw<Array<{ id: string }>>(
+        Prisma.sql`
+          SELECT "id"
+          FROM "AppointmentUnavailableDay"
+          WHERE "organizationId" = ${session.user.organizationId}
+            AND "date" = ${toDayStartUtc(startAt)}
+          LIMIT 1
+        `,
+      );
+
+      if (blockedDays.length > 0) {
+        return {
+          success: false,
+          message: "This date is marked unavailable for appointment booking.",
+        };
+      }
     }
 
     // Combine description and notes if both exist
@@ -474,7 +554,7 @@ export async function createAppointment(
         ...rest,
         description: finalDescription || null,
         startTime: startAt,
-        endTime: new Date(endTime),
+        endTime: endAt,
         organizationId: session.user.organizationId,
         requestedById: session.user.id,
         status: "PENDING",
@@ -508,7 +588,7 @@ export async function createAppointment(
       },
     });
 
-    revalidatePath("/dashboard/appointments");
+    revalidatePath("/appointments");
 
     return {
       success: true,
@@ -597,7 +677,7 @@ export async function setAppointmentBookingWindow(params: {
       },
     });
 
-    revalidatePath("/dashboard/appointments");
+    revalidatePath("/appointments");
 
     return {
       success: true,
@@ -610,6 +690,112 @@ export async function setAppointmentBookingWindow(params: {
   } catch (error) {
     console.error("Failed to update appointment booking window:", error);
     return { success: false, message: "Failed to update booking window" };
+  }
+}
+
+export async function getAppointmentUnavailableDays(params?: {
+  from?: string | Date;
+  to?: string | Date;
+}): Promise<ActionResponse<AppointmentUnavailableDates>> {
+  try {
+    const session = await auth();
+    if (!session?.user) {
+      return { success: false, message: "Unauthorized" };
+    }
+
+    const fromDate = params?.from ? new Date(params.from) : new Date();
+    const toDate = params?.to
+      ? new Date(params.to)
+      : new Date(Date.now() + 60 * 86400000);
+
+    const unavailableDays = await db.$queryRaw<Array<{ date: Date }>>(
+      Prisma.sql`
+        SELECT "date"
+        FROM "AppointmentUnavailableDay"
+        WHERE "organizationId" = ${session.user.organizationId}
+          AND "date" >= ${toDayStartUtc(fromDate)}
+          AND "date" <= ${toDayStartUtc(toDate)}
+        ORDER BY "date" ASC
+      `,
+    );
+
+    return {
+      success: true,
+      message: "Unavailable appointment days retrieved",
+      data: {
+        dates: unavailableDays.map((item) => toDayKey(item.date)),
+      },
+    };
+  } catch (error) {
+    console.error("Failed to get unavailable appointment days:", error);
+    return {
+      success: false,
+      message: "Failed to retrieve unavailable appointment days",
+    };
+  }
+}
+
+export async function setAppointmentDayUnavailable(params: {
+  date: string | Date;
+  unavailable: boolean;
+}): Promise<ActionResponse<{ date: string; unavailable: boolean }>> {
+  try {
+    const session = await auth();
+    if (!session?.user) {
+      return { success: false, message: "Unauthorized" };
+    }
+
+    const allowedRoles = ["SUPER_ADMIN", "PARISH_ADMIN", "PARISH_SECRETARY"];
+    if (!allowedRoles.includes(session.user.role)) {
+      return { success: false, message: "Permission denied" };
+    }
+
+    const normalizedDate = toDayStartUtc(params.date);
+    if (!isWeekday(normalizedDate)) {
+      return {
+        success: false,
+        message: "Only Monday to Friday dates can be changed",
+      };
+    }
+
+    if (params.unavailable) {
+      await db.$executeRaw(
+        Prisma.sql`
+          INSERT INTO "AppointmentUnavailableDay"
+            ("id", "date", "organizationId", "createdAt", "updatedAt")
+          VALUES
+            (${randomUUID()}, ${normalizedDate}, ${session.user.organizationId}, NOW(), NOW())
+          ON CONFLICT ("organizationId", "date") DO NOTHING
+        `,
+      );
+    } else {
+      await db.$executeRaw(
+        Prisma.sql`
+          DELETE FROM "AppointmentUnavailableDay"
+          WHERE "organizationId" = ${session.user.organizationId}
+            AND "date" = ${normalizedDate}
+        `,
+      );
+    }
+
+    revalidatePath("/appointments");
+
+    return {
+      success: true,
+      message: params.unavailable
+        ? "Day set as unavailable"
+        : "Day set as available",
+      data: {
+        date: toDayKey(normalizedDate),
+        unavailable: params.unavailable,
+      },
+    };
+  } catch (error) {
+    console.error("Failed to update appointment day availability:", error);
+    return {
+      success: false,
+      message: "Failed to update day availability",
+    };
   }
 }
 
@@ -741,8 +927,8 @@ export async function updateAppointment(
       },
     });
 
-    revalidatePath("/dashboard/appointments");
-    revalidatePath(`/dashboard/appointments/${id}`);
+    revalidatePath("/appointments");
+    revalidatePath(`/appointments/${id}`);
 
     return {
       success: true,
@@ -795,7 +981,7 @@ export async function cancelAppointment(id: string): Promise<ActionResponse> {
       data: { status: "CANCELLED" },
     });
 
-    revalidatePath("/dashboard/appointments");
+    revalidatePath("/appointments");
 
     return {
       success: true,
@@ -832,7 +1018,7 @@ export async function deleteAppointment(id: string): Promise<ActionResponse> {
 
     await db.appointment.delete({ where: { id } });
 
-    revalidatePath("/dashboard/appointments");
+    revalidatePath("/appointments");
 
     return {
       success: true,

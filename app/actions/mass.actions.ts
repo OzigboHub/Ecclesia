@@ -2,7 +2,10 @@
 
 import { auth } from "@/auth";
 import db from "@/lib/db";
-import { generateMassesForPeriod } from "@/lib/services/mass.service";
+import {
+  generateMassesForPeriod,
+  generateMassesFromExistingMasses,
+} from "@/lib/services/mass.service";
 import type { ActionResponse } from "@/types";
 import { MassType } from "@prisma/client";
 import { addDays, endOfDay, format, startOfDay } from "date-fns";
@@ -220,24 +223,57 @@ export async function runMassGeneration(
     const start = startDate ? new Date(startDate) : new Date();
     const end = endDate ? new Date(endDate) : addDays(start, 30);
 
-    const count = await generateMassesForPeriod(
-      session.user.organizationId,
-      start,
-      end,
-    );
+    const [org, activeTemplateCount] = await Promise.all([
+      db.organization.findUnique({
+        where: { id: session.user.organizationId },
+        select: { autoGenerateMasses: true, maxMassesPerDay: true },
+      }),
+      db.massScheduleTemplate.count({
+        where: {
+          organizationId: session.user.organizationId,
+          isActive: true,
+        },
+      }),
+    ]);
+
+    if (!org) {
+      return { success: false, message: "Organization not found" };
+    }
+
+    let count = 0;
+    let sourceLabel = "templates";
+
+    if (activeTemplateCount > 0) {
+      count = await generateMassesForPeriod(
+        session.user.organizationId,
+        start,
+        end,
+        { ignoreAutoGenerateSetting: true },
+      );
+    } else {
+      count = await generateMassesFromExistingMasses(
+        session.user.organizationId,
+        start,
+        end,
+      );
+      sourceLabel = "existing masses";
+    }
 
     if (count === 0) {
       return {
-        success: true,
+        success: false,
         message:
-          "No new masses generated. Check if you have active templates or if the limit is reached.",
+          activeTemplateCount > 0
+            ? `No new masses generated in this range. Existing masses may already match your templates, or the daily limit (${Math.min(org.maxMassesPerDay, 5)}) has been reached for the selected dates.`
+            : "No active templates were found, and there were no existing manual masses available to infer a repeatable schedule from.",
       };
     }
 
     revalidatePath("/masses");
+    revalidatePath("/mass-schedule");
     return {
       success: true,
-      message: `Successfully generated ${count} masses.`,
+      message: `Successfully generated ${count} masses from ${sourceLabel}.`,
     };
   } catch (e) {
     console.error("Mass generation failed:", e);

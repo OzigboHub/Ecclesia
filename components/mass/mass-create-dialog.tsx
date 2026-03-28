@@ -140,7 +140,7 @@ export function MassCreateDialog() {
               <SelectTrigger>
                 <SelectValue placeholder="Select mass type" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-primary">
                 {MASS_TYPES.map((massType) => (
                   <SelectItem key={massType} value={massType}>
                     {massType.replaceAll("_", " ")}

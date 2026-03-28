@@ -1,12 +1,12 @@
 import {
   getAppointmentBookingWindow,
+  getAppointmentUnavailableDays,
   getAppointmentsFiltered,
 } from "@/app/actions/appointment.actions";
 import { auth } from "@/auth";
 import { AppointmentBookingWindow } from "@/components/features/dashboard/appointment-booking-window";
 import { Button } from "@/components/ui/button";
-import { Calendar as CalendarIcon, Plus } from "lucide-react";
-import Link from "next/link";
+import { Plus } from "lucide-react";
 import { redirect } from "next/navigation";
 import AppointmentsListClient from "./appointments-list-client";
 
@@ -36,7 +36,10 @@ export default async function AppointmentsPage({
     limit: 20,
     search: searchParams.search,
     type: searchParams.type as any,
-    status: searchParams.status as any,
+    status:
+      session.user.role === "PARISH_ADMIN"
+        ? "CONFIRMED"
+        : (searchParams.status as any),
     dateFrom: safeDate(searchParams.dateFrom),
     dateTo: safeDate(searchParams.dateTo),
   });
@@ -58,8 +61,16 @@ export default async function AppointmentsPage({
     "PARISH_ADMIN",
     "PARISH_SECRETARY",
   ].includes(session.user.role);
+  const canScheduleDirectly = session.user.role !== "PARISH_ADMIN";
+
   const bookingWindowResult = canManageBookingWindow
     ? await getAppointmentBookingWindow()
+    : null;
+  const unavailableDaysResult = canManageBookingWindow
+    ? await getAppointmentUnavailableDays({
+        from: new Date(),
+        to: new Date(Date.now() + 45 * 86400000),
+      })
     : null;
 
   // Calculate stats
@@ -90,16 +101,15 @@ export default async function AppointmentsPage({
         </div>
       </div>
       <div className="grid md:grid-cols-2 gap-2">
-        <Button variant="outline" asChild className="w-full ">
-          <Link href="/dashboard/appointments/calendar">
-            <CalendarIcon className="mr-2 h-4 w-4" /> Calendar View
-          </Link>
-        </Button>
-        <AppointmentsListClient>
-          <Button className="w-full ">
-            <Plus className="mr-2 h-4 w-4" /> Schedule New
-          </Button>
-        </AppointmentsListClient>
+        {canScheduleDirectly && (
+          <AppointmentsListClient
+            userRole={session.user.role}
+            allowScheduling={canScheduleDirectly}>
+            <Button className="w-full ">
+              <Plus className="mr-2 h-4 w-4" /> Schedule New
+            </Button>
+          </AppointmentsListClient>
+        )}
       </div>
 
       {canManageBookingWindow &&
@@ -108,6 +118,7 @@ export default async function AppointmentsPage({
           <AppointmentBookingWindow
             initialOpenAt={bookingWindowResult.data.appointmentBookingOpensAt}
             initialCloseAt={bookingWindowResult.data.appointmentBookingClosesAt}
+            initialUnavailableDays={unavailableDaysResult?.data?.dates ?? []}
           />
         )}
 
@@ -150,6 +161,8 @@ export default async function AppointmentsPage({
         initialAppointments={appointments}
         total={total}
         searchParams={searchParams}
+        userRole={session.user.role}
+        allowScheduling={canScheduleDirectly}
       />
     </div>
   );

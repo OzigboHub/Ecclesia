@@ -15,6 +15,20 @@ import type { ActionResponse } from "@/types";
 import type { Parishioner } from "@prisma/client";
 import { Prisma } from "@prisma/client";
 
+// Unified type merging Parishioner records + Users with PARISHIONER role
+export type UnifiedParishioner = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string | null;
+  phone: string | null;
+  gender: string | null;
+  maritalStatus: string | null;
+  photoUrl: string | null;
+  isActive: boolean;
+  source: "parishioner" | "user";
+};
+
 // Type for parishioner with relations
 type ParishionerWithRelations = Prisma.ParishionerGetPayload<{
   include: {
@@ -29,10 +43,11 @@ type ParishionerWithRelations = Prisma.ParishionerGetPayload<{
 // ============================================
 
 /**
- * Get all parishioners for the current organization
+ * Get all parishioners for the current organization.
+ * Includes Parishioner records AND users with PARISHIONER role (de-duped by email).
  */
 export async function getParishioners(): Promise<
-  ActionResponse<Parishioner[]>
+  ActionResponse<UnifiedParishioner[]>
 > {
   try {
     const session = await auth();
@@ -55,18 +70,64 @@ export async function getParishioners(): Promise<
       };
     }
 
-    const parishioners = await db.parishioner.findMany({
-      where: {
-        organizationId: session.user.organizationId,
-        isActive: true,
-      },
-      orderBy: { lastName: "asc" },
-    });
+    const [parishioners, parishionerUsers] = await Promise.all([
+      db.parishioner.findMany({
+        where: {
+          organizationId: session.user.organizationId,
+          isActive: true,
+        },
+        orderBy: { lastName: "asc" },
+      }),
+      db.user.findMany({
+        where: {
+          organizationId: session.user.organizationId,
+          role: "PARISHIONER",
+          isActive: true,
+        },
+        orderBy: { lastName: "asc" },
+      }),
+    ]);
+
+    // De-duplicate: exclude portal users whose email already has a Parishioner record
+    const parishionerEmails = new Set(
+      parishioners.map((p) => p.email?.toLowerCase()).filter(Boolean),
+    );
+
+    const unified: UnifiedParishioner[] = [
+      ...parishioners.map((p) => ({
+        id: p.id,
+        firstName: p.firstName,
+        lastName: p.lastName,
+        email: p.email,
+        phone: p.phone,
+        gender: p.gender,
+        maritalStatus: p.maritalStatus,
+        photoUrl: p.photoUrl,
+        isActive: p.isActive,
+        source: "parishioner" as const,
+      })),
+      ...parishionerUsers
+        .filter((u) => !parishionerEmails.has(u.email.toLowerCase()))
+        .map((u) => ({
+          id: u.id,
+          firstName: u.firstName,
+          lastName: u.lastName,
+          email: u.email,
+          phone: u.phone ?? null,
+          gender: null,
+          maritalStatus: null,
+          photoUrl: null,
+          isActive: u.isActive,
+          source: "user" as const,
+        })),
+    ];
+
+    unified.sort((a, b) => a.lastName.localeCompare(b.lastName));
 
     return {
       success: true,
       message: "Parishioners retrieved successfully",
-      data: parishioners,
+      data: unified,
     };
   } catch (error) {
     console.error("Failed to get parishioners:", error);

@@ -167,7 +167,7 @@ export function AppointmentEditForm({ appointment }: AppointmentEditFormProps) {
 
       if (result.success) {
         toast.success("Appointment updated successfully");
-        router.push(`/dashboard/appointments/${appointment.id}`);
+        router.push(`/appointments/${appointment.id}`);
         router.refresh();
       } else {
         toast.error(result.message);
@@ -398,8 +398,8 @@ export function AppointmentEditForm({ appointment }: AppointmentEditFormProps) {
                       isLoadingStaff
                         ? "Loading staff..."
                         : staffMembers.length === 0
-                        ? "No staff members (click Create Staff)"
-                        : "Select staff member (optional)"
+                          ? "No staff members (click Create Staff)"
+                          : "Select staff member (optional)"
                     }
                   />
                 </SelectTrigger>

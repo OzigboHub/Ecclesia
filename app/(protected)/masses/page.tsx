@@ -3,6 +3,8 @@ import { MassCalendar } from "@/components/mass/mass-calendar";
 import { MassCreateDialog } from "@/components/mass/mass-create-dialog";
 import { MassGenerateDialog } from "@/components/mass/mass-generate-dialog";
 import { canManageMassIntentions } from "@/lib/permissions";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 const MASS_GENERATE_ROLES = ["SUPER_ADMIN", "PARISH_ADMIN", "PARISH_SECRETARY"];
 
@@ -20,6 +22,9 @@ export default async function MassesPage() {
         </div>
         {canGenerate && (
           <div className="flex gap-2">
+            <Button variant="outline" asChild>
+              <Link href="/mass-schedule">Manage Templates</Link>
+            </Button>
             <MassCreateDialog />
             <MassGenerateDialog />
           </div>
