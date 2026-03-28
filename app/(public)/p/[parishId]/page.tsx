@@ -1,3 +1,5 @@
+import { getPublicAppointmentAvailabilities } from "@/app/actions/appointment.actions";
+import { PublicAppointmentBooking } from "@/components/features/appointments/public-appointment-booking";
 import { Button } from "@/components/ui/button";
 import db from "@/lib/db";
 import { format } from "date-fns";
@@ -73,21 +75,23 @@ export default async function ParishPage({
 	);
 	const totalStreams = livestreams.length + pastLivestreams.length;
 
-	// Get upcoming events
-	const events = await db.event.findMany({
+	// Get upcoming masses
+	const masses = await db.mass.findMany({
 		where: {
 			organizationId: parishId,
-			startTime: { gte: new Date() },
-			status: "SCHEDULED",
+			date: { gte: now },
+			status: { not: "CANCELLED" },
 		},
 		select: {
 			id: true,
-			title: true,
-			startTime: true,
+			date: true,
+			time: true,
+			massType: true,
 			location: true,
+			celebrant: true,
 		},
-		orderBy: { startTime: "asc" },
-		take: 5,
+		orderBy: [{ date: "asc" }, { time: "asc" }],
+		take: 6,
 	});
 
 	// Get active campaigns with progress
@@ -127,6 +131,9 @@ export default async function ParishPage({
 		}),
 	);
 
+	const appointmentAvailabilityResult =
+		await getPublicAppointmentAvailabilities(parishId);
+
 	return (
 		<div className="min-h-screen pt-[60px] bg-background">
 			{/* Hero section */}
@@ -140,15 +147,13 @@ export default async function ParishPage({
 							{org.name}
 						</h1>
 						<p className="text-sm text-muted-foreground md:text-base">
-							Discover upcoming events, live streams, and
+							Discover upcoming masses, live streams, and
 							parish-led campaigns in one place.
 						</p>
 					</div>
 					<div className="flex flex-col gap-3 sm:flex-row">
 						<Button asChild className="w-full sm:w-auto">
-							<Link href={`/p/${parishId}/events`}>
-								View events
-							</Link>
+							<Link href="#masses">View masses</Link>
 						</Button>
 						<Button
 							asChild
@@ -158,13 +163,6 @@ export default async function ParishPage({
 							<Link href={`/p/${parishId}/campaigns`}>
 								Support parish
 							</Link>
-						</Button>
-						<Button
-							asChild
-							variant="ghost"
-							className="w-full sm:w-auto"
-						>
-							<Link href="/contact">Contact parish</Link>
 						</Button>
 					</div>
 					<div className="grid gap-3 md:grid-cols-3">
@@ -183,13 +181,13 @@ export default async function ParishPage({
 							<div className="flex items-center gap-2">
 								<Calendar className="h-4 w-4 text-primary" />
 								<p className="text-sm font-semibold">
-									Upcoming events
+									Upcoming masses
 								</p>
 							</div>
 							<p className="mt-2 text-sm text-muted-foreground">
-								{events.length > 0 ?
-									`${events.length} scheduled`
-								:	"No upcoming events"}
+								{masses.length > 0 ?
+									`${masses.length} scheduled`
+								:	"No upcoming masses"}
 							</p>
 						</div>
 						<div className="rounded-xl border bg-card p-4 shadow-sm">
@@ -228,6 +226,24 @@ export default async function ParishPage({
 			</section>
 
 			<div className="mx-auto max-w-6xl space-y-12 px-4 py-12">
+				{appointmentAvailabilityResult.success && (
+					<section className="space-y-6">
+						<div className="flex items-center gap-2">
+							<Calendar className="h-5 w-5 text-primary" />
+							<h2 className="text-2xl font-bold">
+								Book an Appointment
+							</h2>
+						</div>
+						<PublicAppointmentBooking
+							organizationId={parishId}
+							organizationName={org.name}
+							availabilities={
+								appointmentAvailabilityResult.data ?? []
+							}
+						/>
+					</section>
+				)}
+
 				{/* Livestream Section */}
 				{(liveNow.length > 0 ||
 					upcomingStreams.length > 0 ||
@@ -361,52 +377,55 @@ export default async function ParishPage({
 					</section>
 				)}
 
-				{/* Events Section */}
-				<section className="space-y-6">
+				{/* Masses Section */}
+				<section id="masses" className="space-y-6 scroll-mt-28">
 					<div className="flex flex-wrap items-center justify-between gap-3">
 						<div className="flex items-center gap-2">
 							<Calendar className="h-5 w-5 text-primary" />
 							<h2 className="text-2xl font-bold">
-								Upcoming Events
+								Upcoming Masses
 							</h2>
 						</div>
-						{events.length > 0 && (
+						{masses.length > 0 && (
 							<Button asChild variant="outline" size="sm">
-								<Link href={`/p/${parishId}/events`}>
-									View All
-								</Link>
+								<Link href="/mass">Browse all masses</Link>
 							</Button>
 						)}
 					</div>
 
-					{events.length > 0 ?
+					{masses.length > 0 ?
 						<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-							{events.map((event) => (
-								<Link
-									key={event.id}
-									href={`/p/${parishId}/events/${event.id}`}
-									className="rounded-xl border bg-card p-4 transition hover:shadow-md"
+							{masses.map((mass) => (
+								<div
+									key={mass.id}
+									className="rounded-xl border bg-card p-4"
 								>
 									<h3 className="font-semibold line-clamp-2">
-										{event.title}
+										{mass.massType.replace(/_/g, " ")}
 									</h3>
 									<p className="mt-2 text-sm text-muted-foreground">
 										{format(
-											new Date(event.startTime),
+											new Date(mass.date),
 											"MMM d, yyyy",
-										)}
+										)}{" "}
+										· {mass.time}
 									</p>
-									{event.location && (
+									{mass.location && (
 										<p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
 											<MapPin className="h-3 w-3" />
-											{event.location}
+											{mass.location}
 										</p>
 									)}
-								</Link>
+									{mass.celebrant && (
+										<p className="mt-1 text-xs text-muted-foreground">
+											Celebrant: {mass.celebrant}
+										</p>
+									)}
+								</div>
 							))}
 						</div>
 					:	<p className="text-muted-foreground">
-							No upcoming events scheduled.
+							No upcoming masses scheduled.
 						</p>
 					}
 				</section>

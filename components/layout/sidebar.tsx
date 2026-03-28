@@ -84,17 +84,17 @@ export default function Sidebar() {
     return false;
   });
 
-  return (
-    <div className=" hidden bg-secondary w-[20%] py-5 px-2.5 justify-start items-center   lg:flex flex-col gap-8 overflow-y-auto">
-      <Link href="/dashboard">
-        <Image
-          src={"/standalone-golden-yellow-logo-typography.png"}
-          width={"150"}
-          height={"150"}
-          alt="logo"
-          className=" w-37.5 object-cover"
-        />
-      </Link>
+	return (
+		<div className="hidden bg-secondary w-[20%] h-screen shrink-0 py-[20px] px-[10px] justify-start items-center lg:flex flex-col gap-8 overflow-y-auto">
+			<Link href="/dashboard">
+				<Image
+					src={"/standalone-golden-yellow-logo-typography.png"}
+					width={"150"}
+					height={"150"}
+					alt="logo"
+					className=" w-[150px] object-cover"
+				/>
+			</Link>
 
       <div className=" flex justify-between flex-col h-full w-full">
         <div className="flex justify-between gap-3 flex-col">
