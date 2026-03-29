@@ -58,6 +58,50 @@ export type CreateMassIntentionInput = z.infer<
 >;
 
 // ============================================
+// PUBLIC MASS INTENTION SCHEMA (no auth required)
+// ============================================
+
+export const publicMassIntentionSchema = z.object({
+	intention: z
+		.string()
+		.min(5, 'Intention must be at least 5 characters')
+		.max(1000, 'Intention must not exceed 1000 characters'),
+	intentionType: intentionTypeEnum,
+	requestedBy: z
+		.string()
+		.min(2, 'Name must be at least 2 characters')
+		.max(100, 'Name must not exceed 100 characters'),
+	intendedFor: z
+		.string()
+		.max(100, 'Name must not exceed 100 characters')
+		.optional()
+		.or(z.literal('')),
+	contactEmail: z
+		.string()
+		.email('Invalid email address')
+		.optional()
+		.or(z.literal('')),
+	contactPhone: z
+		.string()
+		.regex(
+			/^(\+234|0)[789][01]\d{8}$/,
+			'Enter a valid Nigerian phone number'
+		)
+		.optional()
+		.or(z.literal('')),
+	massId: z.string().uuid('Mass is required'),
+	stipend: z
+		.number()
+		.positive('Stipend must be positive')
+		.max(1000000, 'Stipend cannot exceed ₦1,000,000')
+		.optional(),
+});
+
+export type PublicMassIntentionInput = z.infer<
+	typeof publicMassIntentionSchema
+>;
+
+// ============================================
 // UPDATE MASS INTENTION SCHEMA
 // ============================================
 

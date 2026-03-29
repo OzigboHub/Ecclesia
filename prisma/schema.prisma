@@ -360,6 +360,7 @@ model MassIntention {
   intention      String
   intentionType  IntentionType
   requestedBy    String
+  intendedFor    String?
   contactEmail   String?
   contactPhone   String?
   stipend        Float?

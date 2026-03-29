@@ -13,6 +13,7 @@ import { UserRole } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import { AuthError } from "next-auth";
+import { Resend } from "resend";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
@@ -239,21 +240,42 @@ export async function register(data: {
 		// Hash password
 		const hashedPassword = await bcrypt.hash(parsed.data.password, 10);
 
-		// Create user
-		const user = await db.user.create({
-			data: {
-				firstName: parsed.data.firstName,
-				lastName: parsed.data.lastName,
-				email: parsed.data.email.toLowerCase().trim(),
-				phone: parsed.data.phone,
-				address: parsed.data.address || null,
-				dateOfBirth: new Date(parsed.data.dateOfBirth),
-				password: hashedPassword,
-				organizationId: parsed.data.organizationId,
-				role:
-					(parsed.data.role as unknown as UserRole) || "PARISHIONER",
-				isActive: true,
-			},
+		const userRole =
+			(parsed.data.role as unknown as UserRole) || "PARISHIONER";
+
+		// Use a transaction to create both User and Parishioner (for PARISHIONER role)
+		const user = await db.$transaction(async (tx) => {
+			const newUser = await tx.user.create({
+				data: {
+					firstName: parsed.data.firstName,
+					lastName: parsed.data.lastName,
+					email: parsed.data.email.toLowerCase().trim(),
+					phone: parsed.data.phone,
+					address: parsed.data.address || null,
+					dateOfBirth: new Date(parsed.data.dateOfBirth),
+					password: hashedPassword,
+					organizationId: parsed.data.organizationId,
+					role: userRole,
+					isActive: true,
+				},
+			});
+
+			// Auto-create a Parishioner record so the account is linked at login
+			if (userRole === "PARISHIONER") {
+				await tx.parishioner.create({
+					data: {
+						firstName: parsed.data.firstName,
+						lastName: parsed.data.lastName,
+						email: parsed.data.email.toLowerCase().trim(),
+						phone: parsed.data.phone,
+						address: parsed.data.address || null,
+						dateOfBirth: new Date(parsed.data.dateOfBirth),
+						organizationId: parsed.data.organizationId,
+					},
+				});
+			}
+
+			return newUser;
 		});
 
 		return {
@@ -332,14 +354,59 @@ export async function requestPasswordReset(
 			},
 		});
 
-		// TODO: Send email with reset link
-		// For now, log the token for development
 		const resetUrl = `${
 			process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
 		}/auth/reset-password?token=${token}`;
 
-		// In production, you would send an email here:
-		// await sendPasswordResetEmail(user.email, resetUrl);
+		// Send password reset email via Resend
+		if (process.env.RESEND_API_KEY) {
+			const resend = new Resend(process.env.RESEND_API_KEY);
+			const { error } = await resend.emails.send({
+				from: `Ecclesia <support@ecclesialight.com>`,
+				to: user.email,
+				subject: "Reset Your Password",
+				html: `
+					<div style="background:#f6f6f6;padding:40px 0;font-family:Arial,Helvetica,sans-serif;">
+						<table width="100%" cellpadding="0" cellspacing="0" role="presentation">
+							<tr>
+								<td align="center">
+									<table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;padding:30px;">
+										<tr>
+											<td align="center" style="padding-bottom:20px;">
+												<img src="https://www.ecclesialight.com/standalone-golden-yellow-logo-typography.png" alt="Ecclesia" width="120" style="display:block;" />
+											</td>
+										</tr>
+										<tr>
+											<td>
+												<h2 style="margin:0 0 16px 0;color:#333;">Password Reset Request</h2>
+												<p style="font-size:14px;color:#444;line-height:1.6;">We received a request to reset your password. Click the button below to set a new password:</p>
+											</td>
+										</tr>
+										<tr>
+											<td align="center" style="padding:24px 0;">
+												<a href="${resetUrl}" style="display:inline-block;background:#c9a84c;color:#ffffff;font-size:16px;font-weight:bold;padding:12px 32px;border-radius:6px;text-decoration:none;">Reset Password</a>
+											</td>
+										</tr>
+										<tr>
+											<td style="font-size:13px;color:#888;line-height:1.6;">
+												<p>This link will expire in 1 hour. If you did not request a password reset, you can safely ignore this email.</p>
+												<p style="margin-top:16px;">If the button doesn&rsquo;t work, copy and paste this URL into your browser:</p>
+												<p style="word-break:break-all;color:#c9a84c;">${resetUrl}</p>
+											</td>
+										</tr>
+									</table>
+								</td>
+							</tr>
+						</table>
+					</div>
+				`,
+			});
+			if (error) {
+				console.error("Failed to send password reset email:", error);
+			}
+		} else {
+			console.warn("RESEND_API_KEY not configured — password reset email not sent");
+		}
 
 		return {
 			success: true,

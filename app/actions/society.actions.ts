@@ -209,6 +209,94 @@ export async function createSociety(
     }
 
     const { presidentId, secretaryId, ...rest } = parsed.data;
+
+    // Validate role restrictions and leadership uniqueness before create.
+    if (presidentId || secretaryId) {
+      const leaderIds = [presidentId, secretaryId].filter(Boolean) as string[];
+      const [leaders, conflicts] = await Promise.all([
+        db.user.findMany({
+          where: { id: { in: leaderIds } },
+          select: { id: true, role: true },
+        }),
+        db.society.findMany({
+          where: {
+            OR: [
+              ...(presidentId
+                ? [{ presidentId }, { secretaryId: presidentId }]
+                : []),
+              ...(secretaryId
+                ? [{ secretaryId }, { presidentId: secretaryId }]
+                : []),
+            ],
+          },
+          select: {
+            id: true,
+            name: true,
+            presidentId: true,
+            secretaryId: true,
+          },
+        }),
+      ]);
+
+      const fieldErrors: Record<string, string[]> = {};
+
+      if (presidentId) {
+        const leader = leaders.find((l) => l.id === presidentId);
+        if (leader?.role === "PARISH_ADMIN") {
+          fieldErrors.presidentId = [
+            "Parish admins cannot be assigned as society leaders",
+          ];
+        } else {
+          const asPresident = conflicts.find(
+            (c) => c.presidentId === presidentId,
+          );
+          const asSecretary = conflicts.find(
+            (c) => c.secretaryId === presidentId,
+          );
+          if (asPresident)
+            fieldErrors.presidentId = [
+              `This person is already president of: ${asPresident.name}`,
+            ];
+          else if (asSecretary)
+            fieldErrors.presidentId = [
+              `This person is already secretary of: ${asSecretary.name}`,
+            ];
+        }
+      }
+
+      if (secretaryId) {
+        const leader = leaders.find((l) => l.id === secretaryId);
+        if (leader?.role === "PARISH_ADMIN") {
+          fieldErrors.secretaryId = [
+            "Parish admins cannot be assigned as society leaders",
+          ];
+        } else {
+          const asSecretary = conflicts.find(
+            (c) => c.secretaryId === secretaryId,
+          );
+          const asPresident = conflicts.find(
+            (c) => c.presidentId === secretaryId,
+          );
+          if (asSecretary)
+            fieldErrors.secretaryId = [
+              `This person is already secretary of: ${asSecretary.name}`,
+            ];
+          else if (asPresident)
+            fieldErrors.secretaryId = [
+              `This person is already president of: ${asPresident.name}`,
+            ];
+        }
+      }
+
+      if (Object.keys(fieldErrors).length > 0) {
+        return {
+          success: false,
+          message:
+            "Selected leadership assignment conflicts with an existing society",
+          errors: fieldErrors,
+        };
+      }
+    }
     const data = {
       ...rest,
       organizationId: session.user.organizationId,
@@ -240,6 +328,7 @@ export async function createSociety(
     });
 
     revalidatePath("/dashboard/societies");
+    revalidatePath("/societies");
 
     return {
       success: true,
@@ -248,6 +337,16 @@ export async function createSociety(
     };
   } catch (error) {
     console.error("Failed to create society:", error);
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      return {
+        success: false,
+        message:
+          "Selected president/secretary is already assigned to another society",
+      };
+    }
     return { success: false, message: "Failed to create society" };
   }
 }
@@ -292,6 +391,96 @@ export async function updateSociety(
       return { success: false, message: "Society not found" };
     }
 
+    const { presidentId, secretaryId } = parsed.data;
+
+    if (presidentId || secretaryId) {
+      const leaderIds = [presidentId, secretaryId].filter(Boolean) as string[];
+      const [leaders, conflicts] = await Promise.all([
+        db.user.findMany({
+          where: { id: { in: leaderIds } },
+          select: { id: true, role: true },
+        }),
+        db.society.findMany({
+          where: {
+            id: { not: id },
+            OR: [
+              ...(presidentId
+                ? [{ presidentId }, { secretaryId: presidentId }]
+                : []),
+              ...(secretaryId
+                ? [{ secretaryId }, { presidentId: secretaryId }]
+                : []),
+            ],
+          },
+          select: {
+            id: true,
+            name: true,
+            presidentId: true,
+            secretaryId: true,
+          },
+        }),
+      ]);
+
+      const fieldErrors: Record<string, string[]> = {};
+
+      if (presidentId) {
+        const leader = leaders.find((l) => l.id === presidentId);
+        if (leader?.role === "PARISH_ADMIN") {
+          fieldErrors.presidentId = [
+            "Parish admins cannot be assigned as society leaders",
+          ];
+        } else {
+          const asPresident = conflicts.find(
+            (c) => c.presidentId === presidentId,
+          );
+          const asSecretary = conflicts.find(
+            (c) => c.secretaryId === presidentId,
+          );
+          if (asPresident)
+            fieldErrors.presidentId = [
+              `This person is already president of: ${asPresident.name}`,
+            ];
+          else if (asSecretary)
+            fieldErrors.presidentId = [
+              `This person is already secretary of: ${asSecretary.name}`,
+            ];
+        }
+      }
+
+      if (secretaryId) {
+        const leader = leaders.find((l) => l.id === secretaryId);
+        if (leader?.role === "PARISH_ADMIN") {
+          fieldErrors.secretaryId = [
+            "Parish admins cannot be assigned as society leaders",
+          ];
+        } else {
+          const asSecretary = conflicts.find(
+            (c) => c.secretaryId === secretaryId,
+          );
+          const asPresident = conflicts.find(
+            (c) => c.presidentId === secretaryId,
+          );
+          if (asSecretary)
+            fieldErrors.secretaryId = [
+              `This person is already secretary of: ${asSecretary.name}`,
+            ];
+          else if (asPresident)
+            fieldErrors.secretaryId = [
+              `This person is already president of: ${asPresident.name}`,
+            ];
+        }
+      }
+
+      if (Object.keys(fieldErrors).length > 0) {
+        return {
+          success: false,
+          message:
+            "Selected leadership assignment conflicts with an existing society",
+          errors: fieldErrors,
+        };
+      }
+    }
+
     const society = await db.society.update({
       where: { id },
       data: parsed.data,
@@ -326,6 +515,16 @@ export async function updateSociety(
     };
   } catch (error) {
     console.error("Failed to update society:", error);
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      return {
+        success: false,
+        message:
+          "Selected president/secretary is already assigned to another society",
+      };
+    }
     return { success: false, message: "Failed to update society" };
   }
 }
@@ -640,7 +839,47 @@ export async function requestToJoinSociety(
       return { success: false, message: "Unauthorized" };
     }
 
-    if (!session.user.parishionerId) {
+    // Resolve parishionerId with email fallback + auto-create
+    let parishionerId = session.user.parishionerId;
+
+    if (!parishionerId && session.user.email) {
+      const parishioner = await db.parishioner.findUnique({
+        where: { email: session.user.email },
+        select: { id: true },
+      });
+      parishionerId = parishioner?.id ?? null;
+    }
+
+    if (!parishionerId && session.user.email) {
+      const user = await db.user.findUnique({
+        where: { email: session.user.email },
+        select: {
+          firstName: true,
+          lastName: true,
+          email: true,
+          phone: true,
+          address: true,
+          dateOfBirth: true,
+          organizationId: true,
+        },
+      });
+      if (user) {
+        const newParishioner = await db.parishioner.create({
+          data: {
+            firstName: user.firstName,
+            lastName: user.lastName,
+            email: user.email,
+            phone: user.phone,
+            address: user.address,
+            dateOfBirth: user.dateOfBirth,
+            organizationId: user.organizationId,
+          },
+        });
+        parishionerId = newParishioner.id;
+      }
+    }
+
+    if (!parishionerId) {
       return {
         success: false,
         message: "Only parishioners can request to join a society",
@@ -672,7 +911,7 @@ export async function requestToJoinSociety(
     const alreadyMember = await db.societyMembership.findUnique({
       where: {
         parishionerId_societyId: {
-          parishionerId: session.user.parishionerId,
+          parishionerId,
           societyId,
         },
       },
@@ -688,7 +927,7 @@ export async function requestToJoinSociety(
     const existingRequest = await db.societyJoinRequest.findUnique({
       where: {
         parishionerId_societyId: {
-          parishionerId: session.user.parishionerId,
+          parishionerId,
           societyId,
         },
       },
@@ -704,12 +943,12 @@ export async function requestToJoinSociety(
     await db.societyJoinRequest.upsert({
       where: {
         parishionerId_societyId: {
-          parishionerId: session.user.parishionerId,
+          parishionerId,
           societyId,
         },
       },
       create: {
-        parishionerId: session.user.parishionerId,
+        parishionerId,
         societyId,
         status: "PENDING",
         message: message || null,
@@ -724,6 +963,8 @@ export async function requestToJoinSociety(
 
     revalidatePath("/dashboard/societies");
     revalidatePath(`/dashboard/societies/${societyId}`);
+    revalidatePath("/societies");
+    revalidatePath(`/societies/${societyId}`);
 
     return {
       success: true,
@@ -740,14 +981,28 @@ export async function cancelJoinRequest(
 ): Promise<ActionResponse> {
   try {
     const session = await auth();
-    if (!session?.user || !session.user.parishionerId) {
+    if (!session?.user) {
+      return { success: false, message: "Unauthorized" };
+    }
+
+    // Resolve parishionerId with email fallback
+    let parishionerId = session.user.parishionerId;
+    if (!parishionerId && session.user.email) {
+      const parishioner = await db.parishioner.findUnique({
+        where: { email: session.user.email },
+        select: { id: true },
+      });
+      parishionerId = parishioner?.id ?? null;
+    }
+
+    if (!parishionerId) {
       return { success: false, message: "Unauthorized" };
     }
 
     const request = await db.societyJoinRequest.findUnique({
       where: {
         parishionerId_societyId: {
-          parishionerId: session.user.parishionerId,
+          parishionerId,
           societyId,
         },
       },
@@ -760,7 +1015,7 @@ export async function cancelJoinRequest(
     await db.societyJoinRequest.delete({
       where: {
         parishionerId_societyId: {
-          parishionerId: session.user.parishionerId,
+          parishionerId,
           societyId,
         },
       },
@@ -768,6 +1023,8 @@ export async function cancelJoinRequest(
 
     revalidatePath("/dashboard/societies");
     revalidatePath(`/dashboard/societies/${societyId}`);
+    revalidatePath("/societies");
+    revalidatePath(`/societies/${societyId}`);
 
     return { success: true, message: "Join request cancelled" };
   } catch (error) {
@@ -900,6 +1157,9 @@ export async function approveJoinRequest(
     ]);
 
     revalidatePath(`/dashboard/societies/${request.societyId}`);
+    revalidatePath("/dashboard/societies");
+    revalidatePath(`/societies/${request.societyId}`);
+    revalidatePath("/societies");
 
     return {
       success: true,
@@ -955,6 +1215,9 @@ export async function rejectJoinRequest(
     });
 
     revalidatePath(`/dashboard/societies/${request.societyId}`);
+    revalidatePath("/dashboard/societies");
+    revalidatePath(`/societies/${request.societyId}`);
+    revalidatePath("/societies");
 
     return { success: true, message: "Join request rejected" };
   } catch (error) {
