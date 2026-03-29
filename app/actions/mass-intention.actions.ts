@@ -9,6 +9,7 @@ import {
 } from "@/lib/permissions";
 import {
   createMassIntentionSchema,
+  publicMassIntentionSchema,
   updateMassIntentionSchema,
 } from "@/lib/validators/mass-intention.schema";
 import type { ActionResponse } from "@/types";
@@ -55,8 +56,18 @@ export async function getMassIntentions(): Promise<
       };
     }
 
+    const isParishioner = session.user.role === "PARISHIONER";
+
     const massIntentions = await db.massIntention.findMany({
-      where: { organizationId: session.user.organizationId },
+      where: {
+        organizationId: session.user.organizationId,
+        // Parishioners only see their own intentions
+        ...(isParishioner && session.user.parishionerId
+          ? { parishionerId: session.user.parishionerId }
+          : isParishioner
+            ? { requestedBy: session.user.name ?? undefined }
+            : {}),
+      },
       include: {
         parishioner: true,
         organization: true,
@@ -152,17 +163,60 @@ export async function createMassIntention(
     }
 
     const { massId, parishionerId, stipend, ...rest } = parsed.data;
-    const linkedParishionerId =
-      session.user.role === "PARISHIONER"
-        ? session.user.parishionerId
-        : parishionerId;
 
-    if (session.user.role === "PARISHIONER" && !linkedParishionerId) {
-      return {
-        success: false,
-        message:
-          "Your account is not linked to a parishioner record yet. Contact the parish office.",
-      };
+    // For parishioners, resolve their parishioner record
+    let linkedParishionerId: string | undefined;
+    if (session.user.role === "PARISHIONER") {
+      linkedParishionerId = session.user.parishionerId ?? undefined;
+
+      // Fallback: look up by email if session doesn't have it (e.g. registered before fix)
+      if (!linkedParishionerId && session.user.email) {
+        const parishioner = await db.parishioner.findUnique({
+          where: { email: session.user.email },
+          select: { id: true },
+        });
+        linkedParishionerId = parishioner?.id;
+      }
+
+      // Last resort: auto-create a parishioner record from the user profile
+      if (!linkedParishionerId && session.user.email) {
+        const user = await db.user.findUnique({
+          where: { email: session.user.email },
+          select: {
+            firstName: true,
+            lastName: true,
+            email: true,
+            phone: true,
+            address: true,
+            dateOfBirth: true,
+            organizationId: true,
+          },
+        });
+        if (user) {
+          const newParishioner = await db.parishioner.create({
+            data: {
+              firstName: user.firstName,
+              lastName: user.lastName,
+              email: user.email,
+              phone: user.phone,
+              address: user.address,
+              dateOfBirth: user.dateOfBirth,
+              organizationId: user.organizationId,
+            },
+          });
+          linkedParishionerId = newParishioner.id;
+        }
+      }
+
+      if (!linkedParishionerId) {
+        return {
+          success: false,
+          message:
+            "Your account is not linked to a parishioner record yet. Contact the parish office.",
+        };
+      }
+    } else {
+      linkedParishionerId = parishionerId ?? undefined;
     }
 
     // Verify Mass exists and belongs to organization
@@ -180,11 +234,6 @@ export async function createMassIntention(
         success: false,
         message: "Selected Mass has been cancelled",
       };
-    }
-
-    // Check capacity
-    if (mass._count.intentions >= mass.maxIntentions) {
-      return { success: false, message: "Mass is fully booked" };
     }
 
     // Create mass intention with optional payment
@@ -444,5 +493,82 @@ export async function deleteMassIntention(id: string): Promise<ActionResponse> {
   } catch (error) {
     console.error("Failed to delete mass intention:", error);
     return { success: false, message: "Failed to delete mass intention" };
+  }
+}
+
+// ============================================
+// PUBLIC OPERATIONS (no auth required)
+// ============================================
+
+export async function submitPublicMassIntention(
+  organizationId: string,
+  formData: unknown,
+): Promise<ActionResponse> {
+  try {
+    const parsed = publicMassIntentionSchema.safeParse(formData);
+    if (!parsed.success) {
+      return {
+        success: false,
+        message: "Validation failed",
+        errors: parsed.error.flatten().fieldErrors,
+      };
+    }
+
+    const organization = await db.organization.findUnique({
+      where: { id: organizationId },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!organization) {
+      return { success: false, message: "Organization not found" };
+    }
+
+    const enabled = await isFeatureEnabled(organizationId, "enableMassIntentions");
+    if (!enabled) {
+      return {
+        success: false,
+        message: "Mass intentions are not available for this parish",
+      };
+    }
+
+    const { massId, stipend, ...rest } = parsed.data;
+
+    // Verify mass exists and belongs to the organization
+    const mass = await db.mass.findUnique({
+      where: { id: massId },
+    });
+
+    if (!mass || mass.organizationId !== organizationId) {
+      return { success: false, message: "Invalid Mass selected" };
+    }
+
+    if (mass.status === "CANCELLED") {
+      return {
+        success: false,
+        message: "Selected Mass has been cancelled",
+      };
+    }
+
+    const massIntention = await db.massIntention.create({
+      data: {
+        ...rest,
+        massId,
+        organizationId,
+        status: "PENDING",
+      },
+    });
+
+    revalidatePath(`/p/${organizationId}/mass-intentions`);
+    revalidatePath("/dashboard/mass-intentions");
+
+    return {
+      success: true,
+      message: "Mass intention submitted successfully. The parish will review your request.",
+    };
+  } catch (error) {
+    console.error("Failed to submit public mass intention:", error);
+    return { success: false, message: "Failed to submit mass intention" };
   }
 }

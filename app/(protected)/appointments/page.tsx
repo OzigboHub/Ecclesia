@@ -3,9 +3,11 @@ import {
   getAppointmentBookingWindow,
   getAppointmentsFiltered,
   getAppointmentUnavailableDays,
+  getAvailableSlotsForParishioner,
 } from "@/app/actions/appointment.actions";
 import { auth } from "@/auth";
 import { AppointmentAvailabilityManager } from "@/components/features/dashboard/appointment-availability-manager";
+import { ParishionerAppointmentBooking } from "@/components/features/appointments/parishioner-appointment-booking";
 import { Button } from "@/components/ui/button";
 import { CalendarIcon, Plus } from "lucide-react";
 import { redirect } from "next/navigation";
@@ -21,7 +23,6 @@ export default async function AppointmentsPage({
   const session = await auth();
   if (!session?.user) redirect("/auth/login");
 
-  // Await searchParams in Next.js 16
   const searchParams = await searchParamsPromise;
 
   const parsedPage = Number.parseInt(searchParams.page ?? "1", 10);
@@ -33,16 +34,20 @@ export default async function AppointmentsPage({
     return Number.isNaN(ms) ? undefined : new Date(ms);
   };
 
-  // Fetch appointments with filters
-  const appointmentsResult = await getAppointmentsFiltered({
-    page,
-    limit: 20,
-    search: searchParams.search,
-    type: searchParams.type as any,
-    status: searchParams.status as any,
-    dateFrom: safeDate(searchParams.dateFrom),
-    dateTo: safeDate(searchParams.dateTo),
-  });
+  const isParishioner = session.user.role === "PARISHIONER";
+
+  const [appointmentsResult, slotsResult] = await Promise.all([
+    getAppointmentsFiltered({
+      page,
+      limit: 20,
+      search: searchParams.search,
+      type: searchParams.type as any,
+      status: searchParams.status as any,
+      dateFrom: safeDate(searchParams.dateFrom),
+      dateTo: safeDate(searchParams.dateTo),
+    }),
+    isParishioner ? getAvailableSlotsForParishioner() : Promise.resolve(null),
+  ]);
 
   if (!appointmentsResult.success) {
     return (
@@ -56,6 +61,57 @@ export default async function AppointmentsPage({
   }
 
   const { appointments, total } = appointmentsResult.data!;
+  const availableSlots = slotsResult?.data ?? [];
+
+  if (isParishioner && !session.user.parishionerId) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
+          Appointments
+        </h1>
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-6 dark:border-amber-800 dark:bg-amber-950">
+          <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+            Your account is not linked to a parishioner record. Please contact
+            your parish office to complete your registration before booking
+            appointments.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isParishioner) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
+            Appointments
+          </h1>
+          <p className="text-sm sm:text-base text-muted-foreground mt-1">
+            Request and manage your parish appointments.
+          </p>
+        </div>
+
+        <ParishionerAppointmentBooking
+          parishionerName={session.user.name ?? "Parishioner"}
+          availabilities={availableSlots}
+        />
+
+        {appointments.length > 0 ? (
+          <AppointmentsListClient
+            initialAppointments={appointments}
+            total={total}
+            searchParams={searchParams}
+          />
+        ) : (
+          <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
+            You have no appointments yet.
+          </div>
+        )}
+      </div>
+    );
+  }
+
   const canManageBookingWindow = [
     "SUPER_ADMIN",
     "PARISH_ADMIN",
@@ -71,7 +127,6 @@ export default async function AppointmentsPage({
     ? await getAppointmentUnavailableDays()
     : null;
 
-  // Calculate stats
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const tomorrow = new Date(today);
@@ -98,18 +153,20 @@ export default async function AppointmentsPage({
           </p>
         </div>
       </div>
-      <div className="grid md:grid-cols-2 gap-2">
-        <Button variant="outline" asChild className="w-full ">
-          <Link href="/dashboard/appointments/calendar">
-            <CalendarIcon className="mr-2 h-4 w-4" /> Calendar View
-          </Link>
-        </Button>
-        <AppointmentsListClient>
-          <Button className="w-full ">
-            <Plus className="mr-2 h-4 w-4" /> Schedule New
+      {session.user.role !== "PARISH_ADMIN" && (
+        <div className="grid md:grid-cols-2 gap-2">
+          <Button variant="outline" asChild className="w-full ">
+            <Link href="/appointments/calendar">
+              <CalendarIcon className="mr-2 h-4 w-4" /> Calendar View
+            </Link>
           </Button>
-        </AppointmentsListClient>
-      </div>
+          <AppointmentsListClient allowScheduling={true}>
+            <Button className="w-full ">
+              <Plus className="mr-2 h-4 w-4" /> Schedule New
+            </Button>
+          </AppointmentsListClient>
+        </div>
+      )}
 
       {canManageBookingWindow &&
         bookingWindowResult?.success &&
@@ -117,7 +174,11 @@ export default async function AppointmentsPage({
           <AppointmentBookingWindow
             initialOpenAt={bookingWindowResult.data.appointmentBookingOpensAt}
             initialCloseAt={bookingWindowResult.data.appointmentBookingClosesAt}
-            initialUnavailableDays={unavailableDaysResult?.success && unavailableDaysResult.data ? unavailableDaysResult.data.dates : []}
+            initialUnavailableDays={
+              unavailableDaysResult?.success && unavailableDaysResult.data
+                ? unavailableDaysResult.data.dates
+                : []
+            }
           />
         )}
 
@@ -127,7 +188,6 @@ export default async function AppointmentsPage({
         />
       )}
 
-      {/* Status Overview */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-background border border-border rounded-lg p-5 shadow-sm">
           <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
@@ -161,7 +221,6 @@ export default async function AppointmentsPage({
           </p>
         </div>
       </div>
-      {/* Filters and Table */}
       <AppointmentsListClient
         initialAppointments={appointments}
         total={total}

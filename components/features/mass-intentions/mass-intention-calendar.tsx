@@ -394,20 +394,20 @@ export function MassIntentionCalendar({
                   </div>
                 ) : (
                   massesForSelectedDate.map((mass) => {
-                    const isFull = mass.intentions.length >= mass.maxIntentions;
                     const isCancelled = mass.status === "CANCELLED";
                     const isSelected = selectedMassId === mass.id;
-                    const available = Math.max(
-                      0,
-                      mass.maxIntentions - mass.intentions.length,
-                    );
-                    const fillPct =
-                      mass.maxIntentions > 0
-                        ? Math.round(
-                            (mass.intentions.length / mass.maxIntentions) * 100,
-                          )
-                        : 0;
-                    const canBook = !isFull && !isCancelled;
+                    // Disable booking once mass start time has passed
+                    const now = new Date();
+                    const massDate = new Date(mass.date);
+                    const isToday = massDate.toDateString() === now.toDateString();
+                    let massStarted = false;
+                    if (isToday && mass.time) {
+                      const [h, m] = mass.time.split(":").map(Number);
+                      const massStart = new Date(massDate);
+                      massStart.setHours(h, m, 0, 0);
+                      massStarted = now >= massStart;
+                    }
+                    const canBook = !isCancelled && !massStarted;
 
                     return (
                       <button
@@ -457,38 +457,24 @@ export function MassIntentionCalendar({
                               <Badge variant="outline" className="text-xs">
                                 Cancelled
                               </Badge>
-                            ) : isFull ? (
-                              <Badge variant="destructive" className="text-xs">
-                                Full
+                            ) : massStarted ? (
+                              <Badge variant="secondary" className="text-xs">
+                                Started
                               </Badge>
                             ) : (
                               <Badge variant="default" className="text-xs">
-                                {available} slot{available !== 1 ? "s" : ""}
+                                {mass.intentions.length} intention{mass.intentions.length !== 1 ? "s" : ""}
                               </Badge>
                             )}
                           </div>
                         </div>
 
-                        {/* Capacity bar */}
-                        {!isCancelled && (
-                          <div className="mt-3 space-y-1">
-                            <div className="flex justify-between text-xs text-muted-foreground">
-                              <span>{mass.intentions.length} booked</span>
-                              <span>{mass.maxIntentions} max</span>
-                            </div>
-                            <div className="h-1.5 w-full rounded-full bg-secondary overflow-hidden">
-                              <div
-                                className={cn(
-                                  "h-full rounded-full transition-all",
-                                  isFull
-                                    ? "bg-destructive"
-                                    : fillPct > 75
-                                      ? "bg-yellow-500"
-                                      : "bg-primary",
-                                )}
-                                style={{ width: `${fillPct}%` }}
-                              />
-                            </div>
+                        {/* Intention count */}
+                        {!isCancelled && mass.intentions.length > 0 && (
+                          <div className="mt-3">
+                            <p className="text-xs text-muted-foreground">
+                              {mass.intentions.length} intention{mass.intentions.length !== 1 ? "s" : ""} booked
+                            </p>
                           </div>
                         )}
                       </button>

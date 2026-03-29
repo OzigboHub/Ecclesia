@@ -127,10 +127,21 @@ export function MassIntentionForm({
       );
       const result = await getMasses(selectedDate, organizationId);
       if (result.success && result.data) {
+        const now = new Date();
         setAvailableMasses(
-          result.data.filter(
-            (m: any) => m.status === "SCHEDULED" || m.status === "RESCHEDULED",
-          ),
+          result.data.filter((m: any) => {
+            if (m.status === "CANCELLED") return false;
+            // For today's masses, only show those that haven't started yet
+            const massDate = new Date(m.date);
+            const isToday = massDate.toDateString() === now.toDateString();
+            if (isToday && m.time) {
+              const [h, m2] = m.time.split(":").map(Number);
+              const massStart = new Date(massDate);
+              massStart.setHours(h, m2, 0, 0);
+              if (now >= massStart) return false;
+            }
+            return true;
+          }),
         );
       }
       setIsLoadingMasses(false);
@@ -231,11 +242,13 @@ export function MassIntentionForm({
             id="requestedBy"
             {...register("requestedBy")}
             placeholder="Name of requester"
-            disabled={isPending}
+            disabled={isPending || isParishioner}
+            readOnly={isParishioner}
             aria-invalid={!!errors.requestedBy}
             aria-describedby={
               errors.requestedBy ? "requestedBy-error" : undefined
             }
+            className={isParishioner ? "bg-muted/40" : ""}
           />
           {errors.requestedBy && (
             <p id="requestedBy-error" className="text-sm text-destructive">
@@ -355,7 +368,9 @@ export function MassIntentionForm({
             type="email"
             {...register("contactEmail")}
             placeholder="email@example.com"
-            disabled={isPending}
+            disabled={isPending || isParishioner}
+            readOnly={isParishioner}
+            className={isParishioner ? "bg-muted/40" : ""}
           />
           {errors.contactEmail && (
             <p className="text-sm text-destructive">

@@ -248,3 +248,104 @@ export async function getOrganizationDashboardMetrics(): Promise<
     };
   }
 }
+
+export interface ParishionerDashboardMetrics {
+	contributionsThisMonth: number;
+	societyCount: number;
+	pendingIntentions: number;
+	upcomingEvents: number;
+	societies: Array<{ id: string; name: string }>;
+}
+
+/**
+ * Get dashboard metrics for the logged-in parishioner
+ */
+export async function getParishionerDashboardMetrics(): Promise<
+	ActionResponse<ParishionerDashboardMetrics>
+> {
+	try {
+		const session = await auth();
+		if (!session?.user) {
+			return { success: false, message: "Unauthorized" };
+		}
+
+		let parishionerId = session.user.parishionerId;
+		const organizationId = session.user.organizationId;
+
+		// Fallback: look up by email if session doesn't have parishionerId
+		if (!parishionerId && session.user.email) {
+			const parishioner = await db.parishioner.findUnique({
+				where: { email: session.user.email },
+				select: { id: true },
+			});
+			parishionerId = parishioner?.id ?? null;
+		}
+
+		if (!parishionerId) {
+			return {
+				success: true,
+				message: "No parishioner record linked",
+				data: {
+					contributionsThisMonth: 0,
+					societyCount: 0,
+					pendingIntentions: 0,
+					upcomingEvents: 0,
+					societies: [],
+				},
+			};
+		}
+
+		const now = new Date();
+		const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+		const [
+			paymentAgg,
+			societyMemberships,
+			pendingIntentions,
+			upcomingEvents,
+		] = await Promise.all([
+			db.payment.aggregate({
+				where: {
+					parishionerId,
+					paymentStatus: "COMPLETED",
+					paymentDate: { gte: startOfMonth },
+				},
+				_sum: { amount: true },
+			}),
+			db.societyMembership.findMany({
+				where: { parishionerId },
+				include: { society: { select: { id: true, name: true } } },
+			}),
+			db.massIntention.count({
+				where: { parishionerId, status: "PENDING" },
+			}),
+			db.event.count({
+				where: {
+					organizationId,
+					startTime: { gte: now },
+				},
+			}),
+		]);
+
+		return {
+			success: true,
+			message: "Parishioner dashboard metrics retrieved",
+			data: {
+				contributionsThisMonth: paymentAgg._sum.amount ?? 0,
+				societyCount: societyMemberships.length,
+				pendingIntentions,
+				upcomingEvents,
+				societies: societyMemberships.map((m) => ({
+					id: m.society.id,
+					name: m.society.name,
+				})),
+			},
+		};
+	} catch (error) {
+		console.error("Failed to get parishioner dashboard metrics:", error);
+		return {
+			success: false,
+			message: "Failed to retrieve parishioner dashboard metrics",
+		};
+	}
+}

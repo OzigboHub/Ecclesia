@@ -110,23 +110,18 @@ export function MassIntentionBooking() {
                             ) : (
                                 <div className="grid grid-cols-1 gap-2">
                                     {availableMasses.map(mass => {
-                                        const isFull = (mass._count?.intentions || 0) >= mass.maxIntentions;
                                         return (
                                             <div key={mass.id}
-                                                className={`border p-3 rounded-md cursor-pointer flex justify-between items-center ${form.watch('massId') === mass.id ? 'border-primary bg-primary/5 ring-1 ring-primary' : ''} ${isFull ? 'opacity-50 cursor-not-allowed' : 'hover:bg-accent'}`}
-                                                onClick={() => !isFull && form.setValue('massId', mass.id)}
+                                                className={`border p-3 rounded-md cursor-pointer flex justify-between items-center ${form.watch('massId') === mass.id ? 'border-primary bg-primary/5 ring-1 ring-primary' : ''} hover:bg-accent`}
+                                                onClick={() => form.setValue('massId', mass.id)}
                                             >
                                                 <div>
                                                     <div className="font-semibold">{mass.time} - {mass.massType.replace('_', ' ')}</div>
                                                     <div className="text-xs text-muted-foreground">{mass.language}</div>
                                                 </div>
-                                                {isFull ? (
-                                                    <span className="text-xs font-bold text-red-500">FULL</span>
-                                                ) : (
-                                                    <div className="h-4 w-4 rounded-full border border-primary flex items-center justify-center">
-                                                        {form.watch('massId') === mass.id && <div className="h-2 w-2 rounded-full bg-primary" />}
-                                                    </div>
-                                                )}
+                                                <div className="h-4 w-4 rounded-full border border-primary flex items-center justify-center">
+                                                    {form.watch('massId') === mass.id && <div className="h-2 w-2 rounded-full bg-primary" />}
+                                                </div>
                                             </div>
                                         );
                                     })}

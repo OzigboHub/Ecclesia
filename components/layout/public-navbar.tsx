@@ -59,18 +59,19 @@ export default function PublicNavbar() {
 										className="text-[20px]"
 										key={k}
 										href={i.link}
+										onClick={() => setOpen(false)}
 									>
 										{i.name}
 									</Link>
 								);
 							})}
 							<div className=" flex gap-3">
-								<Button variant={"outline"}>
+								<Button variant={"outline"} onClick={() => setOpen(false)}>
 									<Link href={"/auth/register"}>
 										Register
 									</Link>
 								</Button>
-								<Button>
+								<Button onClick={() => setOpen(false)}>
 									<Link href={"/auth/login"}>Login</Link>
 								</Button>
 							</div>

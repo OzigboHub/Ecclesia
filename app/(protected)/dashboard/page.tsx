@@ -4,7 +4,10 @@ import { SuperAdminDashboard } from "@/components/features/dashboard/super-admin
 import { OrganizationDashboard } from "@/components/features/dashboard/organization-dashboard";
 import { ParishionerDashboard } from "@/components/features/dashboard/parishioner-dashboard";
 import { getActiveAnnouncementsForOrg } from "@/app/actions/announcement.actions";
-import { getOrganizationDashboardMetrics } from "@/app/actions/dashboard.actions";
+import {
+  getOrganizationDashboardMetrics,
+  getParishionerDashboardMetrics,
+} from "@/app/actions/dashboard.actions";
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -37,8 +40,24 @@ export default async function DashboardPage() {
 
   // PARISHIONER sees personalized dashboard
   if (session.user.role === "PARISHIONER") {
+    const parishionerMetricsResult = await getParishionerDashboardMetrics();
+    const parishionerMetrics =
+      parishionerMetricsResult.success && parishionerMetricsResult.data
+        ? parishionerMetricsResult.data
+        : {
+            contributionsThisMonth: 0,
+            societyCount: 0,
+            pendingIntentions: 0,
+            upcomingEvents: 0,
+            societies: [],
+          };
+
     return (
-      <ParishionerDashboard session={session} announcements={announcements} />
+      <ParishionerDashboard
+        session={session}
+        announcements={announcements}
+        metrics={parishionerMetrics}
+      />
     );
   }
 

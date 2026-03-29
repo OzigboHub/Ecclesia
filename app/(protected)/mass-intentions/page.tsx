@@ -2,6 +2,7 @@ import { getMassIntentions } from "@/app/actions/mass-intention.actions";
 import { getMassesInRange } from "@/app/actions/mass.actions";
 import { auth } from "@/auth";
 import { MassIntentionCalendar } from "@/components/features/mass-intentions/mass-intention-calendar";
+import { ParishionerMassIntentions } from "@/components/features/mass-intentions/parishioner-mass-intentions";
 import { Button } from "@/components/ui/button";
 import { canBookMassIntentions } from "@/lib/permissions";
 import { addMonths, endOfMonth, startOfMonth, subMonths } from "date-fns";
@@ -57,26 +58,38 @@ export default async function MassIntentionsPage() {
 		);
 	}
 
+	const isParishioner = session.user.role === "PARISHIONER";
+
 	return (
 		<div className="space-y-6">
 			<div className="flex items-center justify-between gap-3">
 				<div>
 					<h1 className="text-3xl font-bold">Mass Intentions</h1>
 					<p className="text-muted-foreground mt-1">
-						Book a thanksgiving, requiem, or special intention for
-						an available mass.
+						{isParishioner
+							? "Select a mass below and book your intention."
+							: "Book a thanksgiving, requiem, or special intention for an available mass."}
 					</p>
 				</div>
-				<Link href="/masses">
-					<Button variant="outline">View Mass Schedule</Button>
-				</Link>
+				{!isParishioner && (
+					<Link href="/masses">
+						<Button variant="outline">View Mass Schedule</Button>
+					</Link>
+				)}
 			</div>
 
-			<MassIntentionCalendar
-				intentions={intentionsResult.data || []}
-				masses={massesResult.data || []}
-				initialOrganizationId={session.user.organizationId}
-			/>
+			{isParishioner ? (
+				<ParishionerMassIntentions
+					masses={massesResult.data || []}
+					intentions={intentionsResult.data || []}
+				/>
+			) : (
+				<MassIntentionCalendar
+					intentions={intentionsResult.data || []}
+					masses={massesResult.data || []}
+					initialOrganizationId={session.user.organizationId}
+				/>
+			)}
 		</div>
 	);
 }

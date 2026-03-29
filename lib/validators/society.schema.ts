@@ -23,7 +23,7 @@ export const createSocietySchema = z.object({
     .union([z.string().uuid("Invalid user selected"), z.literal(""), z.null()])
     .optional()
     .transform((val) => (val === "" || val === undefined ? undefined : val)),
-  meetingSchedule: z.string().max(200).optional(),
+  meetingSchedule: z.string().max(5000).optional(),
 });
 
 export type CreateSocietyInput = z.infer<typeof createSocietySchema>;
