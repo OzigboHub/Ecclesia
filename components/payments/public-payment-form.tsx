@@ -4,10 +4,9 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { createPaymentSchema, type CreatePaymentInput } from '@/lib/validators/payment.schema';
-import { createPayment } from '@/app/actions/payment.actions';
+import { initializePaystackPayment } from '@/app/actions/paystack.actions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { Spinner } from '@/components/ui/spinner';
 import {
@@ -35,6 +34,7 @@ export function PublicPaymentForm({
     title,
 }: PublicPaymentFormProps) {
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const platformFee = 20;
 
     const form = useForm<CreatePaymentInput>({
         resolver: zodResolver(createPaymentSchema),
@@ -53,12 +53,25 @@ export function PublicPaymentForm({
     async function onSubmit(data: CreatePaymentInput) {
         setIsSubmitting(true);
         try {
-            const res = await createPayment(data, organizationId);
+            const res = await initializePaystackPayment(
+                {
+                    amount: data.amount,
+                    email: data.payerEmail,
+                    purpose: data.purpose,
+                    payerName: data.payerName || 'Guest',
+                    donationCampaignId: data.donationCampaignId,
+                    eventId: data.eventId,
+                },
+                organizationId,
+            );
             if (res.success) {
-                toast.success('Payment initiated successfully');
-                // Here we would integrate with Paystack/Flutterwave
-                // For now, we simulate success and redirect
-                toast.info('Redirecting to secure payment gateway...');
+                toast.success('Payment initialized successfully');
+                const authorizationUrl = (res.data as { authorizationUrl?: string } | undefined)?.authorizationUrl;
+                if (authorizationUrl) {
+                    window.location.href = authorizationUrl;
+                    return;
+                }
+                toast.error('Payment gateway URL was not returned');
             } else {
                 toast.error(res.message);
             }
@@ -72,6 +85,14 @@ export function PublicPaymentForm({
     return (
         <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <div className="rounded-md bg-muted/50 px-3 py-2 text-sm text-muted-foreground">
+                    <p>
+                        You are paying for {title}. A platform fee of ₦{platformFee.toLocaleString('en-NG')} is added at checkout.
+                    </p>
+                    <p className="mt-1 font-medium text-foreground">
+                        Total at checkout: ₦{(Number(form.watch('amount') || 0) + platformFee).toLocaleString('en-NG')}
+                    </p>
+                </div>
                 <FormField
                     control={form.control}
                     name="amount"

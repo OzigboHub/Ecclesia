@@ -108,9 +108,7 @@ export default function AppointmentsListClient({
     if (statusFilter !== "all") newParams.set("status", statusFilter);
     if (typeFilter !== "all") newParams.set("type", typeFilter);
     const query = newParams.toString();
-    router.push(
-      query ? `/dashboard/appointments?${query}` : "/dashboard/appointments",
-    );
+    router.push(query ? `/appointments?${query}` : "/appointments");
   }, [search, statusFilter, typeFilter, router]);
 
   React.useEffect(() => {
@@ -301,7 +299,7 @@ export default function AppointmentsListClient({
                   setSearch("");
                   setStatusFilter("all");
                   setTypeFilter("all");
-                  router.push("/dashboard/appointments");
+                  router.push("/appointments");
                 }}
                 className="w-full sm:w-auto">
                 Clear
@@ -330,7 +328,7 @@ export default function AppointmentsListClient({
             actions={(row) => (
               <div className="flex flex-wrap items-center justify-end gap-2">
                 <Button variant="ghost" size="sm" className="text-xs" asChild>
-                  <Link href={`/dashboard/appointments/${row.id}`}>View</Link>
+                  <Link href={`/appointments/${row.id}`}>View</Link>
                 </Button>
                 {row.status === "PENDING" && (
                   <Button

@@ -37,9 +37,22 @@ export default function ProtectedNavbar() {
 	const isSuperAdmin = userRole === "SUPER_ADMIN";
 	const contextId = user?.organizationId;
 
+	const isParishioner = userRole === "PARISHIONER";
+
+	const PARISHIONER_LINKS = [
+		"Dashboard",
+		"Mass Intentions",
+		"Mass Calendar",
+		"Appointments",
+		"Announcements",
+		"Societies",
+	];
+
 	const mainNav = SIDEBAR.filter((item) => {
 		if (!userRole) return false;
 		if (isSuperAdmin && !contextId) return false;
+
+		if (isParishioner) return PARISHIONER_LINKS.includes(item.name);
 
 		if (item.name === "Parishioners")
 			return canManageParishioners(userRole);

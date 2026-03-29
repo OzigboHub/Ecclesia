@@ -18,6 +18,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 import { DownloadReceiptButton } from '@/components/features/payments/download-receipt-button';
+import { PrintButton } from '@/components/features/payments/print-button';
 
 interface PageProps {
 	params: Promise<{ id: string }>;
@@ -119,12 +120,7 @@ export default async function PaymentDetailPage({ params }: PageProps) {
 					</div>
 				</div>
 				<div className='flex gap-2'>
-					<Button
-						variant='outline'
-						onClick={() => window.print()}
-					>
-						<Printer className='mr-2 h-4 w-4' /> Print Receipt
-					</Button>
+					<PrintButton />
 					<DownloadReceiptButton
 						paymentId={payment.id}
 						receiptNumber={payment.receiptNumber || 'N/A'}
@@ -330,7 +326,7 @@ export default async function PaymentDetailPage({ params }: PageProps) {
 											</p>
 										</div>
 										<Link
-											href={`/dashboard/mass-intentions/${payment.massIntention.id}`}
+											href={`/mass-intentions/${payment.massIntention.id}`}
 											className='text-sm text-primary hover:underline'
 										>
 											View Details

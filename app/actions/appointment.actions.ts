@@ -10,6 +10,7 @@ import {
   appointmentFilterSchema,
   createAppointmentAvailabilitySchema,
   createAppointmentSchema,
+  parishionerAppointmentSchema,
   publicAppointmentSchema,
   updateAppointmentSchema,
   type AppointmentFilter,
@@ -313,6 +314,10 @@ export async function getAppointmentsFiltered(
     // Build where clause
     const where: Prisma.AppointmentWhereInput = {
       organizationId: session.user.organizationId,
+      // Parishioners can only see their own appointments
+      ...(session.user.role === "PARISHIONER" && session.user.parishionerId
+        ? { parishionerId: session.user.parishionerId }
+        : {}),
       ...(type && { type }),
       ...(status && { status }),
       ...(assignedToId && { assignedToId }),
@@ -1438,5 +1443,236 @@ export async function deleteAppointment(id: string): Promise<ActionResponse> {
   } catch (error) {
     console.error("Failed to delete appointment:", error);
     return { success: false, message: "Failed to delete appointment" };
+  }
+}
+
+// ============================================
+// PARISHIONER SELF-BOOKING
+// ============================================
+
+type ParishionerAvailabilitySlot = {
+  id: string;
+  title: string;
+  type: string;
+  startTime: Date;
+  endTime: Date;
+  maxBookings: number;
+  remainingBookings: number;
+  assignedTo: { firstName: string; lastName: string } | null;
+};
+
+export async function getAvailableSlotsForParishioner(): Promise<
+  ActionResponse<ParishionerAvailabilitySlot[]>
+> {
+  try {
+    const session = await auth();
+    if (!session?.user) {
+      return { success: false, message: "Unauthorized" };
+    }
+
+    const organization = await db.organization.findUnique({
+      where: { id: session.user.organizationId },
+      select: {
+        id: true,
+        appointmentBookingOpensAt: true,
+        appointmentBookingClosesAt: true,
+        featureSettings: {
+          select: { enableAppointments: true },
+        },
+      },
+    });
+
+    if (!organization) {
+      return { success: false, message: "Organization not found" };
+    }
+
+    if (!organization.featureSettings?.enableAppointments) {
+      return {
+        success: false,
+        message: "Appointments are not enabled for this parish",
+        data: [],
+      };
+    }
+
+    const slots = await db.appointmentAvailability.findMany({
+      where: {
+        organizationId: session.user.organizationId,
+        isActive: true,
+        startTime: { gte: new Date() },
+      },
+      include: {
+        assignedTo: {
+          select: { firstName: true, lastName: true },
+        },
+        appointments: {
+          where: { status: { not: "CANCELLED" } },
+          select: { id: true },
+        },
+      },
+      orderBy: { startTime: "asc" },
+    });
+
+    const data = slots
+      .filter((slot) =>
+        isWithinBookingWindow(slot.startTime, {
+          appointmentBookingOpensAt: organization.appointmentBookingOpensAt,
+          appointmentBookingClosesAt: organization.appointmentBookingClosesAt,
+        }),
+      )
+      .map((slot) => ({
+        id: slot.id,
+        title: slot.title,
+        type: slot.type,
+        startTime: slot.startTime,
+        endTime: slot.endTime,
+        maxBookings: slot.maxBookings,
+        assignedTo: slot.assignedTo ?? null,
+        remainingBookings: Math.max(
+          slot.maxBookings - slot.appointments.length,
+          0,
+        ),
+      }))
+      .filter((slot) => slot.remainingBookings > 0);
+
+    return {
+      success: true,
+      message: "Available slots retrieved",
+      data,
+    };
+  } catch (error) {
+    console.error("Failed to get parishioner slots:", error);
+    return {
+      success: false,
+      message: "Failed to retrieve available appointment slots",
+      data: [],
+    };
+  }
+}
+
+export async function bookAppointmentAsParishioner(
+  formData: unknown,
+): Promise<ActionResponse<AppointmentWithRelations>> {
+  try {
+    const session = await auth();
+    if (!session?.user) {
+      return { success: false, message: "Unauthorized" };
+    }
+
+    if (session.user.role !== "PARISHIONER") {
+      return {
+        success: false,
+        message: "Only parishioners can use this booking flow",
+      };
+    }
+
+    if (!session.user.parishionerId) {
+      return {
+        success: false,
+        message:
+          "Your account is not linked to a parishioner record. Please contact your parish office.",
+      };
+    }
+
+    const enabled = await isFeatureEnabledForRole(
+      session.user.organizationId,
+      "enableAppointments",
+      session.user.role,
+    );
+    if (!enabled) {
+      return { success: false, message: "Appointments feature is not enabled" };
+    }
+
+    const parsed = parishionerAppointmentSchema.safeParse(formData);
+    if (!parsed.success) {
+      return {
+        success: false,
+        message: "Validation failed",
+        errors: parsed.error.flatten().fieldErrors,
+      };
+    }
+
+    const organization = await db.organization.findUnique({
+      where: { id: session.user.organizationId },
+      select: {
+        appointmentBookingOpensAt: true,
+        appointmentBookingClosesAt: true,
+      },
+    });
+
+    const slot = await db.appointmentAvailability.findFirst({
+      where: {
+        id: parsed.data.availabilityId,
+        organizationId: session.user.organizationId,
+        isActive: true,
+        startTime: { gte: new Date() },
+      },
+      include: {
+        appointments: {
+          where: { status: { not: "CANCELLED" } },
+          select: { id: true },
+        },
+      },
+    });
+
+    if (!slot) {
+      return {
+        success: false,
+        message: "The selected appointment slot is no longer available",
+      };
+    }
+
+    if (
+      !isWithinBookingWindow(slot.startTime, {
+        appointmentBookingOpensAt:
+          organization?.appointmentBookingOpensAt ?? null,
+        appointmentBookingClosesAt:
+          organization?.appointmentBookingClosesAt ?? null,
+      })
+    ) {
+      return {
+        success: false,
+        message: "Appointment booking is currently closed for this slot",
+      };
+    }
+
+    if (slot.appointments.length >= slot.maxBookings) {
+      return {
+        success: false,
+        message: "This appointment slot is fully booked",
+      };
+    }
+
+    const appointment = await db.appointment.create({
+      data: {
+        title: parsed.data.title,
+        description: buildAppointmentDescription(
+          parsed.data.description,
+          parsed.data.notes,
+        ),
+        type: parsed.data.type,
+        startTime: slot.startTime,
+        endTime: slot.endTime,
+        status: "PENDING",
+        source: "PUBLIC",
+        availabilityId: slot.id,
+        assignedToId: slot.assignedToId,
+        parishionerId: session.user.parishionerId,
+        requestedById: session.user.id,
+        organizationId: session.user.organizationId,
+      },
+      include: appointmentInclude,
+    });
+
+    revalidatePath("/appointments");
+    revalidatePath(`/p/${session.user.organizationId}`);
+
+    return {
+      success: true,
+      message: "Appointment request submitted successfully",
+      data: appointment,
+    };
+  } catch (error) {
+    console.error("Failed to book appointment as parishioner:", error);
+    return { success: false, message: "Failed to submit appointment request" };
   }
 }

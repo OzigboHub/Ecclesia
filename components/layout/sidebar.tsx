@@ -57,11 +57,26 @@ export default function Sidebar() {
     }
   }, [isSuperAdmin]);
 
+  const isParishioner = userRole === "PARISHIONER";
+
+  // Parishioners get a curated set of links
+  const PARISHIONER_LINKS = [
+    "Dashboard",
+    "Mass Intentions",
+    "Mass Calendar",
+    "Appointments",
+    "Announcements",
+    "Societies",
+  ];
+
   // Filter sidebar items based on role or active context
   let mainNav = SIDEBAR.filter((item) => {
     if (!userRole) return false;
     // If super admin and no context, show super admin primary nav
     if (isSuperAdmin && !contextId) return false; // Handled separately below
+
+    // Parishioners only see their curated links
+    if (isParishioner) return PARISHIONER_LINKS.includes(item.name);
 
     if (item.name === "Parishioners") return canManageParishioners(userRole);
     if (item.name === "Payments") return canRecordPayments(userRole);
@@ -84,17 +99,17 @@ export default function Sidebar() {
     return false;
   });
 
-	return (
-		<div className="hidden bg-secondary w-[20%] h-screen shrink-0 py-[20px] px-[10px] justify-start items-center lg:flex flex-col gap-8 overflow-y-auto">
-			<Link href="/dashboard">
-				<Image
-					src={"/standalone-golden-yellow-logo-typography.png"}
-					width={"150"}
-					height={"150"}
-					alt="logo"
-					className=" w-[150px] object-cover"
-				/>
-			</Link>
+  return (
+    <div className="hidden bg-secondary w-[20%] h-screen shrink-0 py-[20px] px-[10px] justify-start items-center lg:flex flex-col gap-8 overflow-y-auto">
+      <Link href="/dashboard">
+        <Image
+          src={"/standalone-golden-yellow-logo-typography.png"}
+          width={"150"}
+          height={"150"}
+          alt="logo"
+          className=" w-[150px] object-cover"
+        />
+      </Link>
 
       <div className=" flex justify-between flex-col h-full w-full">
         <div className="flex justify-between gap-3 flex-col">
