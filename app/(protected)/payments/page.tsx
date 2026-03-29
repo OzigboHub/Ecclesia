@@ -1,12 +1,18 @@
 import { getPayments, getPaymentStats } from "@/app/actions/payment.actions";
+import {
+	getOrganizationPaymentProfile,
+	getOrganizationWalletSummary,
+	getPaystackBankList,
+	type PaystackBank,
+} from "@/app/actions/paystack.actions";
 import { auth } from "@/auth";
+import { PaystackWalletPanel } from "@/components/features/payments/paystack-wallet-panel";
 import { Button } from "@/components/ui/button";
-import { DataTable } from "@/components/ui/data-table";
-import { cn } from "@/lib/utils";
 import { Download, Plus } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import PaymentsListClient from "./payments-list-client";
+import { PaymentsTable } from "./payments-table";
 
 export default async function PaymentsPage({
 	searchParams: searchParamsPromise,
@@ -31,7 +37,7 @@ export default async function PaymentsPage({
 	const searchParams = await searchParamsPromise;
 
 	// Fetch payments and stats
-	const [paymentsResult, statsResult] = await Promise.all([
+	const [paymentsResult, statsResult, walletProfileResult, walletSummaryResult, bankListResult] = await Promise.all([
 		getPayments({
 			page: searchParams.page ? parseInt(searchParams.page) : 1,
 			limit: 20,
@@ -41,6 +47,9 @@ export default async function PaymentsPage({
 			method: searchParams.method as any,
 		}),
 		getPaymentStats(),
+		getOrganizationPaymentProfile(),
+		getOrganizationWalletSummary(),
+		getPaystackBankList(),
 	]);
 
 	if (!paymentsResult.success || !statsResult.success) {
@@ -75,102 +84,9 @@ export default async function PaymentsPage({
 		(p) => p.paymentStatus === "PENDING",
 	).length;
 
-	// Columns for the payments table
-	const columns = [
-		{
-			header: "Receipt",
-			accessorKey: "receiptNumber",
-			cell: (row: (typeof payments)[0]) => (
-				<span className="font-mono text-xs text-muted-foreground">
-					{row.receiptNumber || "-"}
-				</span>
-			),
-		},
-		{
-			header: "Payer",
-			accessorKey: "payerName",
-			cell: (row: (typeof payments)[0]) => (
-				<div>
-					<div className="font-medium text-foreground">
-						{row.payerName}
-					</div>
-					{row.parishioner && (
-						<div className="text-xs text-muted-foreground">
-							{row.parishioner.firstName}{" "}
-							{row.parishioner.lastName}
-						</div>
-					)}
-					{row.onBehalfOf && (
-						<div className="text-xs text-muted-foreground">
-							On behalf of: {row.onBehalfOf}
-						</div>
-					)}
-				</div>
-			),
-		},
-		{
-			header: "Purpose",
-			accessorKey: "purpose",
-			cell: (row: (typeof payments)[0]) => (
-				<span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground">
-					{row.purpose.replace(/_/g, " ")}
-					{row.month && ` (${getMonthName(row.month)})`}
-				</span>
-			),
-		},
-		{
-			header: "Amount",
-			accessorKey: "amount",
-			cell: (row: (typeof payments)[0]) => (
-				<span className="font-bold text-foreground">
-					{new Intl.NumberFormat("en-NG", {
-						style: "currency",
-						currency: "NGN",
-					}).format(row.amount)}
-				</span>
-			),
-		},
-		{
-			header: "Method",
-			accessorKey: "paymentMethod",
-			cell: (row: (typeof payments)[0]) => (
-				<span className="text-muted-foreground text-xs">
-					{row.paymentMethod.replace(/_/g, " ")}
-				</span>
-			),
-		},
-		{
-			header: "Date",
-			accessorKey: "paymentDate",
-			cell: (row: (typeof payments)[0]) =>
-				new Date(row.paymentDate).toLocaleDateString("en-GB", {
-					day: "2-digit",
-					month: "short",
-					year: "numeric",
-				}),
-		},
-		{
-			header: "Status",
-			accessorKey: "paymentStatus",
-			cell: (row: (typeof payments)[0]) => (
-				<span
-					className={cn(
-						"inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider",
-						row.paymentStatus === "COMPLETED" &&
-							"bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100",
-						row.paymentStatus === "PENDING" &&
-							"bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100",
-						row.paymentStatus === "FAILED" &&
-							"bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100",
-						row.paymentStatus === "REFUNDED" &&
-							"bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-100",
-					)}
-				>
-					{row.paymentStatus}
-				</span>
-			),
-		},
-	];
+	const canManageWallet = ["SUPER_ADMIN", "PARISH_ADMIN"].includes(
+		session.user.role,
+	);
 
 	return (
 		<div className="space-y-6">
@@ -234,65 +150,32 @@ export default async function PaymentsPage({
 				</div>
 			</div>
 
+			<PaystackWalletPanel
+				profile={
+					walletProfileResult.success
+						? (walletProfileResult.data as any)
+						: undefined
+				}
+				wallet={
+					walletSummaryResult.success
+						? (walletSummaryResult.data as any)
+						: undefined
+				}
+				canManage={canManageWallet}
+				banks={
+					bankListResult.success
+						? (bankListResult.data as PaystackBank[])
+						: []
+				}
+			/>
+
 			{/* Filters */}
 			<PaymentsListClient searchParams={searchParams} />
 
 			{/* Table Section */}
 			<div className="bg-background border border-border rounded-lg shadow-sm p-6">
-				{payments.length === 0 ?
-					<div className="text-center py-12">
-						<p className="text-muted-foreground">
-							No payments recorded yet
-						</p>
-						<Button asChild className="mt-4">
-							<Link href="/dashboard/payments/new">
-								<Plus className="mr-2 h-4 w-4" /> Record First
-								Payment
-							</Link>
-						</Button>
-					</div>
-				:	<DataTable
-						columns={columns}
-						data={payments}
-						isLoading={false}
-						actions={(row) => (
-							<div className="flex items-center justify-end gap-2">
-								<Button
-									variant="ghost"
-									size="sm"
-									className="text-xs"
-									asChild
-								>
-									<Link
-										href={`/dashboard/payments/${row.id}`}
-									>
-										View
-									</Link>
-								</Button>
-							</div>
-						)}
-					/>
-				}
+				<PaymentsTable payments={payments} />
 			</div>
 		</div>
 	);
-}
-
-// Helper function to get month name
-function getMonthName(month: number): string {
-	const months = [
-		"Jan",
-		"Feb",
-		"Mar",
-		"Apr",
-		"May",
-		"Jun",
-		"Jul",
-		"Aug",
-		"Sep",
-		"Oct",
-		"Nov",
-		"Dec",
-	];
-	return months[month - 1] || "";
 }

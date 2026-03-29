@@ -1,6 +1,7 @@
 "use client";
 
 import { createMassIntention } from "@/app/actions/mass-intention.actions";
+import { initializePaystackPayment } from "@/app/actions/paystack.actions";
 import { getMasses } from "@/app/actions/mass.actions";
 import { getParishioners } from "@/app/actions/parishioner.actions";
 import { Button } from "@/components/ui/button";
@@ -157,9 +158,46 @@ export function MassIntentionForm({
 
   const onSubmit = (data: CreateMassIntentionInput) => {
     startTransition(async () => {
+      // For parishioners, stipend/amount is required for Paystack payment
+      if (isParishioner && (!data.stipend || data.stipend <= 0)) {
+        setError("stipend", {
+          type: "manual",
+          message: "Payment amount is required to book a mass intention",
+        });
+        return;
+      }
+
       const result = await createMassIntention(data);
 
       if (result.success) {
+        // For parishioners, initialize Paystack payment
+        if (isParishioner && data.stipend && data.stipend > 0 && result.data) {
+          const paymentResult = await initializePaystackPayment({
+            amount: data.stipend,
+            email: data.contactEmail || session?.user?.email || "",
+            purpose: "MASS_INTENTION" as const,
+            payerName: data.requestedBy,
+            massIntentionId: result.data.id,
+            parishionerId: result.data.parishionerId || undefined,
+          });
+
+          if (paymentResult.success && paymentResult.data?.authorizationUrl) {
+            toast.success("Redirecting to payment...");
+            window.location.href = paymentResult.data.authorizationUrl;
+            return;
+          } else {
+            // Intention created but payment init failed — inform the user
+            toast.error(
+              paymentResult.message ||
+                "Intention booked but payment could not be initialized. Contact the parish office."
+            );
+            router.refresh();
+            onSuccess?.();
+            return;
+          }
+        }
+
+        // Staff flow — no Paystack needed
         toast.success(result.message);
         reset();
         router.refresh();
@@ -308,15 +346,24 @@ export function MassIntentionForm({
           )}
         </div>
 
-        {/* Stipend */}
+        {/* Stipend / Payment Amount */}
         <div className="space-y-2">
           <Label htmlFor="stipend">
-            Stipend Amount (Optional) — Auto-creates Payment
+            {isParishioner
+              ? "Payment Amount *"
+              : "Stipend Amount (Optional) — Auto-creates Payment"}
           </Label>
-          <p className="text-xs text-muted-foreground">
-            If provided, a payment record will be automatically created and
-            linked to this intention
-          </p>
+          {!isParishioner && (
+            <p className="text-xs text-muted-foreground">
+              If provided, a payment record will be automatically created and
+              linked to this intention
+            </p>
+          )}
+          {isParishioner && (
+            <p className="text-xs text-muted-foreground">
+              You will be redirected to Paystack to complete payment
+            </p>
+          )}
           <div className="relative">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
               ₦
@@ -333,11 +380,25 @@ export function MassIntentionForm({
               aria-describedby="stipend-helper"
             />
           </div>
-          <p id="stipend-helper" className="text-xs text-muted-foreground">
-            Payment will be recorded with receipt number automatically.
-          </p>
+          {!isParishioner && (
+            <p id="stipend-helper" className="text-xs text-muted-foreground">
+              Payment will be recorded with receipt number automatically.
+            </p>
+          )}
           {errors.stipend && (
             <p className="text-sm text-destructive">{errors.stipend.message}</p>
+          )}
+          {isParishioner && (
+            <div className="rounded-md bg-muted/50 px-3 py-2 text-sm text-muted-foreground">
+              <p>
+                Minimum ₦500. Includes a ₦20 platform fee at checkout.
+              </p>
+              {Number(form.watch("stipend") || 0) > 0 && (
+                <p className="mt-1 font-medium text-foreground">
+                  Total at checkout: ₦{(Number(form.watch("stipend") || 0) + 20).toLocaleString("en-NG")}
+                </p>
+              )}
+            </div>
           )}
         </div>
       </div>
@@ -454,7 +515,11 @@ export function MassIntentionForm({
           Reset
         </Button>
         <Button type="submit" disabled={isPending}>
-          {isPending ? "Booking..." : "Book Intention"}
+          {isPending
+            ? "Processing..."
+            : isParishioner
+              ? "Book & Pay"
+              : "Book Intention"}
         </Button>
       </div>
     </form>

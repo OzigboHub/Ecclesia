@@ -69,8 +69,9 @@ export const publicMassIntentionSchema = z.object({
 	intentionType: intentionTypeEnum,
 	requestedBy: z
 		.string()
-		.min(2, 'Name must be at least 2 characters')
-		.max(100, 'Name must not exceed 100 characters'),
+		.max(100, 'Name must not exceed 100 characters')
+		.optional()
+		.or(z.literal('')),
 	intendedFor: z
 		.string()
 		.max(100, 'Name must not exceed 100 characters')
@@ -78,7 +79,7 @@ export const publicMassIntentionSchema = z.object({
 		.or(z.literal('')),
 	contactEmail: z
 		.string()
-		.email('Invalid email address')
+		.email('Enter a valid email address')
 		.optional()
 		.or(z.literal('')),
 	contactPhone: z
@@ -92,9 +93,9 @@ export const publicMassIntentionSchema = z.object({
 	massId: z.string().uuid('Mass is required'),
 	stipend: z
 		.number()
-		.positive('Stipend must be positive')
+		.min(500, 'Mass intention stipend must be at least ₦500')
 		.max(1000000, 'Stipend cannot exceed ₦1,000,000')
-		.optional(),
+		,
 });
 
 export type PublicMassIntentionInput = z.infer<

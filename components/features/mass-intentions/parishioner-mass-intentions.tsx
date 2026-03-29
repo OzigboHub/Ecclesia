@@ -4,6 +4,7 @@ import { useState, useMemo, useTransition } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { createMassIntention } from "@/app/actions/mass-intention.actions";
+import { initializePaystackPayment } from "@/app/actions/paystack.actions";
 import {
   createMassIntentionSchema,
   type CreateMassIntentionInput,
@@ -140,11 +141,15 @@ export function ParishionerMassIntentions({
     register,
     handleSubmit,
     control,
+    watch,
     formState: { errors },
     setError,
     setValue,
     reset,
   } = form;
+
+  const platformFee = 20;
+  const stipendValue = Number(watch("stipend") || 0);
 
   const openBookingModal = (mass: MassWithIntentions) => {
     setSelectedMass(mass);
@@ -165,11 +170,40 @@ export function ParishionerMassIntentions({
 
   const onSubmit = (data: CreateMassIntentionInput) => {
     startTransition(async () => {
+      // Require payment amount for parishioners
+      if (!data.stipend || data.stipend <= 0) {
+        setError("stipend", {
+          type: "manual",
+          message: "Payment amount is required to book a mass intention",
+        });
+        return;
+      }
+
       const result = await createMassIntention(data);
-      if (result.success) {
-        toast.success(result.message);
-        closeModal();
-        router.refresh();
+      if (result.success && result.data) {
+        // Initialize Paystack payment
+        const paymentResult = await initializePaystackPayment({
+          amount: data.stipend,
+          email: data.contactEmail || session?.user?.email || "",
+          purpose: "MASS_INTENTION" as const,
+          payerName: data.requestedBy,
+          massIntentionId: result.data.id,
+          parishionerId: result.data.parishionerId || undefined,
+        });
+
+        if (paymentResult.success && paymentResult.data?.authorizationUrl) {
+          toast.success("Redirecting to payment...");
+          window.location.href = paymentResult.data.authorizationUrl;
+          return;
+        } else {
+          toast.error(
+            paymentResult.message ||
+              "Intention booked but payment could not be initialized. Contact the parish office.",
+          );
+          closeModal();
+          router.refresh();
+          return;
+        }
       } else {
         toast.error(result.message);
         if (result.errors) {
@@ -449,6 +483,48 @@ export function ParishionerMassIntentions({
               )}
             </div>
 
+            {/* Payment Amount */}
+            <div className="space-y-2">
+              <Label htmlFor="stipend">Payment Amount *</Label>
+              <p className="text-xs text-muted-foreground">
+                You will be redirected to Paystack to complete payment
+              </p>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                  ₦
+                </span>
+                <Input
+                  id="stipend"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  {...register("stipend", { valueAsNumber: true })}
+                  className="pl-8"
+                  placeholder="0.00"
+                  disabled={isPending}
+                />
+              </div>
+              {errors.stipend && (
+                <p className="text-sm text-destructive">
+                  {errors.stipend.message}
+                </p>
+              )}
+            </div>
+
+            {/* Fee Summary */}
+            <div className="rounded-md bg-muted/50 px-3 py-2 text-sm text-muted-foreground">
+              <p>
+                Minimum ₦500. Includes a ₦{platformFee.toLocaleString("en-NG")}{" "}
+                bank charges at checkout.
+              </p>
+              {stipendValue > 0 && (
+                <p className="mt-1 font-medium text-foreground">
+                  Total at checkout: ₦
+                  {(stipendValue + platformFee).toLocaleString("en-NG")}
+                </p>
+              )}
+            </div>
+
             {/* Submit */}
             <div className="flex justify-end gap-3 border-t border-border pt-4">
               <Button
@@ -459,7 +535,7 @@ export function ParishionerMassIntentions({
                 Cancel
               </Button>
               <Button type="submit" disabled={isPending}>
-                {isPending ? "Booking..." : "Book Intention"}
+                {isPending ? "Processing..." : "Book & Pay"}
               </Button>
             </div>
           </form>
