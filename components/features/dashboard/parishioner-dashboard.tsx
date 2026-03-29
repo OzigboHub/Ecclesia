@@ -9,6 +9,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  CurrentLiveStreamBanner,
+  PastStreamsWidget,
+} from "@/components/features/live-streams/past-streams-widget";
+import { useFeatureSettings } from "@/hooks/use-feature-settings";
 import type { ParishionerDashboardMetrics } from "@/app/actions/dashboard.actions";
 import {
   ArrowRight,
@@ -34,9 +39,14 @@ export function ParishionerDashboard({
   metrics,
 }: ParishionerDashboardProps) {
   const firstName = session.user.name?.split(" ")[0] || "there";
+  const { isFeatureEnabled } = useFeatureSettings();
+  const liveStreamingEnabled = isFeatureEnabled("enableLiveStreaming");
 
   return (
     <div className="space-y-8">
+      {/* Live Stream Banner */}
+      {liveStreamingEnabled && <CurrentLiveStreamBanner />}
+
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-foreground">
@@ -193,8 +203,11 @@ export function ParishionerDashboard({
           </Card>
         </div>
 
-        {/* My Societies Widget */}
+        {/* Sidebar Widgets */}
         <div className="space-y-8">
+          {/* Past Streams */}
+          {liveStreamingEnabled && <PastStreamsWidget limit={4} />}
+
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">My Societies</CardTitle>

@@ -146,3 +146,26 @@ export function canViewAllParishioners(role: string): boolean {
 		"OUTSTATION_ADMIN",
 	].includes(role);
 }
+
+export function canManageLiveStreams(role: string): boolean {
+	return [
+		"SUPER_ADMIN",
+		"PARISH_ADMIN",
+		"PARISH_SECRETARY",
+		"PARISH_STAFF",
+		"OUTSTATION_ADMIN",
+	].includes(role);
+}
+
+export function canViewLiveStreams(role: string): boolean {
+	return [
+		"SUPER_ADMIN",
+		"PARISH_ADMIN",
+		"PARISH_SECRETARY",
+		"PARISH_STAFF",
+		"OUTSTATION_ADMIN",
+		"SOCIETY_PRESIDENT",
+		"SOCIETY_SECRETARY",
+		"PARISHIONER",
+	].includes(role);
+}

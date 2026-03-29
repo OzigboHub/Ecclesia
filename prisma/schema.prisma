@@ -120,6 +120,7 @@ model User {
   societyLed           Society?                  @relation("SocietyPresident")
   societyAssisted      Society?                  @relation("SocietySecretary")
   reviewedJoinRequests SocietyJoinRequest[]      @relation("JoinRequestReviewer")
+  liveStreamsCreated   LiveStream[]               @relation("LiveStreamCreator")
   organization         Organization              @relation(fields: [organizationId], references: [id])
   sessions             UserSession[]
 
@@ -198,6 +199,7 @@ model Mass {
   organizationId     String
   organization       Organization    @relation(fields: [organizationId], references: [id])
   intentions         MassIntention[]
+  liveStream         LiveStream?
 
   @@unique([organizationId, date, time])
   @@index([organizationId])
@@ -595,15 +597,22 @@ model LiveStream {
   description    String?
   streamUrl      String
   isLive         Boolean      @default(false)
+  startedAt      DateTime?
+  endedAt        DateTime?
   scheduledFor   DateTime?
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id])
+  massId         String?      @unique
+  mass           Mass?        @relation(fields: [massId], references: [id])
+  createdById    String?
+  createdBy      User?        @relation("LiveStreamCreator", fields: [createdById], references: [id])
 
   @@index([organizationId])
   @@index([isLive])
   @@index([scheduledFor])
+  @@index([createdById])
 }
 
 model Announcement {

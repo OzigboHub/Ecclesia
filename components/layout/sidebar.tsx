@@ -15,6 +15,7 @@ import {
   canManageParishioners,
   canManageUsers,
   canRecordPayments,
+  canViewLiveStreams,
   canViewMassCalendar,
   canViewSocieties,
 } from "@/lib/permissions";
@@ -67,6 +68,7 @@ export default function Sidebar() {
     "Appointments",
     "Announcements",
     "Societies",
+    "Live Streams",
   ];
 
   // Filter sidebar items based on role or active context
@@ -85,6 +87,7 @@ export default function Sidebar() {
     if (item.name === "Mass Schedule") return canManageMassIntentions(userRole);
     if (item.name === "Appointments") return canBookAppointments(userRole);
     if (item.name === "Societies") return canViewSocieties(userRole);
+    if (item.name === "Live Streams") return canViewLiveStreams(userRole);
     if (item.name === "Settings") return isSuperAdmin; // Only Super Admin / System Admin
     return true; // Dashboard
   });

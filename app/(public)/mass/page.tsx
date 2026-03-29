@@ -155,15 +155,15 @@ export default async function Masses({
 
   return (
     <div className="min-h-screen pt-[80px] bg-background">
-      <section className="border-b bg-gradient-to-b from-muted/50 to-background py-10">
+      <section className="border-b bg-linear-to-b from-muted/50 to-background py-10">
         <div className="mx-auto max-w-6xl px-4">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="space-y-2">
               <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
-                Public Masses
+                Masses
               </p>
               <h1 className="text-3xl font-bold md:text-4xl">
-                All Parish in the Diocese
+                All Parish Masses
               </h1>
               <p className="text-sm text-muted-foreground md:text-base">
                 Browse upcoming masses across parishes, view celebrants, and
