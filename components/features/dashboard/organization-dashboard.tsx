@@ -1,6 +1,7 @@
 "use client";
 
-import { Users, DollarSign, Calendar, Church } from "lucide-react";
+import { Users, Calendar, Church } from "lucide-react";
+import { NairaSign } from "@/components/ui/naira-sign";
 import type { Session } from "next-auth";
 import type { OrganizationDashboardMetrics } from "@/app/actions/dashboard.actions";
 
@@ -25,7 +26,7 @@ export function OrganizationDashboard({
     {
       name: "Completed Payments",
       value: `₦${metrics.totalPaymentAmount.toLocaleString("en-NG")}`,
-      icon: DollarSign,
+      icon: NairaSign,
       change: `${metrics.totalPayments.toLocaleString("en-NG")} records`,
     },
     {
@@ -110,7 +111,7 @@ export function OrganizationDashboard({
         <h2 className="text-lg font-semibold mb-4">Quick Actions</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <button className="p-4 border border-border rounded-md hover:bg-accent hover:border-primary transition-all text-left">
-            <DollarSign className="h-8 w-8 text-primary mb-2" />
+            <NairaSign className="h-8 w-8 text-primary mb-2" />
             <h3 className="font-medium">Record Payment</h3>
             <p className="text-sm text-muted-foreground">
               Add offering or donation

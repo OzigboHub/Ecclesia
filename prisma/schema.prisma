@@ -7,56 +7,56 @@ datasource db {
 }
 
 model Organization {
-  id                         String                       @id @default(uuid())
-  name                       String                       @unique
-  level                      HierarchyLevel
-  parentId                   String?
-  address                    String?
-  contactEmail               String?
-  contactPhone               String?
-  createdAt                  DateTime                     @default(now())
-  updatedAt                  DateTime                     @updatedAt
-  autoGenerateMasses         Boolean                      @default(true)
-  generateDaysInAdvance      Int                          @default(90)
-  maxMassesPerDay            Int                          @default(5)
-  minMassesPerDay            Int                          @default(1)
-  appointmentBookingClosesAt DateTime?
-  appointmentBookingOpensAt  DateTime?
-  payoutBankCode             String?
-  payoutBankName             String?
-  payoutAccountNumber        String?
-  payoutAccountName          String?
-  paystackCustomerCode       String?                      @unique
-  paystackSubaccountCode     String?                      @unique
-  paystackSubaccountStatus   PaystackSubaccountStatus     @default(PENDING)
-  paystackSubaccountName     String?
-  paystackTransferRecipientCode String?                   @unique
-  paystackDedicatedAccountId String?                      @unique
+  id                             String                       @id @default(uuid())
+  name                           String                       @unique
+  level                          HierarchyLevel
+  parentId                       String?
+  address                        String?
+  contactEmail                   String?
+  contactPhone                   String?
+  createdAt                      DateTime                     @default(now())
+  updatedAt                      DateTime                     @updatedAt
+  autoGenerateMasses             Boolean                      @default(true)
+  generateDaysInAdvance          Int                          @default(90)
+  maxMassesPerDay                Int                          @default(5)
+  minMassesPerDay                Int                          @default(1)
+  appointmentBookingClosesAt     DateTime?
+  appointmentBookingOpensAt      DateTime?
+  payoutBankCode                 String?
+  payoutBankName                 String?
+  payoutAccountNumber            String?
+  payoutAccountName              String?
+  paystackCustomerCode           String?                      @unique
+  paystackSubaccountCode         String?                      @unique
+  paystackSubaccountStatus       PaystackSubaccountStatus     @default(PENDING)
+  paystackSubaccountName         String?
+  paystackTransferRecipientCode  String?                      @unique
+  paystackDedicatedAccountId     String?                      @unique
   paystackDedicatedAccountNumber String?
-  paystackDedicatedBankName  String?
-  paystackDedicatedProviderSlug String?
-  appointments               Appointment[]
-  appointmentAvailabilities  AppointmentAvailability[]
-  appointmentUnavailableDays AppointmentUnavailableDay[]
-  baptisms                   Baptism[]
-  confirmations              Confirmation[]
-  donations                  Donation[]
-  donationCampaigns          DonationCampaign[]
-  events                     Event[]
-  liveStreams                LiveStream[]
-  marriages                  Marriage[]
-  masses                     Mass[]
-  massIntentions             MassIntention[]
-  massScheduleTemplates      MassScheduleTemplate[]
-  parent                     Organization?                @relation("ChildOrganizations", fields: [parentId], references: [id])
-  children                   Organization[]               @relation("ChildOrganizations")
-  featureSettings            OrganizationFeatureSettings?
-  parishioners               Parishioner[]
-  payments                   Payment[]
-  sacraments                 Sacrament[]
-  societies                  Society[]
-  users                      User[]
-  withdrawals                WithdrawalRequest[]
+  paystackDedicatedBankName      String?
+  paystackDedicatedProviderSlug  String?
+  appointments                   Appointment[]
+  appointmentAvailabilities      AppointmentAvailability[]
+  appointmentUnavailableDays     AppointmentUnavailableDay[]
+  baptisms                       Baptism[]
+  confirmations                  Confirmation[]
+  donations                      Donation[]
+  donationCampaigns              DonationCampaign[]
+  events                         Event[]
+  liveStreams                    LiveStream[]
+  marriages                      Marriage[]
+  masses                         Mass[]
+  massIntentions                 MassIntention[]
+  massScheduleTemplates          MassScheduleTemplate[]
+  parent                         Organization?                @relation("ChildOrganizations", fields: [parentId], references: [id])
+  children                       Organization[]               @relation("ChildOrganizations")
+  featureSettings                OrganizationFeatureSettings?
+  parishioners                   Parishioner[]
+  payments                       Payment[]
+  sacraments                     Sacrament[]
+  societies                      Society[]
+  users                          User[]
+  withdrawals                    WithdrawalRequest[]
 
   @@index([parentId])
 }
@@ -120,6 +120,7 @@ model User {
   societyLed           Society?                  @relation("SocietyPresident")
   societyAssisted      Society?                  @relation("SocietySecretary")
   reviewedJoinRequests SocietyJoinRequest[]      @relation("JoinRequestReviewer")
+  liveStreamsCreated   LiveStream[]              @relation("LiveStreamCreator")
   organization         Organization              @relation(fields: [organizationId], references: [id])
   sessions             UserSession[]
 
@@ -198,6 +199,7 @@ model Mass {
   organizationId     String
   organization       Organization    @relation(fields: [organizationId], references: [id])
   intentions         MassIntention[]
+  liveStream         LiveStream?
 
   @@unique([organizationId, date, time])
   @@index([organizationId])
@@ -595,15 +597,22 @@ model LiveStream {
   description    String?
   streamUrl      String
   isLive         Boolean      @default(false)
+  startedAt      DateTime?
+  endedAt        DateTime?
   scheduledFor   DateTime?
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id])
+  massId         String?      @unique
+  mass           Mass?        @relation(fields: [massId], references: [id])
+  createdById    String?
+  createdBy      User?        @relation("LiveStreamCreator", fields: [createdById], references: [id])
 
   @@index([organizationId])
   @@index([isLive])
   @@index([scheduledFor])
+  @@index([createdById])
 }
 
 model Announcement {

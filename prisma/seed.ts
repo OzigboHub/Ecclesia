@@ -8,8 +8,9 @@ import {
 import { PrismaNeon } from "@prisma/adapter-neon";
 import { neonConfig } from "@neondatabase/serverless";
 import bcrypt from "bcryptjs";
+import WebSocket from "ws";
 
-neonConfig.webSocketConstructor = globalThis.WebSocket;
+neonConfig.webSocketConstructor = WebSocket;
 
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString) {
@@ -38,32 +39,32 @@ async function main() {
   console.log(`Created organization: ${organization.name}`);
 
   // 2. Create Feature Settings for the Organization
-  await prisma.organizationFeatureSettings.upsert({
-    where: { organizationId: organization.id },
-    update: {},
-    create: {
-      organizationId: organization.id,
-      enableParishionerManagement: true,
-      enableSacramentalRecords: true,
-      enableFinancialManagement: true,
-      enableOfferings: true,
-      enableTithes: true,
-      enableDonationCampaigns: true,
-      enableCustomDonationTypes: true,
-      enableMonthlyTracking: true,
-      enableMassIntentions: true,
-      enableAppointments: true,
-      enableConfessionBooking: true,
-      enableLiveStreaming: true,
-      enableAnnouncements: true,
-      enableSMSNotifications: true,
-      enableEmailNotifications: true,
-      enableSocieties: true,
-      enableEventManagement: true,
-      enableOnlinePayments: true,
-      enablePublicWebsite: true,
-    },
-  });
+  // await prisma.organizationFeatureSettings.upsert({
+  //   where: { organizationId: organization.id },
+  //   update: {},
+  //   create: {
+  //     organizationId: organization.id,
+  //     enableParishionerManagement: true,
+  //     enableSacramentalRecords: true,
+  //     enableFinancialManagement: true,
+  //     enableOfferings: true,
+  //     enableTithes: true,
+  //     enableDonationCampaigns: true,
+  //     enableCustomDonationTypes: true,
+  //     enableMonthlyTracking: true,
+  //     enableMassIntentions: true,
+  //     enableAppointments: true,
+  //     enableConfessionBooking: true,
+  //     enableLiveStreaming: true,
+  //     enableAnnouncements: true,
+  //     enableSMSNotifications: true,
+  //     enableEmailNotifications: true,
+  //     enableSocieties: true,
+  //     enableEventManagement: true,
+  //     enableOnlinePayments: true,
+  //     enablePublicWebsite: true,
+  //   },
+  // });
 
   // 3. Create Admin User
   const adminPassword = await bcrypt.hash("admin123", 10);
