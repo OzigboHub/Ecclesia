@@ -144,7 +144,7 @@ export default async function WatchStreamPage({
             )}
           </div>
 
-          <Button variant="outline" size="sm" asChild>
+          {/* <Button variant="outline" size="sm" asChild>
             <a
               href={stream.streamUrl}
               target="_blank"
@@ -152,7 +152,7 @@ export default async function WatchStreamPage({
               <ExternalLink className="mr-2 h-4 w-4" />
               Watch on YouTube
             </a>
-          </Button>
+          </Button> */}
         </div>
 
         {/* Mass Details Sidebar */}

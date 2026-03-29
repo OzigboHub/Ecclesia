@@ -200,7 +200,7 @@ function LiveStreamCard({
             </Link>
           </Button>
 
-          <Button variant="ghost" size="sm" asChild>
+          {/* <Button variant="ghost" size="sm" asChild>
             <a
               href={stream.streamUrl}
               target="_blank"
@@ -208,7 +208,7 @@ function LiveStreamCard({
               <ExternalLink className="mr-1 h-3.5 w-3.5" />
               YouTube
             </a>
-          </Button>
+          </Button> */}
 
           {canManage && (
             <>

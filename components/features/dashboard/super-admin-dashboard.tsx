@@ -8,13 +8,13 @@ import {
 	Building2,
 	Users,
 	UserCheck,
-	DollarSign,
 	Church,
 	Calendar,
 	BarChart3,
 	Settings,
 	Plus,
 } from 'lucide-react';
+import { NairaSign } from '@/components/ui/naira-sign';
 
 export async function SuperAdminDashboard() {
 	const session = await auth();
@@ -121,7 +121,7 @@ export async function SuperAdminDashboard() {
 						<CardTitle className='text-sm font-medium'>
 							Total Payments
 						</CardTitle>
-						<DollarSign className='h-4 w-4 text-muted-foreground' />
+						<NairaSign className='h-4 w-4 text-muted-foreground' />
 					</CardHeader>
 					<CardContent>
 						<div className='text-2xl font-bold'>
@@ -200,7 +200,7 @@ export async function SuperAdminDashboard() {
 						<CardTitle className='text-sm font-medium'>
 							Avg Payments/Org
 						</CardTitle>
-						<DollarSign className='h-4 w-4 text-muted-foreground' />
+						<NairaSign className='h-4 w-4 text-muted-foreground' />
 					</CardHeader>
 					<CardContent>
 						<div className='text-2xl font-bold'>
