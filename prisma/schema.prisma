@@ -22,6 +22,19 @@ model Organization {
   minMassesPerDay            Int                          @default(1)
   appointmentBookingClosesAt DateTime?
   appointmentBookingOpensAt  DateTime?
+  payoutBankCode             String?
+  payoutBankName             String?
+  payoutAccountNumber        String?
+  payoutAccountName          String?
+  paystackCustomerCode       String?                      @unique
+  paystackSubaccountCode     String?                      @unique
+  paystackSubaccountStatus   PaystackSubaccountStatus     @default(PENDING)
+  paystackSubaccountName     String?
+  paystackTransferRecipientCode String?                   @unique
+  paystackDedicatedAccountId String?                      @unique
+  paystackDedicatedAccountNumber String?
+  paystackDedicatedBankName  String?
+  paystackDedicatedProviderSlug String?
   appointments               Appointment[]
   appointmentAvailabilities  AppointmentAvailability[]
   appointmentUnavailableDays AppointmentUnavailableDay[]
@@ -43,6 +56,7 @@ model Organization {
   sacraments                 Sacrament[]
   societies                  Society[]
   users                      User[]
+  withdrawals                WithdrawalRequest[]
 
   @@index([parentId])
 }
@@ -102,6 +116,7 @@ model User {
   availabilitySlots    AppointmentAvailability[] @relation("AppointmentAvailabilityAssignee")
   passwordResetTokens  PasswordResetToken[]
   paymentsRecorded     Payment[]                 @relation("PaymentRecorder")
+  withdrawalsRequested WithdrawalRequest[]       @relation("WithdrawalRequester")
   societyLed           Society?                  @relation("SocietyPresident")
   societyAssisted      Society?                  @relation("SocietySecretary")
   reviewedJoinRequests SocietyJoinRequest[]      @relation("JoinRequestReviewer")
@@ -424,12 +439,20 @@ model Donation {
 model Payment {
   id                 String            @id @default(uuid())
   amount             Float
+  intendedAmount     Float?
+  grossAmount        Float?
+  platformFee        Float?
+  processorFee       Float?
   currency           String            @default("NGN")
   purpose            PaymentPurpose
   month              Int?
   paymentMethod      PaymentMethod
   paymentStatus      PaymentStatus     @default(PENDING)
   transactionRef     String?           @unique
+  gateway            PaymentGateway?
+  gatewayReference   String?           @unique
+  gatewayStatus      String?
+  gatewayMeta        Json?
   parishionerId      String?
   payerName          String
   onBehalfOf         String?
@@ -465,6 +488,35 @@ model Payment {
   @@index([paymentDate])
   @@index([month])
   @@index([recordedById])
+  @@index([gateway])
+  @@index([gatewayReference])
+}
+
+model WithdrawalRequest {
+  id                String           @id @default(uuid())
+  organizationId    String
+  requestedById     String
+  amount            Float
+  currency          String           @default("NGN")
+  status            WithdrawalStatus @default(REQUESTED)
+  recipientCode     String?
+  transferCode      String?
+  transferReference String?          @unique
+  gatewayStatus     String?
+  gatewayMeta       Json?
+  failureReason     String?
+  notes             String?
+  requestedAt       DateTime         @default(now())
+  processedAt       DateTime?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  organization      Organization     @relation(fields: [organizationId], references: [id])
+  requestedBy       User             @relation("WithdrawalRequester", fields: [requestedById], references: [id])
+
+  @@index([organizationId])
+  @@index([requestedById])
+  @@index([status])
+  @@index([transferReference])
 }
 
 model Appointment {
@@ -776,6 +828,25 @@ enum PaymentStatus {
   COMPLETED
   FAILED
   REFUNDED
+}
+
+enum PaymentGateway {
+  PAYSTACK
+}
+
+enum PaystackSubaccountStatus {
+  PENDING
+  ACTIVE
+  DISABLED
+  ERROR
+}
+
+enum WithdrawalStatus {
+  REQUESTED
+  PROCESSING
+  OTP_REQUIRED
+  COMPLETED
+  FAILED
 }
 
 enum AppointmentType {

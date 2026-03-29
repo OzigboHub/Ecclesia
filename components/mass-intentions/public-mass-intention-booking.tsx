@@ -3,6 +3,7 @@
 import { useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { initializePaystackPayment } from "@/app/actions/paystack.actions";
 import { submitPublicMassIntention } from "@/app/actions/mass-intention.actions";
 import {
   publicMassIntentionSchema,
@@ -38,6 +39,7 @@ export function PublicMassIntentionBooking({
   massId,
 }: PublicMassIntentionBookingProps) {
   const [isPending, startTransition] = useTransition();
+  const platformFee = 20;
 
   const form = useForm<PublicMassIntentionInput>({
     resolver: zodResolver(publicMassIntentionSchema),
@@ -49,6 +51,7 @@ export function PublicMassIntentionBooking({
       contactPhone: "",
       intendedFor: "",
       massId,
+      stipend: 500,
     },
   });
 
@@ -56,8 +59,40 @@ export function PublicMassIntentionBooking({
     startTransition(async () => {
       const result = await submitPublicMassIntention(organizationId, data);
       if (result.success) {
-        toast.success(result.message);
-        form.reset();
+        const massIntentionId = (result.data as { id?: string } | undefined)
+          ?.id;
+        if (!massIntentionId) {
+          toast.error(
+            "Mass intention was created but payment could not be started",
+          );
+          return;
+        }
+
+        const paymentResult = await initializePaystackPayment(
+          {
+            amount: data.stipend,
+            email: data.contactEmail || `anonymous-${Date.now()}@ecclesia.app`,
+            purpose: "MASS_INTENTION",
+            payerName: data.requestedBy || "Anonymous",
+            massIntentionId,
+          },
+          organizationId,
+        );
+
+        if (!paymentResult.success) {
+          toast.error(paymentResult.message);
+          return;
+        }
+
+        toast.success("Mass intention submitted. Redirecting to payment...");
+        const authorizationUrl = (
+          paymentResult.data as { authorizationUrl?: string } | undefined
+        )?.authorizationUrl;
+        if (authorizationUrl) {
+          window.location.href = authorizationUrl;
+          return;
+        }
+        toast.error("Payment gateway URL was not returned");
       } else {
         toast.error(result.message);
       }
@@ -117,9 +152,9 @@ export function PublicMassIntentionBooking({
             name="requestedBy"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Your Name</FormLabel>
+                <FormLabel>Your Name (Optional)</FormLabel>
                 <FormControl>
-                  <Input {...field} placeholder="Full name" />
+                  <Input {...field} placeholder="Anonymous if left blank" />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -146,6 +181,29 @@ export function PublicMassIntentionBooking({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <FormField
             control={form.control}
+            name="stipend"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Stipend Amount (₦)</FormLabel>
+                <FormControl>
+                  <Input
+                    {...field}
+                    type="number"
+                    min={500}
+                    step="0.01"
+                    onChange={(event) =>
+                      field.onChange(Number(event.target.value))
+                    }
+                    placeholder="500"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
             name="contactPhone"
             render={({ field }) => (
               <FormItem>
@@ -168,7 +226,7 @@ export function PublicMassIntentionBooking({
                   <Input
                     {...field}
                     type="email"
-                    placeholder="you@example.com"
+                    placeholder="For payment receipt (optional)"
                   />
                 </FormControl>
                 <FormMessage />
@@ -177,8 +235,21 @@ export function PublicMassIntentionBooking({
           />
         </div>
 
+        <div className="rounded-md bg-muted/50 px-3 py-2 text-sm text-muted-foreground">
+          <p>
+            Mass intention payment has a minimum of ₦500 and includes a ₦
+            {platformFee.toLocaleString("en-NG")} bank charges at checkout.
+          </p>
+          <p className="mt-1 font-medium text-foreground">
+            Total at checkout: ₦
+            {(Number(form.watch("stipend") || 0) + platformFee).toLocaleString(
+              "en-NG",
+            )}
+          </p>
+        </div>
+
         <Button type="submit" disabled={isPending} className="w-full sm:w-auto">
-          {isPending ? "Submitting..." : "Submit Intention"}
+          {isPending ? "Submitting..." : "Submit Intention & Pay"}
         </Button>
       </form>
     </Form>

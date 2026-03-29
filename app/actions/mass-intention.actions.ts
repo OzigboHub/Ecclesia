@@ -256,8 +256,8 @@ export async function createMassIntention(
         },
       });
 
-      // Create payment record if stipend provided
-      if (stipend && stipend > 0) {
+      // Create payment record if stipend provided by STAFF (parishioners pay via Paystack)
+      if (stipend && stipend > 0 && session.user.role !== "PARISHIONER") {
         await tx.payment.create({
           data: {
             amount: stipend,
@@ -426,7 +426,7 @@ export async function updateMassIntention(
     revalidatePath("/mass-intentions");
     revalidatePath("/mass-intentions/calendar");
     revalidatePath("/dashboard/mass-intentions");
-    revalidatePath(`/dashboard/mass-intentions/${id}`);
+    revalidatePath(`/mass-intentions/${id}`);
 
     return {
       success: true,
@@ -497,6 +497,138 @@ export async function deleteMassIntention(id: string): Promise<ActionResponse> {
 }
 
 // ============================================
+// STATUS OPERATIONS
+// ============================================
+
+export async function approveMassIntention(
+  id: string,
+): Promise<ActionResponse<MassIntentionWithRelations>> {
+  try {
+    const session = await auth();
+    if (!session) {
+      return { success: false, message: "Unauthorized" };
+    }
+
+    if (!canManageMassIntentions(session.user.role)) {
+      return {
+        success: false,
+        message: "You do not have permission to approve mass intentions",
+      };
+    }
+
+    const existing = await db.massIntention.findFirst({
+      where: { id, organizationId: session.user.organizationId },
+    });
+    if (!existing) {
+      return { success: false, message: "Mass intention not found" };
+    }
+    if (existing.status !== "PENDING") {
+      return {
+        success: false,
+        message: `Cannot approve a mass intention with status "${existing.status}"`,
+      };
+    }
+
+    const massIntention = await db.massIntention.update({
+      where: { id },
+      data: {
+        status: "APPROVED",
+        approvedAt: new Date(),
+        approvedBy: session.user.id,
+      },
+      include: { parishioner: true, organization: true, mass: true },
+    });
+
+    await db.auditLog.create({
+      data: {
+        action: "UPDATE",
+        entityType: "MassIntention",
+        entityId: id,
+        performedBy: session.user.id,
+        details: { status: "APPROVED" },
+      },
+    });
+
+    revalidatePath("/mass-intentions");
+    revalidatePath("/mass-intentions/calendar");
+    revalidatePath(`/mass-intentions/${id}`);
+
+    return {
+      success: true,
+      message: "Mass intention approved",
+      data: massIntention,
+    };
+  } catch (error) {
+    console.error("Failed to approve mass intention:", error);
+    return { success: false, message: "Failed to approve mass intention" };
+  }
+}
+
+export async function rejectMassIntention(
+  id: string,
+  reason?: string,
+): Promise<ActionResponse<MassIntentionWithRelations>> {
+  try {
+    const session = await auth();
+    if (!session) {
+      return { success: false, message: "Unauthorized" };
+    }
+
+    if (!canManageMassIntentions(session.user.role)) {
+      return {
+        success: false,
+        message: "You do not have permission to reject mass intentions",
+      };
+    }
+
+    const existing = await db.massIntention.findFirst({
+      where: { id, organizationId: session.user.organizationId },
+    });
+    if (!existing) {
+      return { success: false, message: "Mass intention not found" };
+    }
+    if (existing.status !== "PENDING") {
+      return {
+        success: false,
+        message: `Cannot reject a mass intention with status "${existing.status}"`,
+      };
+    }
+
+    const massIntention = await db.massIntention.update({
+      where: { id },
+      data: {
+        status: "REJECTED",
+        notes: reason ? `Rejected: ${reason}` : existing.notes,
+      },
+      include: { parishioner: true, organization: true, mass: true },
+    });
+
+    await db.auditLog.create({
+      data: {
+        action: "UPDATE",
+        entityType: "MassIntention",
+        entityId: id,
+        performedBy: session.user.id,
+        details: { status: "REJECTED", reason },
+      },
+    });
+
+    revalidatePath("/mass-intentions");
+    revalidatePath("/mass-intentions/calendar");
+    revalidatePath(`/mass-intentions/${id}`);
+
+    return {
+      success: true,
+      message: "Mass intention rejected",
+      data: massIntention,
+    };
+  } catch (error) {
+    console.error("Failed to reject mass intention:", error);
+    return { success: false, message: "Failed to reject mass intention" };
+  }
+}
+
+// ============================================
 // PUBLIC OPERATIONS (no auth required)
 // ============================================
 
@@ -554,6 +686,8 @@ export async function submitPublicMassIntention(
     const massIntention = await db.massIntention.create({
       data: {
         ...rest,
+        requestedBy: rest.requestedBy || "Anonymous",
+        stipend,
         massId,
         organizationId,
         status: "PENDING",
@@ -566,6 +700,7 @@ export async function submitPublicMassIntention(
     return {
       success: true,
       message: "Mass intention submitted successfully. The parish will review your request.",
+      data: massIntention,
     };
   } catch (error) {
     console.error("Failed to submit public mass intention:", error);

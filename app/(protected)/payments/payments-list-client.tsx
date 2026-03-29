@@ -42,7 +42,7 @@ export default function PaymentsListClient({
 		if (statusFilter !== 'all') newParams.set('status', statusFilter);
 		if (purposeFilter !== 'all') newParams.set('purpose', purposeFilter);
 		if (methodFilter !== 'all') newParams.set('method', methodFilter);
-		router.push(`/dashboard/payments?${newParams.toString()}`);
+		router.push(`/payments?${newParams.toString()}`);
 	}, [search, statusFilter, purposeFilter, methodFilter, router]);
 
 	// Debounce search
@@ -139,7 +139,7 @@ export default function PaymentsListClient({
 								setStatusFilter('all');
 								setPurposeFilter('all');
 								setMethodFilter('all');
-								router.push('/dashboard/payments');
+								router.push('/payments');
 							}}
 						>
 							Clear
