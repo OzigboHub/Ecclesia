@@ -9,6 +9,7 @@ import { ZodError } from "zod";
 
 const MAX_FAILED_LOGIN_ATTEMPTS = 5;
 const LOCKOUT_DURATION_MINUTES = 30;
+const IDLE_TIMEOUT_MINUTES = 1;
 
 function getClientIp(request?: Request): string | null {
 	if (!request) return null;
@@ -117,13 +118,29 @@ export const authConfig: NextAuthConfig = {
 			credentials: {
 				email: { label: "Email", type: "email" },
 				password: { label: "Password", type: "password" },
+				twoFactorToken: { label: "2FA Token", type: "text" },
 			},
 			async authorize(credentials, request) {
 				try {
-					// Validate credentials with Zod
-					const { email, password } =
+					const rawEmail = credentials?.email;
+					const twoFactorToken = credentials?.twoFactorToken;
+					const hasTwoFactorToken =
+						typeof twoFactorToken === "string" &&
+						twoFactorToken.trim().length > 0;
+
+					const normalizedEmail =
+						typeof rawEmail === "string" ?
+							rawEmail.toLowerCase().trim()
+						:	"";
+
+					if (!normalizedEmail || !normalizedEmail.includes("@")) {
+						return null;
+					}
+
+					if (!hasTwoFactorToken) {
+						// Validate credentials with Zod
 						await loginSchema.parseAsync(credentials);
-					const normalizedEmail = email.toLowerCase().trim();
+					}
 					const ipAddress = getClientIp(request);
 					const userAgent =
 						request?.headers.get("user-agent") ?? null;
@@ -166,33 +183,75 @@ export const authConfig: NextAuthConfig = {
 						return null;
 					}
 
-					// Verify password
-					const isValid = await bcrypt.compare(
-						password,
-						user.password,
-					);
+					if (hasTwoFactorToken) {
+						const challenge =
+							await db.twoFactorChallenge.findUnique({
+								where: {
+									challengeToken: twoFactorToken as string,
+								},
+								select: {
+									userId: true,
+									expiresAt: true,
+									consumedAt: true,
+								},
+							});
 
-					if (!isValid) {
-						await handleFailedLogin({
-							userId: user.id,
-							email: normalizedEmail,
-							ipAddress,
-							reason: "INVALID_CREDENTIALS",
-							currentAttempts: user.failedLoginAttempts,
-						});
-						return null;
+						if (!challenge || challenge.userId !== user.id) {
+							return null;
+						}
+
+						if (!challenge.consumedAt) {
+							return null;
+						}
+
+						if (challenge.expiresAt <= new Date()) {
+							return null;
+						}
+					} else {
+						// Verify password
+						const isValid = await bcrypt.compare(
+							(credentials?.password as string) ?? "",
+							user.password,
+						);
+
+						if (!isValid) {
+							await handleFailedLogin({
+								userId: user.id,
+								email: normalizedEmail,
+								ipAddress,
+								reason: "INVALID_CREDENTIALS",
+								currentAttempts: user.failedLoginAttempts,
+							});
+							return null;
+						}
 					}
 
-					// Update last login timestamp
-					await db.user.update({
-						where: { id: user.id },
-						data: {
-							lastLogin: new Date(),
-							failedLoginAttempts: 0,
-							lastFailedLoginAt: null,
-							lockedUntil: null,
-						},
-					});
+					if (user.activeSessionId) {
+						const existingSession = await db.userSession.findUnique(
+							{
+								where: { tokenId: user.activeSessionId },
+								select: {
+									revokedAt: true,
+									expiresAt: true,
+									lastSeenAt: true,
+								},
+							},
+						);
+
+						if (existingSession) {
+							if (!existingSession.revokedAt) {
+								await db.userSession.update({
+									where: { tokenId: user.activeSessionId },
+									data: { revokedAt: new Date() },
+								});
+							}
+						}
+
+						await db.user.update({
+							where: { id: user.id },
+							data: { activeSessionId: null },
+						});
+					}
 
 					await logAuthEvent({
 						action: "LOGIN",
@@ -210,15 +269,27 @@ export const authConfig: NextAuthConfig = {
 						Date.now() + 24 * 60 * 60 * 1000,
 					);
 
-					await db.userSession.create({
-						data: {
-							userId: user.id,
-							tokenId,
-							ipAddress,
-							userAgent,
-							expiresAt,
-						},
-					});
+					await db.$transaction([
+						db.userSession.create({
+							data: {
+								userId: user.id,
+								tokenId,
+								ipAddress,
+								userAgent,
+								expiresAt,
+							},
+						}),
+						db.user.update({
+							where: { id: user.id },
+							data: {
+								activeSessionId: tokenId,
+								lastLogin: new Date(),
+								failedLoginAttempts: 0,
+								lastFailedLoginAt: null,
+								lockedUntil: null,
+							},
+						}),
+					]);
 
 					// NEW: Look up parishioner record if any
 					const parishioner = await db.parishioner.findUnique({
@@ -286,6 +357,7 @@ export const authConfig: NextAuthConfig = {
 					isActive: true,
 					lockedUntil: true,
 					sessionVersion: true,
+					activeSessionId: true,
 				},
 			});
 
@@ -311,14 +383,68 @@ export const authConfig: NextAuthConfig = {
 				return {};
 			}
 
+			const idleCutoff = new Date(
+				Date.now() - IDLE_TIMEOUT_MINUTES * 60 * 1000,
+			);
+
 			const activeSession = await db.userSession.findUnique({
 				where: { tokenId: token.sessionId },
 				select: {
 					userId: true,
 					revokedAt: true,
 					expiresAt: true,
+					lastSeenAt: true,
 				},
 			});
+
+			if (!currentUser.activeSessionId) {
+				if (
+					!activeSession ||
+					activeSession.userId !== token.id ||
+					activeSession.revokedAt ||
+					activeSession.expiresAt <= new Date()
+				) {
+					return {};
+				}
+
+				await db.user.update({
+					where: { id: token.id },
+					data: { activeSessionId: token.sessionId },
+				});
+			} else if (currentUser.activeSessionId !== token.sessionId) {
+				const expectedSession = await db.userSession.findUnique({
+					where: { tokenId: currentUser.activeSessionId },
+					select: {
+						revokedAt: true,
+						expiresAt: true,
+						lastSeenAt: true,
+					},
+				});
+
+				const expectedStillActive =
+					!!expectedSession &&
+					!expectedSession.revokedAt &&
+					expectedSession.expiresAt > new Date() &&
+					expectedSession.lastSeenAt > idleCutoff;
+
+				if (expectedStillActive) {
+					return {};
+				}
+
+				if (
+					!activeSession ||
+					activeSession.userId !== token.id ||
+					activeSession.revokedAt ||
+					activeSession.expiresAt <= new Date()
+				) {
+					return {};
+				}
+
+				await db.user.update({
+					where: { id: token.id },
+					data: { activeSessionId: token.sessionId },
+				});
+			}
 
 			if (!activeSession || activeSession.userId !== token.id) {
 				return {};
@@ -328,6 +454,20 @@ export const authConfig: NextAuthConfig = {
 				activeSession.revokedAt ||
 				activeSession.expiresAt <= new Date()
 			) {
+				return {};
+			}
+
+			if (activeSession.lastSeenAt <= idleCutoff) {
+				await db.$transaction([
+					db.userSession.update({
+						where: { tokenId: token.sessionId },
+						data: { revokedAt: new Date() },
+					}),
+					db.user.update({
+						where: { id: token.id },
+						data: { activeSessionId: null },
+					}),
+				]);
 				return {};
 			}
 

@@ -1,17 +1,17 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { loginSchema, type LoginInput } from "@/lib/validators/auth.schema";
 import { login } from "@/app/actions/auth.actions";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { loginSchema, type LoginInput } from "@/lib/validators/auth.schema";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Eye, EyeOff } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
+import { useForm } from "react-hook-form";
+import { toast } from "sonner";
 
 export default function LoginPage() {
 	const router = useRouter();
@@ -35,6 +35,36 @@ export default function LoginPage() {
 	const onSubmit = (data: LoginInput) => {
 		startTransition(async () => {
 			const result = await login(data);
+			const twoFactorPayload =
+				(result.data as {
+					requiresTwoFactor?: boolean;
+					requiresTwoFactorSetup?: boolean;
+					challengeToken?: string;
+					setupToken?: string;
+					method?: string;
+				}) ?? {};
+
+			if (result.success && twoFactorPayload.requiresTwoFactorSetup) {
+				toast.info("Set up two-factor authentication to continue");
+				router.push(
+					`/auth/setup-2fa?token=${encodeURIComponent(
+						twoFactorPayload.setupToken ?? "",
+					)}&email=${encodeURIComponent(data.email)}`,
+				);
+				return;
+			}
+
+			if (result.success && twoFactorPayload.requiresTwoFactor) {
+				toast.info("Verify your sign-in to continue");
+				router.push(
+					`/auth/verify-2fa?token=${encodeURIComponent(
+						twoFactorPayload.challengeToken ?? "",
+					)}&method=${encodeURIComponent(
+						twoFactorPayload.method ?? "",
+					)}&email=${encodeURIComponent(data.email)}`,
+				);
+				return;
+			}
 
 			if (result.success) {
 				toast.success("Welcome back!");
@@ -153,9 +183,8 @@ export default function LoginPage() {
 										className="pr-10"
 										aria-invalid={!!errors.password}
 										aria-describedby={
-											errors.password
-												? "password-error"
-												: undefined
+											errors.password ? "password-error"
+											:	undefined
 										}
 									/>
 									<button
@@ -166,11 +195,9 @@ export default function LoginPage() {
 										className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
 										tabIndex={-1}
 									>
-										{showPassword ? (
+										{showPassword ?
 											<EyeOff className="h-4 w-4" />
-										) : (
-											<Eye className="h-4 w-4" />
-										)}
+										:	<Eye className="h-4 w-4" />}
 									</button>
 								</div>
 								{errors.password && (

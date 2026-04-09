@@ -65,6 +65,11 @@ export const SIDEBAR = [
     href: "/payments",
   },
   {
+    icon: <RiLiveFill className=" w-5 h-5" />,
+    name: "Live Streams",
+    href: "/live-streams",
+  },
+  {
     icon: <Shield className=" w-5 h-5" />,
     name: "Sessions",
     href: "/sessions",

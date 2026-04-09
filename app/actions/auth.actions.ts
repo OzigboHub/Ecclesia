@@ -1,27 +1,46 @@
 "use server";
 
 import { auth, signIn, signOut } from "@/auth";
+import {
+	decryptTotpSecret,
+	encryptTotpSecret,
+	generateEmailOtp,
+	generateTotpSecret,
+	verifyTotpCode,
+} from "@/lib/auth/two-factor";
 import db from "@/lib/db";
 import {
 	loginSchema,
 	registerSchemaServer,
 	resetPasswordSchema,
+	twoFactorConfirmSchema,
+	twoFactorEnrollmentConfirmSchema,
+	twoFactorEnrollmentSchema,
+	twoFactorSetupSchema,
+	twoFactorVerifySchema,
 } from "@/lib/validators/auth.schema";
 import type { ActionResponse } from "@/types";
 import type { Prisma } from "@prisma/client";
-import { UserRole } from "@prisma/client";
+import { TwoFactorMethod, UserRole } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import { AuthError } from "next-auth";
-import { Resend } from "resend";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { Resend } from "resend";
 
 function minutesUntil(date: Date): number {
 	const diffMs = date.getTime() - Date.now();
 	if (diffMs <= 0) return 0;
 	return Math.ceil(diffMs / 60000);
 }
+
+const MAX_FAILED_LOGIN_ATTEMPTS = 5;
+const LOCKOUT_DURATION_MINUTES = 30;
+const SINGLE_DEVICE_IDLE_MINUTES = 1;
+const TWO_FACTOR_OTP_TTL_MINUTES = 5;
+const TWO_FACTOR_SETUP_TTL_MINUTES = 10;
+const TWO_FACTOR_MAX_ATTEMPTS = 5;
 
 async function getActionIpAddress(): Promise<string | null> {
 	const requestHeaders = await headers();
@@ -54,6 +73,164 @@ async function logAuthAction(params: {
 	}
 }
 
+function isTwoFactorRole(role: UserRole): boolean {
+	return (
+		role === "SUPER_ADMIN" ||
+		role === "PARISH_ADMIN" ||
+		role === "PARISH_SECRETARY"
+	);
+}
+
+async function getActiveSessionForUser(
+	userId: string,
+	activeSessionId: string | null,
+) {
+	if (!activeSessionId) return null;
+	return db.userSession.findUnique({
+		where: { tokenId: activeSessionId },
+		select: {
+			revokedAt: true,
+			expiresAt: true,
+			lastSeenAt: true,
+		},
+	});
+}
+
+async function incrementFailedLogin(userId: string, email: string) {
+	const user = await db.user.findUnique({
+		where: { id: userId },
+		select: { failedLoginAttempts: true },
+	});
+
+	const attempts = (user?.failedLoginAttempts ?? 0) + 1;
+	const shouldLock = attempts >= MAX_FAILED_LOGIN_ATTEMPTS;
+	const lockedUntil =
+		shouldLock ?
+			new Date(Date.now() + LOCKOUT_DURATION_MINUTES * 60 * 1000)
+		:	null;
+
+	await db.user.update({
+		where: { id: userId },
+		data: {
+			failedLoginAttempts: attempts,
+			lastFailedLoginAt: new Date(),
+			lockedUntil,
+		},
+	});
+
+	await logAuthAction({
+		action: "LOGIN",
+		entityId: userId,
+		performedBy: userId,
+		details: {
+			status: "FAILED",
+			reason: "INVALID_CREDENTIALS",
+			email,
+			failedLoginAttempts: attempts,
+			lockedUntil: lockedUntil?.toISOString() ?? null,
+		},
+	});
+}
+
+async function createTwoFactorChallenge(params: {
+	userId: string;
+	email: string;
+	method: TwoFactorMethod;
+}) {
+	const challengeToken = crypto.randomBytes(32).toString("hex");
+	const expiresAt = new Date(
+		Date.now() + TWO_FACTOR_OTP_TTL_MINUTES * 60 * 1000,
+	);
+	const ipAddress = await getActionIpAddress();
+	const requestHeaders = await headers();
+	const userAgent = requestHeaders.get("user-agent");
+
+	if (params.method === "EMAIL") {
+		const { code, codeHash } = generateEmailOtp();
+
+		await db.twoFactorChallenge.create({
+			data: {
+				userId: params.userId,
+				method: params.method,
+				challengeToken,
+				codeHash,
+				expiresAt,
+				ipAddress,
+				userAgent,
+			},
+		});
+
+		if (process.env.RESEND_API_KEY) {
+			const resend = new Resend(process.env.RESEND_API_KEY);
+			await resend.emails.send({
+				from: `Ecclesia <support@ecclesialight.com>`,
+				to: params.email,
+				subject: "Your verification code",
+				html: `
+					<div style="background:#f6f6f6;padding:40px 0;font-family:Arial,Helvetica,sans-serif;">
+						<table width="100%" cellpadding="0" cellspacing="0" role="presentation">
+							<tr>
+								<td align="center">
+									<table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;padding:30px;">
+										<tr>
+											<td align="center" style="padding-bottom:20px;">
+												<img src="https://www.ecclesialight.com/standalone-golden-yellow-logo-typography.png" alt="Ecclesia" width="120" style="display:block;" />
+											</td>
+										</tr>
+										<tr>
+											<td>
+												<h2 style="margin:0 0 16px 0;color:#333;">Verify your sign-in</h2>
+												<p style="font-size:14px;color:#444;line-height:1.6;">Enter this code to finish signing in:</p>
+												<div style="font-size:28px;font-weight:bold;letter-spacing:6px;color:#c9a84c;margin:16px 0;">${code}</div>
+												<p style="font-size:13px;color:#888;">This code expires in ${TWO_FACTOR_OTP_TTL_MINUTES} minutes.</p>
+											</td>
+										</tr>
+									</table>
+							</td>
+						</tr>
+					</table>
+				</div>
+				`,
+			});
+		}
+		return { challengeToken, method: params.method };
+	}
+
+	await db.twoFactorChallenge.create({
+		data: {
+			userId: params.userId,
+			method: params.method,
+			challengeToken,
+			expiresAt,
+			ipAddress,
+			userAgent,
+		},
+	});
+
+	return { challengeToken, method: params.method };
+}
+
+async function createTwoFactorSetupToken(userId: string) {
+	await db.twoFactorSetupToken.deleteMany({
+		where: { userId },
+	});
+
+	const token = crypto.randomBytes(32).toString("hex");
+	const expiresAt = new Date(
+		Date.now() + TWO_FACTOR_SETUP_TTL_MINUTES * 60 * 1000,
+	);
+
+	await db.twoFactorSetupToken.create({
+		data: {
+			userId,
+			token,
+			expiresAt,
+		},
+	});
+
+	return token;
+}
+
 /**
  * Login action - authenticates user with email and password
  */
@@ -78,8 +255,15 @@ export async function login(data: {
 			where: { email: normalizedEmail },
 			select: {
 				id: true,
+				email: true,
+				password: true,
+				role: true,
 				isActive: true,
 				lockedUntil: true,
+				failedLoginAttempts: true,
+				twoFactorEnabled: true,
+				twoFactorMethod: true,
+				activeSessionId: true,
 			},
 		});
 
@@ -98,6 +282,79 @@ export async function login(data: {
 					remaining > 0 ?
 						`Account temporarily locked. Try again in ${remaining} minute(s).`
 					:	"Account temporarily locked. Try again shortly.",
+			};
+		}
+
+		if (!user || !user.password) {
+			return {
+				success: false,
+				message: "Invalid email or password",
+			};
+		}
+
+		const shouldRequireTwoFactor = isTwoFactorRole(user.role);
+		const hasTwoFactorConfigured =
+			user.twoFactorEnabled && user.twoFactorMethod;
+
+		if (shouldRequireTwoFactor) {
+			const isValid = await bcrypt.compare(
+				parsed.data.password,
+				user.password,
+			);
+
+			if (!isValid) {
+				await incrementFailedLogin(user.id, normalizedEmail);
+				return {
+					success: false,
+					message: "Invalid email or password",
+				};
+			}
+
+			if (user.activeSessionId) {
+				const existingSession = await getActiveSessionForUser(
+					user.id,
+					user.activeSessionId,
+				);
+				if (existingSession) {
+					if (!existingSession.revokedAt) {
+						await db.userSession.update({
+							where: { tokenId: user.activeSessionId },
+							data: { revokedAt: new Date() },
+						});
+					}
+
+					await db.user.update({
+						where: { id: user.id },
+						data: { activeSessionId: null },
+					});
+				}
+			}
+
+			if (!hasTwoFactorConfigured) {
+				const setupToken = await createTwoFactorSetupToken(user.id);
+				return {
+					success: true,
+					message: "Two-factor setup required",
+					data: {
+						requiresTwoFactorSetup: true,
+						setupToken,
+					},
+				};
+			}
+
+			const challenge = await createTwoFactorChallenge({
+				userId: user.id,
+				email: normalizedEmail,
+				method: user.twoFactorMethod as any,
+			});
+			return {
+				success: true,
+				message: "Two-factor verification required",
+				data: {
+					requiresTwoFactor: true,
+					challengeToken: challenge.challengeToken,
+					method: challenge.method,
+				},
 			};
 		}
 
@@ -156,6 +413,574 @@ export async function login(data: {
 	}
 }
 
+export async function startTwoFactorEnrollment(data: {
+	setupToken: string;
+	method: "EMAIL" | "TOTP";
+}): Promise<
+	ActionResponse<{
+		challengeToken: string;
+		otpauthUrl?: string;
+		secret?: string;
+	}>
+> {
+	try {
+		const parsed = twoFactorEnrollmentSchema.safeParse(data);
+		if (!parsed.success) {
+			return {
+				success: false,
+				message: "Invalid setup request",
+				errors: parsed.error.flatten().fieldErrors,
+			};
+		}
+
+		const setupSession = await db.twoFactorSetupToken.findUnique({
+			where: { token: parsed.data.setupToken },
+			include: { user: true },
+		});
+
+		if (!setupSession || setupSession.expiresAt <= new Date()) {
+			return { success: false, message: "Setup session expired" };
+		}
+
+		if (setupSession.user.twoFactorEnabled) {
+			return { success: false, message: "Two-factor already enabled" };
+		}
+
+		if (!isTwoFactorRole(setupSession.user.role)) {
+			return { success: false, message: "Two-factor not required" };
+		}
+
+		if (parsed.data.method === "TOTP") {
+			const { secret, otpauthUrl } = generateTotpSecret(
+				setupSession.user.email,
+			);
+
+			await db.user.update({
+				where: { id: setupSession.userId },
+				data: {
+					twoFactorMethod: "TOTP",
+					twoFactorSecret: encryptTotpSecret(secret),
+					twoFactorEnabled: false,
+					twoFactorConfirmedAt: null,
+				},
+			});
+
+			const challenge = await createTwoFactorChallenge({
+				userId: setupSession.userId,
+				email: setupSession.user.email,
+				method: "TOTP",
+			});
+
+			return {
+				success: true,
+				message: "Authenticator setup started",
+				data: {
+					challengeToken: challenge.challengeToken,
+					secret,
+					otpauthUrl,
+				},
+			};
+		}
+
+		await db.user.update({
+			where: { id: setupSession.userId },
+			data: {
+				twoFactorMethod: "EMAIL",
+				twoFactorEnabled: false,
+				twoFactorConfirmedAt: null,
+			},
+		});
+
+		const challenge = await createTwoFactorChallenge({
+			userId: setupSession.userId,
+			email: setupSession.user.email,
+			method: "EMAIL",
+		});
+
+		return {
+			success: true,
+			message: "Email verification sent",
+			data: { challengeToken: challenge.challengeToken },
+		};
+	} catch (error) {
+		console.error("Two-factor enrollment error:", error);
+		return { success: false, message: "Failed to start setup" };
+	}
+}
+
+export async function confirmTwoFactorEnrollment(data: {
+	setupToken: string;
+	challengeToken: string;
+	method: "EMAIL" | "TOTP";
+	code: string;
+}): Promise<ActionResponse> {
+	try {
+		const parsed = twoFactorEnrollmentConfirmSchema.safeParse(data);
+		if (!parsed.success) {
+			return {
+				success: false,
+				message: "Invalid confirmation request",
+				errors: parsed.error.flatten().fieldErrors,
+			};
+		}
+
+		const setupSession = await db.twoFactorSetupToken.findUnique({
+			where: { token: parsed.data.setupToken },
+			include: { user: true },
+		});
+
+		if (!setupSession || setupSession.expiresAt <= new Date()) {
+			return { success: false, message: "Setup session expired" };
+		}
+
+		if (setupSession.user.twoFactorEnabled) {
+			return { success: false, message: "Two-factor already enabled" };
+		}
+
+		const challenge = await db.twoFactorChallenge.findUnique({
+			where: { challengeToken: parsed.data.challengeToken },
+		});
+
+		if (!challenge || challenge.userId !== setupSession.userId) {
+			return { success: false, message: "Invalid verification" };
+		}
+
+		if (challenge.expiresAt <= new Date()) {
+			return { success: false, message: "Verification code expired" };
+		}
+
+		if (challenge.consumedAt) {
+			return { success: false, message: "Verification already used" };
+		}
+
+		if (challenge.attempts >= TWO_FACTOR_MAX_ATTEMPTS) {
+			return { success: false, message: "Too many attempts" };
+		}
+
+		if (parsed.data.method === "EMAIL") {
+			const hashed = crypto
+				.createHash("sha256")
+				.update(parsed.data.code.trim())
+				.digest("hex");
+			if (hashed !== challenge.codeHash) {
+				await db.twoFactorChallenge.update({
+					where: { id: challenge.id },
+					data: { attempts: { increment: 1 } },
+				});
+				return { success: false, message: "Invalid verification code" };
+			}
+		} else {
+			const secret =
+				setupSession.user.twoFactorSecret ?
+					decryptTotpSecret(setupSession.user.twoFactorSecret)
+				:	null;
+			if (!secret) {
+				return {
+					success: false,
+					message: "Authenticator not configured",
+				};
+			}
+			const isValid = verifyTotpCode(secret, parsed.data.code.trim());
+			if (!isValid) {
+				await db.twoFactorChallenge.update({
+					where: { id: challenge.id },
+					data: { attempts: { increment: 1 } },
+				});
+				return { success: false, message: "Invalid verification code" };
+			}
+		}
+
+		await db.$transaction([
+			db.twoFactorChallenge.update({
+				where: { id: challenge.id },
+				data: { consumedAt: new Date() },
+			}),
+			db.user.update({
+				where: { id: setupSession.userId },
+				data: {
+					twoFactorEnabled: true,
+					twoFactorMethod: parsed.data.method,
+					twoFactorConfirmedAt: new Date(),
+				},
+			}),
+			db.twoFactorSetupToken.delete({
+				where: { id: setupSession.id },
+			}),
+		]);
+
+		const result = await signIn("credentials", {
+			email: setupSession.user.email,
+			twoFactorToken: parsed.data.challengeToken,
+			redirect: false,
+		});
+
+		if (!result || result.error) {
+			return { success: false, message: "Verification failed" };
+		}
+
+		return { success: true, message: "Two-factor enabled" };
+	} catch (error) {
+		console.error("Two-factor enrollment confirm error:", error);
+		return { success: false, message: "Failed to confirm setup" };
+	}
+}
+
+export async function verifyTwoFactor(data: {
+	email: string;
+	challengeToken: string;
+	code: string;
+}): Promise<ActionResponse> {
+	try {
+		const parsed = twoFactorVerifySchema.safeParse(data);
+		if (!parsed.success) {
+			return {
+				success: false,
+				message: "Invalid verification details",
+				errors: parsed.error.flatten().fieldErrors,
+			};
+		}
+
+		const normalizedEmail = parsed.data.email.toLowerCase().trim();
+		const user = await db.user.findUnique({
+			where: { email: normalizedEmail },
+			select: {
+				id: true,
+				email: true,
+				twoFactorMethod: true,
+				twoFactorSecret: true,
+				twoFactorEnabled: true,
+				role: true,
+			},
+		});
+
+		if (!user || !user.twoFactorEnabled || !user.twoFactorMethod) {
+			return { success: false, message: "Two-factor not enabled" };
+		}
+
+		if (!isTwoFactorRole(user.role)) {
+			return { success: false, message: "Two-factor not required" };
+		}
+
+		const challenge = await db.twoFactorChallenge.findUnique({
+			where: { challengeToken: parsed.data.challengeToken },
+		});
+
+		if (!challenge || challenge.userId !== user.id) {
+			return { success: false, message: "Invalid verification attempt" };
+		}
+
+		if (challenge.expiresAt <= new Date()) {
+			return { success: false, message: "Verification code expired" };
+		}
+
+		if (challenge.consumedAt) {
+			return { success: false, message: "Verification already used" };
+		}
+
+		if (challenge.attempts >= TWO_FACTOR_MAX_ATTEMPTS) {
+			return { success: false, message: "Too many attempts" };
+		}
+
+		if (user.twoFactorMethod === "EMAIL") {
+			const hashed = crypto
+				.createHash("sha256")
+				.update(parsed.data.code.trim())
+				.digest("hex");
+			if (hashed !== challenge.codeHash) {
+				await db.twoFactorChallenge.update({
+					where: { id: challenge.id },
+					data: { attempts: { increment: 1 } },
+				});
+				return { success: false, message: "Invalid verification code" };
+			}
+		} else {
+			if (!user.twoFactorSecret) {
+				return {
+					success: false,
+					message: "Authenticator is not configured",
+				};
+			}
+
+			const secret = decryptTotpSecret(user.twoFactorSecret);
+			const isValid = verifyTotpCode(secret, parsed.data.code.trim());
+			if (!isValid) {
+				await db.twoFactorChallenge.update({
+					where: { id: challenge.id },
+					data: { attempts: { increment: 1 } },
+				});
+				return { success: false, message: "Invalid verification code" };
+			}
+		}
+
+		await db.twoFactorChallenge.update({
+			where: { id: challenge.id },
+			data: { consumedAt: new Date() },
+		});
+
+		const result = await signIn("credentials", {
+			email: normalizedEmail,
+			twoFactorToken: parsed.data.challengeToken,
+			redirect: false,
+		});
+
+		if (!result || result.error) {
+			return { success: false, message: "Verification failed" };
+		}
+
+		return { success: true, message: "Login successful" };
+	} catch (error) {
+		console.error("Two-factor verification error:", error);
+		return { success: false, message: "Verification failed" };
+	}
+}
+
+export async function getTwoFactorStatus(): Promise<
+	ActionResponse<{
+		enabled: boolean;
+		method: TwoFactorMethod | null;
+		confirmedAt: Date | null;
+	}>
+> {
+	try {
+		const session = await auth();
+		if (!session?.user?.id) {
+			return { success: false, message: "Unauthorized" };
+		}
+
+		const user = await db.user.findUnique({
+			where: { id: session.user.id },
+			select: {
+				twoFactorEnabled: true,
+				twoFactorMethod: true,
+				twoFactorConfirmedAt: true,
+			},
+		});
+
+		if (!user) {
+			return { success: false, message: "User not found" };
+		}
+
+		return {
+			success: true,
+			message: "Two-factor status retrieved",
+			data: {
+				enabled: user.twoFactorEnabled,
+				method: user.twoFactorMethod,
+				confirmedAt: user.twoFactorConfirmedAt,
+			},
+		};
+	} catch (error) {
+		console.error("Two-factor status error:", error);
+		return { success: false, message: "Failed to load status" };
+	}
+}
+
+export async function startTwoFactorSetup(data: {
+	method: "EMAIL" | "TOTP";
+}): Promise<
+	ActionResponse<{
+		challengeToken?: string;
+		otpauthUrl?: string;
+		secret?: string;
+	}>
+> {
+	try {
+		const session = await auth();
+		if (!session?.user?.id || !session.user.email) {
+			return { success: false, message: "Unauthorized" };
+		}
+
+		const parsed = twoFactorSetupSchema.safeParse(data);
+		if (!parsed.success) {
+			return {
+				success: false,
+				message: "Invalid setup details",
+				errors: parsed.error.flatten().fieldErrors,
+			};
+		}
+
+		if (!isTwoFactorRole(session.user.role as UserRole)) {
+			return {
+				success: false,
+				message: "Two-factor is not required for this account",
+			};
+		}
+
+		if (parsed.data.method === "TOTP") {
+			const { secret, otpauthUrl } = generateTotpSecret(
+				session.user.email,
+			);
+			await db.user.update({
+				where: { id: session.user.id },
+				data: {
+					twoFactorMethod: "TOTP",
+					twoFactorSecret: encryptTotpSecret(secret),
+					twoFactorEnabled: false,
+					twoFactorConfirmedAt: null,
+				},
+			});
+
+			return {
+				success: true,
+				message: "Authenticator setup started",
+				data: { secret, otpauthUrl },
+			};
+		}
+
+		await db.user.update({
+			where: { id: session.user.id },
+			data: {
+				twoFactorMethod: "EMAIL",
+				twoFactorEnabled: false,
+				twoFactorConfirmedAt: null,
+			},
+		});
+
+		const challenge = await createTwoFactorChallenge({
+			userId: session.user.id,
+			email: session.user.email,
+			method: "EMAIL",
+		});
+
+		return {
+			success: true,
+			message: "Email verification sent",
+			data: { challengeToken: challenge.challengeToken },
+		};
+	} catch (error) {
+		console.error("Two-factor setup error:", error);
+		return { success: false, message: "Failed to start setup" };
+	}
+}
+
+export async function confirmTwoFactorSetup(data: {
+	method: "EMAIL" | "TOTP";
+	code: string;
+	challengeToken?: string;
+}): Promise<ActionResponse> {
+	try {
+		const session = await auth();
+		if (!session?.user?.id) {
+			return { success: false, message: "Unauthorized" };
+		}
+
+		const parsed = twoFactorConfirmSchema.safeParse(data);
+		if (!parsed.success) {
+			return {
+				success: false,
+				message: "Invalid confirmation details",
+				errors: parsed.error.flatten().fieldErrors,
+			};
+		}
+
+		if (parsed.data.method === "EMAIL") {
+			if (!parsed.data.challengeToken) {
+				return {
+					success: false,
+					message: "Challenge token is required",
+				};
+			}
+
+			const challenge = await db.twoFactorChallenge.findUnique({
+				where: { challengeToken: parsed.data.challengeToken },
+			});
+			if (!challenge || challenge.userId !== session.user.id) {
+				return { success: false, message: "Invalid verification" };
+			}
+			if (challenge.expiresAt <= new Date()) {
+				return { success: false, message: "Verification code expired" };
+			}
+			if (challenge.consumedAt) {
+				return { success: false, message: "Verification already used" };
+			}
+
+			const hashed = crypto
+				.createHash("sha256")
+				.update(parsed.data.code.trim())
+				.digest("hex");
+			if (hashed !== challenge.codeHash) {
+				await db.twoFactorChallenge.update({
+					where: { id: challenge.id },
+					data: { attempts: { increment: 1 } },
+				});
+				return { success: false, message: "Invalid verification code" };
+			}
+
+			await db.$transaction([
+				db.twoFactorChallenge.update({
+					where: { id: challenge.id },
+					data: { consumedAt: new Date() },
+				}),
+				db.user.update({
+					where: { id: session.user.id },
+					data: {
+						twoFactorEnabled: true,
+						twoFactorConfirmedAt: new Date(),
+					},
+				}),
+			]);
+
+			return { success: true, message: "Two-factor enabled" };
+		}
+
+		const user = await db.user.findUnique({
+			where: { id: session.user.id },
+			select: { twoFactorSecret: true },
+		});
+
+		if (!user?.twoFactorSecret) {
+			return { success: false, message: "Authenticator not configured" };
+		}
+
+		const secret = decryptTotpSecret(user.twoFactorSecret);
+		const isValid = verifyTotpCode(secret, parsed.data.code.trim());
+		if (!isValid) {
+			return { success: false, message: "Invalid verification code" };
+		}
+
+		await db.user.update({
+			where: { id: session.user.id },
+			data: {
+				twoFactorEnabled: true,
+				twoFactorConfirmedAt: new Date(),
+			},
+		});
+
+		return { success: true, message: "Two-factor enabled" };
+	} catch (error) {
+		console.error("Two-factor confirm error:", error);
+		return { success: false, message: "Failed to confirm setup" };
+	}
+}
+
+export async function disableTwoFactor(): Promise<ActionResponse> {
+	try {
+		const session = await auth();
+		if (!session?.user?.id) {
+			return { success: false, message: "Unauthorized" };
+		}
+
+		await db.user.update({
+			where: { id: session.user.id },
+			data: {
+				twoFactorEnabled: false,
+				twoFactorMethod: null,
+				twoFactorSecret: null,
+				twoFactorConfirmedAt: null,
+			},
+		});
+
+		await db.twoFactorChallenge.deleteMany({
+			where: { userId: session.user.id },
+		});
+
+		return { success: true, message: "Two-factor disabled" };
+	} catch (error) {
+		console.error("Two-factor disable error:", error);
+		return { success: false, message: "Failed to disable two-factor" };
+	}
+}
+
 /**
  * Logout action - signs out the current user
  */
@@ -171,6 +996,11 @@ export async function logout(): Promise<ActionResponse> {
 						revokedAt: null,
 					},
 					data: { revokedAt: new Date() },
+				});
+
+				await db.user.update({
+					where: { id: session.user.id },
+					data: { activeSessionId: null },
 				});
 			}
 
@@ -405,7 +1235,9 @@ export async function requestPasswordReset(
 				console.error("Failed to send password reset email:", error);
 			}
 		} else {
-			console.warn("RESEND_API_KEY not configured — password reset email not sent");
+			console.warn(
+				"RESEND_API_KEY not configured — password reset email not sent",
+			);
 		}
 
 		return {
@@ -540,7 +1372,7 @@ export async function revokeMySessions(): Promise<ActionResponse> {
 
 		await db.user.update({
 			where: { id: session.user.id },
-			data: { sessionVersion: { increment: 1 } },
+			data: { sessionVersion: { increment: 1 }, activeSessionId: null },
 		});
 
 		await logAuthAction({
@@ -645,6 +1477,13 @@ export async function revokeMySession(
 			where: { tokenId: sessionId },
 			data: { revokedAt: new Date() },
 		});
+
+		if (sessionId === session.user.sessionId) {
+			await db.user.update({
+				where: { id: session.user.id },
+				data: { activeSessionId: null },
+			});
+		}
 
 		await logAuthAction({
 			action: "PERMISSION_CHANGE",
