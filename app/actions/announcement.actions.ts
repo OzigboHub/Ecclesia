@@ -4,6 +4,10 @@ import { auth } from "@/auth";
 import db from "@/lib/db";
 import { isFeatureEnabled } from "@/lib/features.server";
 import {
+  canApproveAnnouncements,
+  canCreateSocietyAnnouncement,
+} from "@/lib/permissions";
+import {
   announcementFilterSchema,
   createAnnouncementSchema,
   updateAnnouncementSchema,
@@ -434,4 +438,297 @@ export async function getPublicAnnouncements(): Promise<
     message: "Public announcements are unavailable in this environment",
     data: [] as AnnouncementWithOrganization[],
   };
+}
+
+// ============================================
+// SOCIETY HEAD ANNOUNCEMENT MANAGEMENT
+// ============================================
+
+type SocietyAnnouncementItem = {
+  id: string;
+  title: string;
+  content: string;
+  imageUrl: string | null;
+  isPublished: boolean;
+  publishedAt: Date | null;
+  expiresAt: Date | null;
+  createdAt: Date;
+  approvalStatus: string;
+  rejectionReason: string | null;
+  societyId: string | null;
+};
+
+/**
+ * Create an announcement on behalf of a society (requires admin approval)
+ */
+export async function createSocietyAnnouncement(
+  societyId: string,
+  formData: unknown,
+): Promise<ActionResponse<SocietyAnnouncementItem>> {
+  try {
+    const session = await auth();
+    if (!session?.user) {
+      return { success: false, message: "Unauthorized" };
+    }
+
+    if (!canCreateSocietyAnnouncement(session.user.role)) {
+      return { success: false, message: "Permission denied" };
+    }
+
+    const enabled = await isFeatureEnabled(
+      session.user.organizationId,
+      "enableAnnouncements",
+    );
+    if (!enabled) {
+      return { success: false, message: "Announcements feature is not enabled" };
+    }
+
+    // Verify user is leader of this society
+    const society = await db.society.findFirst({
+      where: {
+        id: societyId,
+        organizationId: session.user.organizationId,
+        OR: [
+          { presidentId: session.user.id },
+          { secretaryId: session.user.id },
+        ],
+      },
+    });
+
+    if (!society) {
+      return { success: false, message: "You are not a leader of this society" };
+    }
+
+    const parsed = createAnnouncementSchema.safeParse(formData);
+    if (!parsed.success) {
+      return {
+        success: false,
+        message: "Validation failed",
+        errors: parsed.error.flatten().fieldErrors,
+      };
+    }
+
+    const announcement = await db.announcement.create({
+      data: {
+        title: parsed.data.title,
+        content: parsed.data.content,
+        imageUrl: parsed.data.imageUrl || null,
+        organizationId: session.user.organizationId,
+        targetLevels: ["PARISH", "OUTSTATION"],
+        isPublished: false,
+        approvalStatus: "PENDING_APPROVAL",
+        createdById: session.user.id,
+        societyId,
+        expiresAt: parsed.data.expiresAt ?? null,
+      },
+    });
+
+    revalidatePath("/announcements");
+    revalidatePath(`/dashboard/societies/${societyId}/manage`);
+
+    return {
+      success: true,
+      message: "Announcement submitted for approval",
+      data: announcement,
+    };
+  } catch (error) {
+    console.error("Failed to create society announcement:", error);
+    return { success: false, message: "Failed to create announcement" };
+  }
+}
+
+/**
+ * Get announcements created by a society
+ */
+export async function getSocietyAnnouncements(
+  societyId: string,
+): Promise<ActionResponse<SocietyAnnouncementItem[]>> {
+  try {
+    const session = await auth();
+    if (!session?.user) {
+      return { success: false, message: "Unauthorized" };
+    }
+
+    const announcements = await db.announcement.findMany({
+      where: {
+        societyId,
+        organizationId: session.user.organizationId,
+      },
+      select: {
+        id: true,
+        title: true,
+        content: true,
+        imageUrl: true,
+        isPublished: true,
+        publishedAt: true,
+        expiresAt: true,
+        createdAt: true,
+        approvalStatus: true,
+        rejectionReason: true,
+        societyId: true,
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return {
+      success: true,
+      message: "Society announcements retrieved",
+      data: announcements,
+    };
+  } catch (error) {
+    console.error("Failed to get society announcements:", error);
+    return { success: false, message: "Failed to retrieve announcements" };
+  }
+}
+
+/**
+ * Approve a society announcement (Admin/Secretary only)
+ */
+export async function approveSocietyAnnouncement(
+  id: string,
+): Promise<ActionResponse> {
+  try {
+    const session = await auth();
+    if (!session?.user) {
+      return { success: false, message: "Unauthorized" };
+    }
+
+    if (!canApproveAnnouncements(session.user.role)) {
+      return { success: false, message: "Permission denied" };
+    }
+
+    const announcement = await db.announcement.findFirst({
+      where: {
+        id,
+        organizationId: session.user.organizationId,
+        approvalStatus: "PENDING_APPROVAL",
+      },
+    });
+
+    if (!announcement) {
+      return { success: false, message: "Announcement not found or already reviewed" };
+    }
+
+    await db.announcement.update({
+      where: { id },
+      data: {
+        approvalStatus: "APPROVED",
+        isPublished: true,
+        publishedAt: new Date(),
+        reviewedById: session.user.id,
+        reviewedAt: new Date(),
+      },
+    });
+
+    revalidatePath("/announcements");
+    revalidatePath("/dashboard");
+    if (announcement.societyId) {
+      revalidatePath(`/dashboard/societies/${announcement.societyId}/manage`);
+    }
+
+    return { success: true, message: "Announcement approved and published" };
+  } catch (error) {
+    console.error("Failed to approve announcement:", error);
+    return { success: false, message: "Failed to approve announcement" };
+  }
+}
+
+/**
+ * Reject a society announcement (Admin/Secretary only)
+ */
+export async function rejectSocietyAnnouncement(
+  id: string,
+  reason?: string,
+): Promise<ActionResponse> {
+  try {
+    const session = await auth();
+    if (!session?.user) {
+      return { success: false, message: "Unauthorized" };
+    }
+
+    if (!canApproveAnnouncements(session.user.role)) {
+      return { success: false, message: "Permission denied" };
+    }
+
+    const announcement = await db.announcement.findFirst({
+      where: {
+        id,
+        organizationId: session.user.organizationId,
+        approvalStatus: "PENDING_APPROVAL",
+      },
+    });
+
+    if (!announcement) {
+      return { success: false, message: "Announcement not found or already reviewed" };
+    }
+
+    await db.announcement.update({
+      where: { id },
+      data: {
+        approvalStatus: "REJECTED",
+        isPublished: false,
+        reviewedById: session.user.id,
+        reviewedAt: new Date(),
+        rejectionReason: reason || null,
+      },
+    });
+
+    revalidatePath("/announcements");
+    if (announcement.societyId) {
+      revalidatePath(`/dashboard/societies/${announcement.societyId}/manage`);
+    }
+
+    return { success: true, message: "Announcement rejected" };
+  } catch (error) {
+    console.error("Failed to reject announcement:", error);
+    return { success: false, message: "Failed to reject announcement" };
+  }
+}
+
+/**
+ * Get all pending announcements for admin review
+ */
+export async function getPendingAnnouncements(): Promise<
+  ActionResponse<SocietyAnnouncementItem[]>
+> {
+  try {
+    const session = await auth();
+    if (!session?.user) {
+      return { success: false, message: "Unauthorized" };
+    }
+
+    if (!canApproveAnnouncements(session.user.role)) {
+      return { success: false, message: "Permission denied" };
+    }
+
+    const announcements = await db.announcement.findMany({
+      where: {
+        organizationId: session.user.organizationId,
+        approvalStatus: "PENDING_APPROVAL",
+      },
+      select: {
+        id: true,
+        title: true,
+        content: true,
+        imageUrl: true,
+        isPublished: true,
+        publishedAt: true,
+        expiresAt: true,
+        createdAt: true,
+        approvalStatus: true,
+        rejectionReason: true,
+        societyId: true,
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return {
+      success: true,
+      message: "Pending announcements retrieved",
+      data: announcements,
+    };
+  } catch (error) {
+    console.error("Failed to get pending announcements:", error);
+    return { success: false, message: "Failed to retrieve pending announcements" };
+  }
 }

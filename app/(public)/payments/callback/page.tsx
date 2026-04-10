@@ -42,6 +42,7 @@ export default async function PaymentCallbackPage({
 		receiptNumber?: string;
 		payerName?: string;
 		massIntentionId?: string;
+		organizationId?: string;
 	} | undefined;
 
 	const isSuccess = result.success && payment?.paymentStatus === "COMPLETED";
@@ -114,8 +115,9 @@ export default async function PaymentCallbackPage({
 
 				<div className="flex flex-col sm:flex-row gap-2 pt-2">
 					<Button asChild variant="outline" className="flex-1">
-						<Link href="/">
-							<ArrowLeft className="mr-2 h-4 w-4" /> Home
+						<Link href={payment?.organizationId ? `/p/${payment.organizationId}` : "/"}>
+							<ArrowLeft className="mr-2 h-4 w-4" />{" "}
+							{payment?.organizationId ? "Back to parish" : "Home"}
 						</Link>
 					</Button>
 				</div>

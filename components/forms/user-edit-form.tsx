@@ -89,7 +89,7 @@ export function UserEditForm({
 
 			if (result.success) {
 				toast.success(result.message);
-				router.push('/dashboard/users');
+				router.push('/users');
 				router.refresh();
 				onSuccess?.();
 			} else {

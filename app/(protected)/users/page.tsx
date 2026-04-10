@@ -55,7 +55,7 @@ export default async function UsersPage() {
 					</p>
 				</div>
 				<Button asChild>
-					<Link href='/dashboard/users/new'>
+					<Link href='/users/new'>
 						<UserPlus className='mr-2 h-4 w-4' />
 						Add User
 					</Link>

@@ -236,6 +236,21 @@ export async function createMassIntention(
       };
     }
 
+    // Close bookings 30 minutes before Mass starts
+    if (mass.date && mass.time) {
+      const [h, m] = mass.time.split(":").map(Number);
+      const massStart = new Date(mass.date);
+      massStart.setHours(h, m, 0, 0);
+      const cutoff = new Date(massStart.getTime() - 30 * 60 * 1000);
+      if (new Date() >= cutoff) {
+        return {
+          success: false,
+          message:
+            "Bookings for this Mass have closed (30 minutes before start time)",
+        };
+      }
+    }
+
     // Create mass intention with optional payment
     const result = await db.$transaction(async (tx) => {
       // Create mass intention
@@ -657,7 +672,10 @@ export async function submitPublicMassIntention(
       return { success: false, message: "Organization not found" };
     }
 
-    const enabled = await isFeatureEnabled(organizationId, "enableMassIntentions");
+    const enabled = await isFeatureEnabled(
+      organizationId,
+      "enableMassIntentions",
+    );
     if (!enabled) {
       return {
         success: false,
@@ -683,6 +701,21 @@ export async function submitPublicMassIntention(
       };
     }
 
+    // Close bookings 30 minutes before Mass starts
+    if (mass.date && mass.time) {
+      const [h, m] = mass.time.split(":").map(Number);
+      const massStart = new Date(mass.date);
+      massStart.setHours(h, m, 0, 0);
+      const cutoff = new Date(massStart.getTime() - 30 * 60 * 1000);
+      if (new Date() >= cutoff) {
+        return {
+          success: false,
+          message:
+            "Bookings for this Mass have closed (30 minutes before start time)",
+        };
+      }
+    }
+
     const massIntention = await db.massIntention.create({
       data: {
         ...rest,
@@ -699,11 +732,113 @@ export async function submitPublicMassIntention(
 
     return {
       success: true,
-      message: "Mass intention submitted successfully. The parish will review your request.",
+      message:
+        "Mass intention submitted successfully. The parish will review your request.",
       data: massIntention,
     };
   } catch (error) {
     console.error("Failed to submit public mass intention:", error);
     return { success: false, message: "Failed to submit mass intention" };
+  }
+}
+
+// ============================================
+// EXPORT OPERATIONS
+// ============================================
+
+export async function exportMassIntentions(): Promise<ActionResponse<string>> {
+  try {
+    const session = await auth();
+    if (!session) {
+      return { success: false, message: "Unauthorized" };
+    }
+
+    if (!canManageMassIntentions(session.user.role)) {
+      return {
+        success: false,
+        message: "You do not have permission to export mass intentions",
+      };
+    }
+
+    const enabled = await isFeatureEnabled(
+      session.user.organizationId,
+      "enableMassIntentions",
+    );
+    if (!enabled) {
+      return {
+        success: false,
+        message: "Mass intentions feature is not enabled",
+      };
+    }
+
+    const massIntentions = await db.massIntention.findMany({
+      where: {
+        organizationId: session.user.organizationId,
+      },
+      include: {
+        parishioner: true,
+        mass: true,
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    // Build CSV
+    const headers = [
+      "Intention",
+      "Type",
+      "Status",
+      "Requested By",
+      "Intended For",
+      "Contact Email",
+      "Contact Phone",
+      "Mass Date",
+      "Mass Time",
+      "Mass Type",
+      "Stipend",
+      "Parishioner",
+      "Notes",
+      "Created At",
+      "Approved At",
+    ];
+
+    const escapeCSV = (value: string | null | undefined): string => {
+      if (!value) return "";
+      const str = String(value);
+      if (str.includes(",") || str.includes('"') || str.includes("\n")) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    };
+
+    const rows = massIntentions.map((mi) => [
+      escapeCSV(mi.intention),
+      escapeCSV(mi.intentionType),
+      escapeCSV(mi.status),
+      escapeCSV(mi.requestedBy),
+      escapeCSV(mi.intendedFor),
+      escapeCSV(mi.contactEmail),
+      escapeCSV(mi.contactPhone),
+      mi.mass?.date ? new Date(mi.mass.date).toLocaleDateString("en-NG") : "",
+      escapeCSV(mi.mass?.time),
+      escapeCSV(mi.mass?.massType),
+      mi.stipend != null ? mi.stipend.toString() : "",
+      mi.parishioner
+        ? escapeCSV(`${mi.parishioner.firstName} ${mi.parishioner.lastName}`)
+        : "",
+      escapeCSV(mi.notes),
+      new Date(mi.createdAt).toLocaleDateString("en-NG"),
+      mi.approvedAt ? new Date(mi.approvedAt).toLocaleDateString("en-NG") : "",
+    ]);
+
+    const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+
+    return {
+      success: true,
+      message: "Export generated successfully",
+      data: csv,
+    };
+  } catch (error) {
+    console.error("Failed to export mass intentions:", error);
+    return { success: false, message: "Failed to export mass intentions" };
   }
 }

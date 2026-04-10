@@ -1,10 +1,12 @@
 import {
   Calendar,
+  CalendarCog,
   CalendarDays,
   CirclePile,
   ClipboardList,
   Coins,
   FolderKanban,
+  Landmark,
   LayoutDashboard,
   Megaphone,
   Settings,
@@ -40,6 +42,11 @@ export const SIDEBAR = [
     href: "/masses",
   },
   {
+    icon: <CalendarCog className=" w-5 h-5" />,
+    name: "Mass Schedule",
+    href: "/mass-schedule",
+  },
+  {
     icon: <Calendar className=" w-5 h-5" />,
     name: "Appointments",
     href: "/appointments",
@@ -63,6 +70,11 @@ export const SIDEBAR = [
     icon: <Coins className=" w-5 h-5" />,
     name: "Payments",
     href: "/payments",
+  },
+  {
+    icon: <Landmark className=" w-5 h-5" />,
+    name: "Parish Finances",
+    href: "/parish-finances",
   },
   {
     icon: <RiLiveFill className=" w-5 h-5" />,

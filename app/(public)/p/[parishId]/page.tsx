@@ -2,8 +2,9 @@ import { getPublicAppointmentAvailabilities } from "@/app/actions/appointment.ac
 import { PublicAppointmentBooking } from "@/components/features/appointments/public-appointment-booking";
 import { Button } from "@/components/ui/button";
 import db from "@/lib/db";
+import { isFeatureEnabled } from "@/lib/features.server";
 import { format } from "date-fns";
-import { Calendar, Heart, Mail, MapPin, Phone, Radio } from "lucide-react";
+import { BookOpen, Calendar, Heart, Mail, MapPin, Phone, Radio } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -133,6 +134,42 @@ export default async function ParishPage({
 
 	const appointmentAvailabilityResult =
 		await getPublicAppointmentAvailabilities(parishId);
+
+	// Get approved mass intentions for upcoming masses
+	const massIntentionsEnabled = await isFeatureEnabled(
+		parishId,
+		"enableMassIntentions",
+	);
+	const massIntentions = massIntentionsEnabled
+		? await db.massIntention.findMany({
+				where: {
+					organizationId: parishId,
+					status: "APPROVED",
+					mass: {
+						date: { gte: now },
+						status: { not: "CANCELLED" },
+					},
+				},
+				select: {
+					id: true,
+					intention: true,
+					intentionType: true,
+					requestedBy: true,
+					intendedFor: true,
+					createdAt: true,
+					mass: {
+						select: {
+							id: true,
+							date: true,
+							time: true,
+							massType: true,
+						},
+					},
+				},
+				orderBy: { mass: { date: "asc" } },
+				take: 20,
+			})
+		: [];
 
 	return (
 		<div className="min-h-screen pt-[60px] bg-background">
@@ -388,7 +425,7 @@ export default async function ParishPage({
 						</div>
 						{masses.length > 0 && (
 							<Button asChild variant="outline" size="sm">
-								<Link href="/mass">Browse all masses</Link>
+								<Link href={`/mass/${parishId}`}>Browse all masses</Link>
 							</Button>
 						)}
 					</div>
@@ -429,6 +466,63 @@ export default async function ParishPage({
 						</p>
 					}
 				</section>
+
+				{/* Mass Intentions Section */}
+				{massIntentions.length > 0 && (
+					<section className="space-y-6">
+						<div className="flex flex-wrap items-center justify-between gap-3">
+							<div className="flex items-center gap-2">
+								<BookOpen className="h-5 w-5 text-primary" />
+								<h2 className="text-2xl font-bold">
+									Mass Intentions
+								</h2>
+							</div>
+							<Button asChild variant="outline" size="sm">
+								<Link href={`/p/${parishId}/mass-intentions`}>
+									Book an intention
+								</Link>
+							</Button>
+						</div>
+
+						<div className="space-y-3">
+							{massIntentions.map((mi) => (
+								<div
+									key={mi.id}
+									className="rounded-xl border bg-card px-4 py-3"
+								>
+									<div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+										<div className="min-w-0 flex-1 space-y-1">
+											<p className="font-medium text-sm leading-snug">
+												{mi.intention}
+											</p>
+											<div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+												<span className="rounded-full bg-muted px-2 py-0.5 font-medium">
+													{mi.intentionType.replace(/_/g, " ")}
+												</span>
+												{mi.intendedFor && (
+													<span>
+														For: {mi.intendedFor}
+													</span>
+												)}
+												<span>
+													By: {mi.requestedBy || "Anonymous"}
+												</span>
+											</div>
+										</div>
+										<div className="shrink-0 text-xs text-muted-foreground sm:text-right">
+											<p className="font-medium text-foreground">
+												{format(new Date(mi.mass.date), "MMM d, yyyy")}
+											</p>
+											<p>
+												{mi.mass.time} · {mi.mass.massType.replace(/_/g, " ")}
+											</p>
+										</div>
+									</div>
+								</div>
+							))}
+						</div>
+					</section>
+				)}
 
 				{/* Campaigns Section */}
 				{campaignsWithProgress.length > 0 && (

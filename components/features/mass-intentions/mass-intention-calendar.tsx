@@ -396,18 +396,19 @@ export function MassIntentionCalendar({
                   massesForSelectedDate.map((mass) => {
                     const isCancelled = mass.status === "CANCELLED";
                     const isSelected = selectedMassId === mass.id;
-                    // Disable booking once mass start time has passed
+                    // Disable booking 30 minutes before mass start time
                     const now = new Date();
                     const massDate = new Date(mass.date);
                     const isToday = massDate.toDateString() === now.toDateString();
-                    let massStarted = false;
+                    let massClosed = false;
                     if (isToday && mass.time) {
                       const [h, m] = mass.time.split(":").map(Number);
                       const massStart = new Date(massDate);
                       massStart.setHours(h, m, 0, 0);
-                      massStarted = now >= massStart;
+                      const cutoff = new Date(massStart.getTime() - 30 * 60 * 1000);
+                      massClosed = now >= cutoff;
                     }
-                    const canBook = !isCancelled && !massStarted;
+                    const canBook = !isCancelled && !massClosed;
 
                     return (
                       <button
@@ -457,9 +458,9 @@ export function MassIntentionCalendar({
                               <Badge variant="outline" className="text-xs">
                                 Cancelled
                               </Badge>
-                            ) : massStarted ? (
+                            ) : massClosed ? (
                               <Badge variant="secondary" className="text-xs">
-                                Started
+                                Closed
                               </Badge>
                             ) : (
                               <Badge variant="default" className="text-xs">

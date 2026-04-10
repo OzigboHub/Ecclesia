@@ -1,49 +1,13 @@
 import db from "@/lib/db";
-import { Prisma } from "@prisma/client";
-import { format } from "date-fns";
 import { Calendar, Church, MapPin } from "lucide-react";
 import Link from "next/link";
 
-import { PublicMassFilters } from "@/components/mass/public-mass-filters";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
-
-const MASS_TYPES = [
-  "DAILY_MASS",
-  "SUNDAY_MASS",
-  "HOLY_DAY_MASS",
-  "SPECIAL_MASS",
-  "WEDDING_MASS",
-  "FUNERAL_MASS",
-  "THANKSGIVING_MASS",
-] as const;
-
-const MASS_STATUSES = [
-  "SCHEDULED",
-  "IN_PROGRESS",
-  "COMPLETED",
-  "CANCELLED",
-  "RESCHEDULED",
-] as const;
+import { Input } from "@/components/ui/input";
 
 type SearchParams = {
   q?: string;
-  type?: string;
-  status?: string;
-  view?: string;
-  page?: string;
 };
-
-const PAGE_SIZE = 12;
 
 export default async function Masses({
   searchParams,
@@ -52,109 +16,40 @@ export default async function Masses({
 }) {
   const params = await searchParams;
   const query = params?.q?.trim() ?? "";
-  const typeFilter = MASS_TYPES.includes(params?.type as any)
-    ? (params?.type as (typeof MASS_TYPES)[number])
-    : "ALL";
-  const statusFilter = MASS_STATUSES.includes(params?.status as any)
-    ? (params?.status as (typeof MASS_STATUSES)[number])
-    : "ALL";
-  const viewFilter = params?.view === "all" ? "all" : "upcoming";
-  const pageParam = Number.parseInt(params?.page ?? "1", 10);
-  const requestedPage = Number.isNaN(pageParam) ? 1 : Math.max(1, pageParam);
   const now = new Date();
 
-  const buildMassWhere = (forceUpcoming = false): Prisma.MassWhereInput => ({
-    ...(query
-      ? {
-          OR: [
-            {
-              organization: {
-                is: {
-                  name: {
-                    contains: query,
-                    mode: Prisma.QueryMode.insensitive,
-                  },
-                },
-              },
-            },
-            {
-              location: {
-                contains: query,
-                mode: Prisma.QueryMode.insensitive,
-              },
-            },
-            {
-              celebrant: {
-                contains: query,
-                mode: Prisma.QueryMode.insensitive,
-              },
-            },
-          ],
-        }
-      : {}),
-    ...(typeFilter !== "ALL" ? { massType: typeFilter } : {}),
-    ...(statusFilter !== "ALL" ? { status: statusFilter } : {}),
-    ...(forceUpcoming || viewFilter === "upcoming"
-      ? { date: { gte: now } }
-      : {}),
-  });
-
-  const where = buildMassWhere();
-
-  const totalCount = await db.mass.count({ where });
-  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
-  const currentPage = Math.min(requestedPage, totalPages);
-
-  const masses = await db.mass.findMany({
-    where,
+  const parishes = await db.organization.findMany({
+    where: {
+      ...(query
+        ? {
+            OR: [
+              { name: { contains: query, mode: "insensitive" } },
+              { address: { contains: query, mode: "insensitive" } },
+            ],
+          }
+        : {}),
+    },
     select: {
       id: true,
-      date: true,
-      time: true,
-      massType: true,
-      status: true,
-      language: true,
-      location: true,
-      celebrant: true,
-      maxIntentions: true,
-      _count: { select: { intentions: true } },
-      organization: {
-        select: { id: true, name: true, address: true },
+      name: true,
+      address: true,
+      contactPhone: true,
+      _count: {
+        select: {
+          masses: {
+            where: {
+              date: { gte: now },
+              status: { not: "CANCELLED" },
+            },
+          },
+        },
       },
     },
-    orderBy: [{ date: "asc" }, { time: "asc" }],
-    skip: (currentPage - 1) * PAGE_SIZE,
-    take: PAGE_SIZE,
+    orderBy: { name: "asc" },
   });
-
-  const upcomingCount = await db.mass.count({
-    where: buildMassWhere(true),
-  });
-
-  const buildPageHref = (page: number) => {
-    const urlParams = new URLSearchParams();
-
-    if (query) urlParams.set("q", query);
-    if (typeFilter !== "ALL") urlParams.set("type", typeFilter);
-    if (statusFilter !== "ALL") urlParams.set("status", statusFilter);
-    if (viewFilter !== "upcoming") urlParams.set("view", viewFilter);
-    if (page > 1) urlParams.set("page", String(page));
-
-    const search = urlParams.toString();
-    return search ? `/mass?${search}` : "/mass";
-  };
-
-  const pageWindow = Array.from({ length: totalPages }, (_, i) => i + 1).filter(
-    (page) =>
-      page === 1 || page === totalPages || Math.abs(page - currentPage) <= 1,
-  );
-
-  const displayedCount = masses.length;
-  const statusLabel =
-    statusFilter === "ALL" ? "All statuses" : statusFilter.replace(/_/g, " ");
 
   return (
-    <div className="min-h-screen pt-[80px] bg-background">
+    <div className="min-h-screen pt-20 bg-background">
       <section className="border-b bg-linear-to-b from-muted/50 to-background py-10">
         <div className="mx-auto max-w-6xl px-4">
           <div className="flex flex-wrap items-center justify-between gap-4">
@@ -163,170 +58,74 @@ export default async function Masses({
                 Masses
               </p>
               <h1 className="text-3xl font-bold md:text-4xl">
-                All Parish Masses
+                Browse Parishes
               </h1>
               <p className="text-sm text-muted-foreground md:text-base">
-                Browse upcoming masses across parishes, view celebrants, and
-                join live schedules.
+                Select a parish to view their masses and book intentions.
               </p>
             </div>
-            <Button asChild variant="outline">
-              <Link href="/">Back to home</Link>
-            </Button>
-          </div>
-          <div className="mt-6 grid gap-4 md:grid-cols-3">
-            <div className="rounded-xl border bg-card p-4 shadow-sm">
-              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                Total listed
-              </p>
-              <p className="mt-2 text-2xl font-semibold">{displayedCount}</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                of {totalCount} filtered result
-                {totalCount === 1 ? "" : "s"}
-              </p>
-            </div>
-            <div className="rounded-xl border bg-card p-4 shadow-sm">
-              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                Upcoming
-              </p>
-              <p className="mt-2 text-2xl font-semibold">{upcomingCount}</p>
-            </div>
-            <div className="rounded-xl border bg-card p-4 shadow-sm">
-              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                Status filter
-              </p>
-              <p className="mt-2 text-2xl font-semibold">{statusLabel}</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {totalCount} matching result
-                {totalCount === 1 ? "" : "s"}
-              </p>
+            <div className="flex gap-2">
+              <Button asChild variant="outline">
+                <Link href="/mass/intentions">Mass intentions</Link>
+              </Button>
+              <Button asChild variant="outline">
+                <Link href="/">Back to home</Link>
+              </Button>
             </div>
           </div>
+
+          {/* Search */}
+          <form className="mt-6">
+            <Input
+              name="q"
+              placeholder="Search parishes by name or location..."
+              defaultValue={query}
+              className="max-w-md"
+            />
+          </form>
         </div>
       </section>
 
-      <div className="mx-auto max-w-6xl space-y-8 px-4 py-12">
-        <PublicMassFilters
-          query={query}
-          typeFilter={typeFilter}
-          statusFilter={statusFilter}
-          viewFilter={viewFilter}
-          massTypes={MASS_TYPES}
-          massStatuses={MASS_STATUSES}
-        />
-
-        {masses.length > 0 ? (
-          <>
-            <div className="grid gap-6 md:grid-cols-2">
-              {masses.map((mass) => (
-                <div
-                  key={mass.id}
-                  className="rounded-xl border bg-card p-6 shadow-sm">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="space-y-1">
-                      <h2 className="text-lg font-semibold">
-                        {mass.massType.replace(/_/g, " ")}
-                      </h2>
-                      <p className="text-sm text-muted-foreground">
-                        {format(new Date(mass.date), "MMMM d, yyyy")} ·{" "}
-                        {mass.time}
+      <div className="mx-auto max-w-6xl px-4 py-12">
+        {parishes.length > 0 ? (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {parishes.map((parish) => (
+              <Link
+                key={parish.id}
+                href={`/mass/${parish.id}`}
+                className="rounded-xl border bg-card p-6 transition hover:shadow-md hover:border-primary/50"
+              >
+                <div className="flex items-start gap-3">
+                  <Church className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <h2 className="font-semibold line-clamp-2">
+                      {parish.name}
+                    </h2>
+                    {parish.address && (
+                      <p className="text-xs text-muted-foreground mt-1 line-clamp-1 flex items-center gap-1">
+                        <MapPin className="h-3 w-3 shrink-0" />
+                        {parish.address}
                       </p>
-                    </div>
-                    <Badge variant="secondary">
-                      {mass.status.replace(/_/g, " ")}
-                    </Badge>
-                  </div>
-                  <div className="mt-4 space-y-3 text-sm text-muted-foreground">
-                    <div className="flex items-center gap-2">
-                      <Church className="h-4 w-4 text-primary" />
-                      <span>{mass.organization.name}</span>
-                    </div>
-                    {mass.location || mass.organization.address ? (
-                      <div className="flex items-center gap-2">
-                        <MapPin className="h-4 w-4 text-primary" />
-                        <span>
-                          {mass.location ?? mass.organization.address}
-                        </span>
-                      </div>
-                    ) : null}
-                    {mass.celebrant ? <p>Celebrant: {mass.celebrant}</p> : null}
-                    {mass.language ? <p>Language: {mass.language}</p> : null}
-                    <p>Intentions: {mass._count.intentions}</p>
-                  </div>
-                  <div className="mt-6 flex flex-col gap-2 sm:flex-row">
-                    <Button asChild size="sm" className="w-full">
-                      <Link href={`/p/${mass.organization.id}`}>
-                        View parish
-                      </Link>
-                    </Button>
-                    <Button
-                      asChild
-                      size="sm"
-                      variant="outline"
-                      className="w-full">
-                      <Link
-                        href={`/p/${mass.organization.id}/mass-intentions?massId=${mass.id}`}>
-                        Book intention
-                      </Link>
-                    </Button>
+                    )}
+                    <p className="text-sm text-muted-foreground mt-3">
+                      <span className="font-medium text-foreground">
+                        {parish._count.masses}
+                      </span>{" "}
+                      upcoming mass
+                      {parish._count.masses !== 1 ? "es" : ""}
+                    </p>
                   </div>
                 </div>
-              ))}
-            </div>
-
-            {totalPages > 1 ? (
-              <Pagination>
-                <PaginationContent>
-                  <PaginationItem>
-                    <PaginationPrevious
-                      href={buildPageHref(Math.max(1, currentPage - 1))}
-                      aria-disabled={currentPage === 1}
-                      className={
-                        currentPage === 1
-                          ? "pointer-events-none opacity-50"
-                          : undefined
-                      }
-                    />
-                  </PaginationItem>
-
-                  {pageWindow.map((page, index) => {
-                    const prev = pageWindow[index - 1];
-                    const showGap = typeof prev === "number" && page - prev > 1;
-
-                    return (
-                      <PaginationItem key={page}>
-                        {showGap ? <PaginationEllipsis /> : null}
-                        <PaginationLink
-                          href={buildPageHref(page)}
-                          isActive={page === currentPage}>
-                          {page}
-                        </PaginationLink>
-                      </PaginationItem>
-                    );
-                  })}
-
-                  <PaginationItem>
-                    <PaginationNext
-                      href={buildPageHref(
-                        Math.min(totalPages, currentPage + 1),
-                      )}
-                      aria-disabled={currentPage === totalPages}
-                      className={
-                        currentPage === totalPages
-                          ? "pointer-events-none opacity-50"
-                          : undefined
-                      }
-                    />
-                  </PaginationItem>
-                </PaginationContent>
-              </Pagination>
-            ) : null}
-          </>
+              </Link>
+            ))}
+          </div>
         ) : (
           <div className="text-center py-12">
             <Calendar className="mx-auto mb-4 h-12 w-12 text-muted-foreground opacity-50" />
             <p className="text-lg text-muted-foreground">
-              No masses match your filters yet.
+              {query
+                ? "No parishes match your search."
+                : "No parishes available yet."}
             </p>
           </div>
         )}

@@ -9,7 +9,7 @@ import { ZodError } from "zod";
 
 const MAX_FAILED_LOGIN_ATTEMPTS = 5;
 const LOCKOUT_DURATION_MINUTES = 30;
-const IDLE_TIMEOUT_MINUTES = 1;
+const IDLE_TIMEOUT_MINUTES = 30;
 
 function getClientIp(request?: Request): string | null {
 	if (!request) return null;

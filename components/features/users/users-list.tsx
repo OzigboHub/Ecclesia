@@ -414,7 +414,7 @@ export function UsersList({
 												{canModifyUser(user.role) && (
 													<DropdownMenuItem asChild>
 														<Link
-															href={`/dashboard/users/${user.id}/edit`}
+															href={`/users/${user.id}/edit`}
 														>
 															<Edit2 className='mr-2 h-4 w-4' />
 															Edit User
@@ -426,7 +426,7 @@ export function UsersList({
 												{canModifyUser(user.role) && (
 													<DropdownMenuItem asChild>
 														<Link
-															href={`/dashboard/users/${user.id}/password`}
+															href={`/users/${user.id}/password`}
 														>
 															<KeyRound className='mr-2 h-4 w-4' />
 															Change Password
