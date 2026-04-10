@@ -42,6 +42,56 @@ const TWO_FACTOR_OTP_TTL_MINUTES = 5;
 const TWO_FACTOR_SETUP_TTL_MINUTES = 10;
 const TWO_FACTOR_MAX_ATTEMPTS = 5;
 
+function getMailSender() {
+  const fromAddress = "support@ecclesialight.com";
+  const fromName = process.env.RESEND_FROM_NAME?.trim() || "Ecclesia";
+
+  return `${fromName} <${fromAddress}>`;
+}
+
+async function sendTransactionalEmail(params: {
+  to: string;
+  subject: string;
+  html: string;
+}) {
+  if (!process.env.RESEND_API_KEY) {
+    console.warn("RESEND_API_KEY not configured — email not sent");
+    return {
+      success: false,
+      message:
+        "Email verification is unavailable because the mail service is not configured.",
+    } as const;
+  }
+
+  try {
+    const resend = new Resend(process.env.RESEND_API_KEY);
+    const { error } = await resend.emails.send({
+      from: getMailSender(),
+      to: params.to,
+      subject: params.subject,
+      html: params.html,
+    });
+
+    if (error) {
+      console.error("Failed to send transactional email:", error);
+      return {
+        success: false,
+        message:
+          "We could not send the verification email. Check your sender configuration and try again.",
+      } as const;
+    }
+
+    return { success: true } as const;
+  } catch (error) {
+    console.error("Transactional email delivery error:", error);
+    return {
+      success: false,
+      message:
+        "We could not send the verification email. Check your mail settings and try again.",
+    } as const;
+  }
+}
+
 async function getActionIpAddress(): Promise<string | null> {
   const requestHeaders = await headers();
   const forwardedFor = requestHeaders.get("x-forwarded-for");
@@ -159,39 +209,43 @@ async function createTwoFactorChallenge(params: {
       },
     });
 
-    if (process.env.RESEND_API_KEY) {
-      const resend = new Resend(process.env.RESEND_API_KEY);
-      await resend.emails.send({
-        from: `Ecclesia <support@ecclesialight.com>`,
-        to: params.email,
-        subject: "Your verification code",
-        html: `
-					<div style="background:#f6f6f6;padding:40px 0;font-family:Arial,Helvetica,sans-serif;">
-						<table width="100%" cellpadding="0" cellspacing="0" role="presentation">
-							<tr>
-								<td align="center">
-									<table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;padding:30px;">
-										<tr>
-											<td align="center" style="padding-bottom:20px;">
-												<img src="https://www.ecclesialight.com/standalone-golden-yellow-logo-typography.png" alt="Ecclesia" width="120" style="display:block;" />
-											</td>
-										</tr>
-										<tr>
-											<td>
-												<h2 style="margin:0 0 16px 0;color:#333;">Verify your sign-in</h2>
-												<p style="font-size:14px;color:#444;line-height:1.6;">Enter this code to finish signing in:</p>
-												<div style="font-size:28px;font-weight:bold;letter-spacing:6px;color:#c9a84c;margin:16px 0;">${code}</div>
-												<p style="font-size:13px;color:#888;">This code expires in ${TWO_FACTOR_OTP_TTL_MINUTES} minutes.</p>
-											</td>
-										</tr>
-									</table>
+    const emailResult = await sendTransactionalEmail({
+      to: params.email,
+      subject: "Your verification code",
+      html: `
+				<div style="background:#f6f6f6;padding:40px 0;font-family:Arial,Helvetica,sans-serif;">
+					<table width="100%" cellpadding="0" cellspacing="0" role="presentation">
+						<tr>
+							<td align="center">
+								<table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;padding:30px;">
+									<tr>
+										<td align="center" style="padding-bottom:20px;">
+											<img src="https://www.ecclesialight.com/standalone-golden-yellow-logo-typography.png" alt="Ecclesia" width="120" style="display:block;" />
+										</td>
+									</tr>
+									<tr>
+										<td>
+											<h2 style="margin:0 0 16px 0;color:#333;">Verify your sign-in</h2>
+											<p style="font-size:14px;color:#444;line-height:1.6;">Enter this code to finish signing in:</p>
+											<div style="font-size:28px;font-weight:bold;letter-spacing:6px;color:#c9a84c;margin:16px 0;">${code}</div>
+											<p style="font-size:13px;color:#888;">This code expires in ${TWO_FACTOR_OTP_TTL_MINUTES} minutes.</p>
+										</td>
+									</tr>
+								</table>
 							</td>
 						</tr>
 					</table>
 				</div>
-				`,
+			`,
+    });
+
+    if (!emailResult.success) {
+      await db.twoFactorChallenge.deleteMany({
+        where: { challengeToken },
       });
+      throw new Error(emailResult.message);
     }
+
     return { challengeToken, method: params.method };
   }
 
@@ -402,7 +456,11 @@ export async function login(data: {
       }
     }
     console.error("Login error:", error);
-    return { success: false, message: "An unexpected error occurred" };
+    return {
+      success: false,
+      message:
+        error instanceof Error ? error.message : "An unexpected error occurred",
+    };
   }
 }
 
@@ -497,7 +555,10 @@ export async function startTwoFactorEnrollment(data: {
     };
   } catch (error) {
     console.error("Two-factor enrollment error:", error);
-    return { success: false, message: "Failed to start setup" };
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : "Failed to start setup",
+    };
   }
 }
 
@@ -1177,56 +1238,47 @@ export async function requestPasswordReset(
       process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
     }/auth/reset-password?token=${token}`;
 
-    // Send password reset email via Resend
-    if (process.env.RESEND_API_KEY) {
-      const resend = new Resend(process.env.RESEND_API_KEY);
-      const { error } = await resend.emails.send({
-        from: `Ecclesia <support@ecclesialight.com>`,
-        to: user.email,
-        subject: "Reset Your Password",
-        html: `
-					<div style="background:#f6f6f6;padding:40px 0;font-family:Arial,Helvetica,sans-serif;">
-						<table width="100%" cellpadding="0" cellspacing="0" role="presentation">
-							<tr>
-								<td align="center">
-									<table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;padding:30px;">
-										<tr>
-											<td align="center" style="padding-bottom:20px;">
-												<img src="https://www.ecclesialight.com/standalone-golden-yellow-logo-typography.png" alt="Ecclesia" width="120" style="display:block;" />
-											</td>
-										</tr>
-										<tr>
-											<td>
-												<h2 style="margin:0 0 16px 0;color:#333;">Password Reset Request</h2>
-												<p style="font-size:14px;color:#444;line-height:1.6;">We received a request to reset your password. Click the button below to set a new password:</p>
-											</td>
-										</tr>
-										<tr>
-											<td align="center" style="padding:24px 0;">
-												<a href="${resetUrl}" style="display:inline-block;background:#c9a84c;color:#ffffff;font-size:16px;font-weight:bold;padding:12px 32px;border-radius:6px;text-decoration:none;">Reset Password</a>
-											</td>
-										</tr>
-										<tr>
-											<td style="font-size:13px;color:#888;line-height:1.6;">
-												<p>This link will expire in 1 hour. If you did not request a password reset, you can safely ignore this email.</p>
-												<p style="margin-top:16px;">If the button doesn&rsquo;t work, copy and paste this URL into your browser:</p>
-												<p style="word-break:break-all;color:#c9a84c;">${resetUrl}</p>
-											</td>
-										</tr>
-									</table>
-								</td>
-							</tr>
-						</table>
-					</div>
-				`,
-      });
-      if (error) {
-        console.error("Failed to send password reset email:", error);
-      }
-    } else {
-      console.warn(
-        "RESEND_API_KEY not configured — password reset email not sent",
-      );
+    const emailResult = await sendTransactionalEmail({
+      to: user.email,
+      subject: "Reset Your Password",
+      html: `
+				<div style="background:#f6f6f6;padding:40px 0;font-family:Arial,Helvetica,sans-serif;">
+					<table width="100%" cellpadding="0" cellspacing="0" role="presentation">
+						<tr>
+							<td align="center">
+								<table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;padding:30px;">
+									<tr>
+										<td align="center" style="padding-bottom:20px;">
+											<img src="https://www.ecclesialight.com/standalone-golden-yellow-logo-typography.png" alt="Ecclesia" width="120" style="display:block;" />
+										</td>
+									</tr>
+									<tr>
+										<td>
+											<h2 style="margin:0 0 16px 0;color:#333;">Password Reset Request</h2>
+											<p style="font-size:14px;color:#444;line-height:1.6;">We received a request to reset your password. Click the button below to set a new password:</p>
+										</td>
+									</tr>
+									<tr>
+										<td align="center" style="padding:24px 0;">
+											<a href="${resetUrl}" style="display:inline-block;background:#c9a84c;color:#ffffff;font-size:16px;font-weight:bold;padding:12px 32px;border-radius:6px;text-decoration:none;">Reset Password</a>
+										</td>
+									</tr>
+									<tr>
+										<td style="font-size:13px;color:#888;line-height:1.6;">
+											<p>This link will expire in 1 hour. If you did not request a password reset, you can safely ignore this email.</p>
+											<p style="margin-top:16px;">If the button doesn&rsquo;t work, copy and paste this URL into your browser:</p>
+											<p style="word-break:break-all;color:#c9a84c;">${resetUrl}</p>
+										</td>
+									</tr>
+								</table>
+							</td>
+						</tr>
+					</table>
+				</div>
+			`,
+    });
+    if (!emailResult.success) {
+      console.warn(emailResult.message);
     }
 
     return {
