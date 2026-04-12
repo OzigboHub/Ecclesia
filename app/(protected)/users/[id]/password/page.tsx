@@ -73,7 +73,7 @@ export default async function ChangePasswordPage({
 
 	// Can't change password for users at same or higher level (unless it's yourself)
 	if (currentUserLevel <= targetUserLevel && session.user.id !== user.id) {
-		redirect('/dashboard/users?error=insufficient_permissions');
+		redirect('/users?error=insufficient_permissions');
 	}
 
 	return (
@@ -85,7 +85,7 @@ export default async function ChangePasswordPage({
 					size='icon'
 					asChild
 				>
-					<Link href={`/dashboard/users/${id}/edit`}>
+					<Link href={`/users/${id}/edit`}>
 						<ArrowLeft className='h-4 w-4' />
 						<span className='sr-only'>Back to edit user</span>
 					</Link>

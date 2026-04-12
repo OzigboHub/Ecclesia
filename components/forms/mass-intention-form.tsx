@@ -132,14 +132,15 @@ export function MassIntentionForm({
         setAvailableMasses(
           result.data.filter((m: any) => {
             if (m.status === "CANCELLED") return false;
-            // For today's masses, only show those that haven't started yet
+            // For today's masses, close bookings 30 minutes before Mass starts
             const massDate = new Date(m.date);
             const isToday = massDate.toDateString() === now.toDateString();
             if (isToday && m.time) {
               const [h, m2] = m.time.split(":").map(Number);
               const massStart = new Date(massDate);
               massStart.setHours(h, m2, 0, 0);
-              if (now >= massStart) return false;
+              const cutoff = new Date(massStart.getTime() - 30 * 60 * 1000);
+              if (now >= cutoff) return false;
             }
             return true;
           }),
@@ -189,7 +190,7 @@ export function MassIntentionForm({
             // Intention created but payment init failed — inform the user
             toast.error(
               paymentResult.message ||
-                "Intention booked but payment could not be initialized. Contact the parish office."
+                "Intention booked but payment could not be initialized. Contact the parish office.",
             );
             router.refresh();
             onSuccess?.();
@@ -390,12 +391,13 @@ export function MassIntentionForm({
           )}
           {isParishioner && (
             <div className="rounded-md bg-muted/50 px-3 py-2 text-sm text-muted-foreground">
-              <p>
-                Minimum ₦500. Includes a ₦20 platform fee at checkout.
-              </p>
+              <p>Minimum ₦500. Includes a ₦20 platform fee at checkout.</p>
               {Number(form.watch("stipend") || 0) > 0 && (
                 <p className="mt-1 font-medium text-foreground">
-                  Total at checkout: ₦{(Number(form.watch("stipend") || 0) + 20).toLocaleString("en-NG")}
+                  Total at checkout: ₦
+                  {(Number(form.watch("stipend") || 0) + 20).toLocaleString(
+                    "en-NG",
+                  )}
                 </p>
               )}
             </div>

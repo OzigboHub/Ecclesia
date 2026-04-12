@@ -10,6 +10,7 @@ import {
 import {
   canBookAppointments,
   canBookMassIntentions,
+  canManageFinancials,
   canManageMassIntentions,
   canManageOrganizations,
   canManageParishioners,
@@ -18,8 +19,9 @@ import {
   canViewLiveStreams,
   canViewMassCalendar,
   canViewSocieties,
+  isSocietyHead,
 } from "@/lib/permissions";
-import { LogOut } from "lucide-react";
+import { LogOut, Settings } from "lucide-react";
 import { signOut, useSession } from "next-auth/react";
 import Image from "next/image";
 import Link from "next/link";
@@ -42,6 +44,7 @@ export default function Sidebar() {
   const [organizations, setOrganizations] = useState<
     { id: string; name: string }[]
   >([]);
+  const [mySocietyId, setMySocietyId] = useState<string | null>(null);
 
   useEffect(() => {
     if (isSuperAdmin) {
@@ -57,6 +60,18 @@ export default function Sidebar() {
       });
     }
   }, [isSuperAdmin]);
+
+  useEffect(() => {
+    if (userRole && isSocietyHead(userRole)) {
+      import("@/app/actions/society.actions").then(({ getSocietyForCurrentUser }) => {
+        getSocietyForCurrentUser().then((result) => {
+          if (result.success && result.data) {
+            setMySocietyId(result.data.id);
+          }
+        });
+      });
+    }
+  }, [userRole]);
 
   const isParishioner = userRole === "PARISHIONER";
 
@@ -88,6 +103,7 @@ export default function Sidebar() {
     if (item.name === "Appointments") return canBookAppointments(userRole);
     if (item.name === "Societies") return canViewSocieties(userRole);
     if (item.name === "Live Streams") return canViewLiveStreams(userRole);
+    if (item.name === "Parish Finances") return canManageFinancials(userRole);
     if (item.name === "Settings") return isSuperAdmin; // Only Super Admin / System Admin
     return true; // Dashboard
   });
@@ -98,19 +114,19 @@ export default function Sidebar() {
     if (isSuperAdmin) return false; // Handled by SUPERADMIN_SIDEBAR/EXTENDED
     if (item.name === "Manage Organizations")
       return canManageOrganizations(userRole);
-    if (item.name === "Manage Users") return userRole === "SUPER_ADMIN";
+    if (item.name === "Manage Users") return canManageUsers(userRole);
     return false;
   });
 
   return (
-    <div className="hidden bg-secondary w-[20%] h-screen shrink-0 py-[20px] px-[10px] justify-start items-center lg:flex flex-col gap-8 overflow-y-auto">
+    <div className="hidden bg-secondary w-[20%] h-screen shrink-0 py-5 px-2.5 justify-start items-center lg:flex flex-col gap-8 overflow-y-auto">
       <Link href="/dashboard">
         <Image
           src={"/standalone-golden-yellow-logo-typography.png"}
           width={"150"}
           height={"150"}
           alt="logo"
-          className=" w-[150px] object-cover"
+          className=" w-37.5 object-cover"
         />
       </Link>
 
@@ -175,6 +191,21 @@ export default function Sidebar() {
                   <div className="text-[13px] font-medium">{i.name}</div>
                 </Link>
               ))}
+              {/* Society Head Management Link */}
+              {mySocietyId && (
+                <Link
+                  href={`/dashboard/societies/${mySocietyId}/manage`}
+                  className={` ${
+                    pathName.includes(`/societies/${mySocietyId}/manage`)
+                      ? "text-secondary bg-primary "
+                      : " text-white hover:bg-white/10"
+                  }  items-center py-2.5 flex gap-4 rounded-[10px] px-4 mb-1 transition-all`}>
+                  <div className="shrink-0">
+                    <Settings className="w-5 h-5" />
+                  </div>
+                  <div className="text-[13px] font-medium">My Society</div>
+                </Link>
+              )}
             </div>
           )}
         </div>

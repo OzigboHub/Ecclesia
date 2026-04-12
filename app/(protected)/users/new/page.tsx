@@ -39,7 +39,7 @@ export default async function NewUserPage() {
 					size='icon'
 					asChild
 				>
-					<Link href='/dashboard/users'>
+					<Link href='/users'>
 						<ArrowLeft className='h-4 w-4' />
 						<span className='sr-only'>Back to users</span>
 					</Link>

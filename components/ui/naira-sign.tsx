@@ -12,8 +12,7 @@ export function NairaSign(props: SVGProps<SVGSVGElement>) {
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
-      {...props}
-    >
+      {...props}>
       {/* Left vertical stroke of N */}
       <line x1="7" y1="20" x2="7" y2="4" />
       {/* Right vertical stroke of N */}

@@ -84,22 +84,20 @@ function parseMeetingSchedule(value?: string | null): MeetingRule[] {
         id: String(item.id ?? `${Date.now()}-${index}`),
         cadence:
           item.cadence === "EVERY_2_MONTHS" ? "EVERY_2_MONTHS" : "MONTHLY",
-        week:
-          ["FIRST", "SECOND", "THIRD", "FOURTH", "LAST"].includes(item.week)
-            ? item.week
-            : "LAST",
-        weekday:
-          [
-            "SUNDAY",
-            "MONDAY",
-            "TUESDAY",
-            "WEDNESDAY",
-            "THURSDAY",
-            "FRIDAY",
-            "SATURDAY",
-          ].includes(item.weekday)
-            ? item.weekday
-            : "SUNDAY",
+        week: ["FIRST", "SECOND", "THIRD", "FOURTH", "LAST"].includes(item.week)
+          ? item.week
+          : "LAST",
+        weekday: [
+          "SUNDAY",
+          "MONDAY",
+          "TUESDAY",
+          "WEDNESDAY",
+          "THURSDAY",
+          "FRIDAY",
+          "SATURDAY",
+        ].includes(item.weekday)
+          ? item.weekday
+          : "SUNDAY",
         time:
           typeof item.time === "string" && /^\d{2}:\d{2}$/.test(item.time)
             ? item.time
@@ -122,11 +120,14 @@ function parseMeetingSchedule(value?: string | null): MeetingRule[] {
 }
 
 function formatRuleLabel(rule: MeetingRule) {
-  const week = WEEK_OPTIONS.find((w) => w.value === rule.week)?.label ?? rule.week;
+  const week =
+    WEEK_OPTIONS.find((w) => w.value === rule.week)?.label ?? rule.week;
   const day =
-    WEEKDAY_OPTIONS.find((d) => d.value === rule.weekday)?.label ?? rule.weekday;
+    WEEKDAY_OPTIONS.find((d) => d.value === rule.weekday)?.label ??
+    rule.weekday;
   const cadence =
-    CADENCE_OPTIONS.find((c) => c.value === rule.cadence)?.label ?? rule.cadence;
+    CADENCE_OPTIONS.find((c) => c.value === rule.cadence)?.label ??
+    rule.cadence;
   return `${week} ${day}, ${rule.time} (${cadence})`;
 }
 
@@ -148,8 +149,12 @@ export function SocietyForm({ initialData, onSuccess }: SocietyFormProps) {
   const [users, setUsers] = useState<
     Array<{ id: string; firstName: string; lastName: string; role: string }>
   >([]);
-  const [assignedPresidentIds, setAssignedPresidentIds] = useState<string[]>([]);
-  const [assignedSecretaryIds, setAssignedSecretaryIds] = useState<string[]>([]);
+  const [assignedPresidentIds, setAssignedPresidentIds] = useState<string[]>(
+    [],
+  );
+  const [assignedSecretaryIds, setAssignedSecretaryIds] = useState<string[]>(
+    [],
+  );
   const [meetingRules, setMeetingRules] = useState<MeetingRule[]>(
     parseMeetingSchedule(initialData?.meetingSchedule),
   );
@@ -221,7 +226,8 @@ export function SocietyForm({ initialData, onSuccess }: SocietyFormProps) {
   const availablePresidents = users.filter((u) => {
     if (u.role === "PARISH_ADMIN") return false;
     // Preserve currently selected president when editing this society.
-    if (initialData?.presidentId && u.id === initialData.presidentId) return true;
+    if (initialData?.presidentId && u.id === initialData.presidentId)
+      return true;
     // Exclude users already serving as president or secretary in any society.
     if (assignedPresidentIds.includes(u.id)) return false;
     if (assignedSecretaryIds.includes(u.id)) return false;
@@ -231,7 +237,8 @@ export function SocietyForm({ initialData, onSuccess }: SocietyFormProps) {
   const availableSecretaries = users.filter((u) => {
     if (u.role === "PARISH_ADMIN") return false;
     // Preserve currently selected secretary when editing this society.
-    if (initialData?.secretaryId && u.id === initialData.secretaryId) return true;
+    if (initialData?.secretaryId && u.id === initialData.secretaryId)
+      return true;
     // Exclude users already serving as secretary or president in any society.
     if (assignedSecretaryIds.includes(u.id)) return false;
     if (assignedPresidentIds.includes(u.id)) return false;
@@ -346,7 +353,7 @@ export function SocietyForm({ initialData, onSuccess }: SocietyFormProps) {
                 <SelectTrigger id="presidentId">
                   <SelectValue placeholder="Select President" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-primary">
                   <SelectItem value="__none__">None</SelectItem>
                   {availablePresidents.map((u) => (
                     <SelectItem key={u.id} value={u.id}>
@@ -380,7 +387,7 @@ export function SocietyForm({ initialData, onSuccess }: SocietyFormProps) {
                 <SelectTrigger id="secretaryId">
                   <SelectValue placeholder="Select Secretary" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-primary">
                   <SelectItem value="__none__">None</SelectItem>
                   {availableSecretaries.map((u) => (
                     <SelectItem key={u.id} value={u.id}>
@@ -415,7 +422,7 @@ export function SocietyForm({ initialData, onSuccess }: SocietyFormProps) {
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-primary">
                   {CADENCE_OPTIONS.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
                       {option.label}
@@ -436,7 +443,7 @@ export function SocietyForm({ initialData, onSuccess }: SocietyFormProps) {
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-primary">
                   {WEEK_OPTIONS.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
                       {option.label}
@@ -457,7 +464,7 @@ export function SocietyForm({ initialData, onSuccess }: SocietyFormProps) {
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-primary">
                   {WEEKDAY_OPTIONS.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
                       {option.label}
@@ -524,7 +531,9 @@ export function SocietyForm({ initialData, onSuccess }: SocietyFormProps) {
                 <div>
                   <p className="text-sm font-medium">{formatRuleLabel(rule)}</p>
                   {rule.note && (
-                    <p className="text-xs text-muted-foreground mt-1">{rule.note}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {rule.note}
+                    </p>
                   )}
                 </div>
                 <Button

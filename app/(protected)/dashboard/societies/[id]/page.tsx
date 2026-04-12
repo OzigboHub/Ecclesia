@@ -14,7 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import db from "@/lib/db";
 import { canManageSocieties } from "@/lib/permissions";
-import { ArrowLeft, Edit2, Users } from "lucide-react";
+import { ArrowLeft, Edit2, Settings, Users } from "lucide-react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
@@ -39,12 +39,14 @@ export default async function SocietyDetailPage({
 
   const society = result.data;
   const isParishioner = session.user.role === "PARISHIONER";
+  const isSecretary = session.user.role === "PARISH_SECRETARY";
   const canManage = canManageSocieties(session.user.role);
   const isSocietyLeader =
     society.presidentId === session.user.id ||
     society.secretaryId === session.user.id;
   const canReviewRequests = canManage || isSocietyLeader;
   const canEdit = canManage || isSocietyLeader;
+  const isViewOnly = isParishioner || isSecretary;
 
   let joinStatus: "NONE" | "PENDING" | "MEMBER" | "REJECTED" = "NONE";
   if (isParishioner && session.user.parishionerId) {
@@ -105,11 +107,18 @@ export default async function SocietyDetailPage({
           </div>
         </div>
         {canEdit && (
-          <Button variant="outline" asChild>
-            <Link href={`/dashboard/societies/${society.id}/edit`}>
-              <Edit2 className="mr-2 h-4 w-4" /> Edit
-            </Link>
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" asChild>
+              <Link href={`/dashboard/societies/${society.id}/manage`}>
+                <Settings className="mr-2 h-4 w-4" /> Manage
+              </Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link href={`/dashboard/societies/${society.id}/edit`}>
+                <Edit2 className="mr-2 h-4 w-4" /> Edit
+              </Link>
+            </Button>
+          </div>
         )}
         {isParishioner && (
           <JoinRequestButton
@@ -152,7 +161,7 @@ export default async function SocietyDetailPage({
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle>Members List</CardTitle>
-                  {!isParishioner && <AddMemberDialog societyId={society.id} />}
+                  {!isViewOnly && <AddMemberDialog societyId={society.id} />}
                 </CardHeader>
                 <CardContent>
                   {society.members.length === 0 ? (
@@ -166,7 +175,7 @@ export default async function SocietyDetailPage({
                           key={membership.parishionerId}
                           societyId={society.id}
                           membership={membership}
-                          readOnly={isParishioner}
+                          readOnly={isViewOnly}
                         />
                       ))}
                     </ul>
@@ -178,7 +187,7 @@ export default async function SocietyDetailPage({
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle>Upcoming Events</CardTitle>
-                  {!isParishioner && (
+                  {!isViewOnly && (
                     <CreateMeetingDialog societyId={society.id} />
                   )}
                 </CardHeader>
