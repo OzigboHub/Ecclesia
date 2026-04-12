@@ -41,6 +41,66 @@ export const loginSchema = z.object({
 export type LoginInput = z.infer<typeof loginSchema>;
 
 // ============================================
+// TWO-FACTOR SCHEMAS
+// ============================================
+
+const twoFactorMethodSchema = z.enum(["EMAIL", "TOTP"]);
+
+export const twoFactorVerifySchema = z.object({
+	email: z
+		.string()
+		.min(1, "Email is required")
+		.email("Invalid email address"),
+	challengeToken: z.string().min(1, "Challenge token is required"),
+	code: z
+		.string()
+		.min(6, "Code must be 6 digits")
+		.max(6, "Code must be 6 digits"),
+});
+
+export type TwoFactorVerifyInput = z.infer<typeof twoFactorVerifySchema>;
+
+export const twoFactorSetupSchema = z.object({
+	method: twoFactorMethodSchema,
+});
+
+export type TwoFactorSetupInput = z.infer<typeof twoFactorSetupSchema>;
+
+export const twoFactorConfirmSchema = z.object({
+	method: twoFactorMethodSchema,
+	code: z
+		.string()
+		.min(6, "Code must be 6 digits")
+		.max(6, "Code must be 6 digits"),
+	challengeToken: z.string().optional(),
+});
+
+export type TwoFactorConfirmInput = z.infer<typeof twoFactorConfirmSchema>;
+
+export const twoFactorEnrollmentSchema = z.object({
+	setupToken: z.string().min(1, "Setup token is required"),
+	method: twoFactorMethodSchema,
+});
+
+export type TwoFactorEnrollmentInput = z.infer<
+	typeof twoFactorEnrollmentSchema
+>;
+
+export const twoFactorEnrollmentConfirmSchema = z.object({
+	setupToken: z.string().min(1, "Setup token is required"),
+	challengeToken: z.string().min(1, "Challenge token is required"),
+	method: twoFactorMethodSchema,
+	code: z
+		.string()
+		.min(6, "Code must be 6 digits")
+		.max(6, "Code must be 6 digits"),
+});
+
+export type TwoFactorEnrollmentConfirmInput = z.infer<
+	typeof twoFactorEnrollmentConfirmSchema
+>;
+
+// ============================================
 // REGISTER SCHEMA
 // ============================================
 
