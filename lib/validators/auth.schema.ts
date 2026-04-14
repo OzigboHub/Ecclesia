@@ -125,6 +125,11 @@ export const registerSchema = z
 		phone: requiredPhoneSchema,
 		dateOfBirth: requiredDateOfBirthSchema,
 		address: optionalAddressSchema,
+		displayPicture: z
+			.string()
+			.url("Display picture must be a valid URL")
+			.optional()
+			.or(z.literal("")),
 		password: z
 			.string()
 			.min(8, "Password must be at least 8 characters")
@@ -271,6 +276,11 @@ export const registerSchemaServer = z
 		phone: requiredPhoneSchema,
 		dateOfBirth: requiredDateOfBirthSchema,
 		address: optionalAddressSchema,
+		displayPicture: z
+			.string()
+			.url("Display picture must be a valid URL")
+			.optional()
+			.or(z.literal("")),
 		password: z
 			.string()
 			.min(8, "Password must be at least 8 characters")

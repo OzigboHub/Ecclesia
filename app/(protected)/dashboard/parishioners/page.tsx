@@ -1,27 +1,32 @@
-import { auth } from '@/auth';
-import { redirect } from 'next/navigation';
-import { getParishioners } from '@/app/actions/parishioner.actions';
-import { ParishionersList } from '@/components/features/parishioners/parishioners-list';
-import { CsvImportDialog } from '@/components/features/parishioners/csv-import-dialog';
-import { Button } from '@/components/ui/button';
-import { Plus } from 'lucide-react';
-import Link from 'next/link';
+import { getParishioners } from "@/app/actions/parishioner.actions";
+import { auth } from "@/auth";
+import { CsvImportDialog } from "@/components/features/parishioners/csv-import-dialog";
+import { ParishionersList } from "@/components/features/parishioners/parishioners-list";
+import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
+import Link from "next/link";
+import { redirect } from "next/navigation";
 
-export default async function ParishionersPage() {
+export default async function ParishionersPage({
+	searchParams: searchParamsPromise,
+}: {
+	searchParams: Promise<{ [key: string]: string | undefined }>;
+}) {
 	const session = await auth();
 	if (!session?.user) {
-		redirect('/auth/login');
+		redirect("/auth/login");
 	}
 
-	const result = await getParishioners();
+	const searchParams = await searchParamsPromise;
+	const result = await getParishioners(searchParams.organizationId);
 
 	if (!result.success) {
 		return (
-			<div className='flex flex-col items-center justify-center py-12'>
-				<h2 className='text-xl font-semibold text-destructive'>
+			<div className="flex flex-col items-center justify-center py-12">
+				<h2 className="text-xl font-semibold text-destructive">
 					Error
 				</h2>
-				<p className='text-muted-foreground mt-2'>{result.message}</p>
+				<p className="text-muted-foreground mt-2">{result.message}</p>
 			</div>
 		);
 	}
@@ -29,22 +34,22 @@ export default async function ParishionersPage() {
 	const parishioners = result.data || [];
 
 	return (
-		<div className='space-y-6'>
+		<div className="space-y-6">
 			{/* Header */}
-			<div className='flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'>
+			<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 				<div>
-					<h1 className='text-2xl md:text-3xl font-bold tracking-tight'>
+					<h1 className="text-2xl md:text-3xl font-bold tracking-tight">
 						Parishioners
 					</h1>
-					<p className='text-muted-foreground mt-1'>
+					<p className="text-muted-foreground mt-1">
 						Manage your parish members
 					</p>
 				</div>
-				<div className='flex gap-2'>
+				<div className="flex gap-2">
 					<CsvImportDialog />
-					<Link href='/dashboard/parishioners/new'>
+					<Link href="/dashboard/parishioners/new">
 						<Button>
-							<Plus className='mr-2 h-4 w-4' />
+							<Plus className="mr-2 h-4 w-4" />
 							Add Parishioner
 						</Button>
 					</Link>
