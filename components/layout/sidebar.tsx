@@ -15,6 +15,7 @@ import {
   canManageOrganizations,
   canManageParishioners,
   canManageUsers,
+  canMakePayments,
   canRecordPayments,
   canViewLiveStreams,
   canViewMassCalendar,
@@ -78,6 +79,7 @@ export default function Sidebar() {
   // Parishioners get a curated set of links
   const PARISHIONER_LINKS = [
     "Dashboard",
+    "Pay",
     "Mass Intentions",
     "Mass Calendar",
     "Appointments",
@@ -97,6 +99,7 @@ export default function Sidebar() {
 
     if (item.name === "Parishioners") return canManageParishioners(userRole);
     if (item.name === "Payments") return canRecordPayments(userRole);
+    if (item.name === "Pay") return canMakePayments(userRole);
     if (item.name === "Mass Intentions") return canBookMassIntentions(userRole);
     if (item.name === "Mass Calendar") return canViewMassCalendar(userRole);
     if (item.name === "Mass Schedule") return canManageMassIntentions(userRole);

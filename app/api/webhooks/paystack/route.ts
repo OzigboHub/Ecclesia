@@ -55,7 +55,8 @@ export async function POST(req: NextRequest) {
 
       if (payment && payment.paymentStatus !== "COMPLETED") {
         const expectedGrossAmount = payment.grossAmount ?? payment.amount;
-        const amountMatches = event.data.amount === nairaToKobo(expectedGrossAmount);
+        const amountMatches =
+          event.data.amount === nairaToKobo(expectedGrossAmount);
 
         await db.payment.update({
           where: { id: payment.id },
@@ -92,9 +93,7 @@ export async function POST(req: NextRequest) {
 
       if (withdrawal) {
         const nextStatus =
-          event.event === "transfer.success"
-            ? "COMPLETED"
-            : "FAILED";
+          event.event === "transfer.success" ? "COMPLETED" : "FAILED";
 
         await db.withdrawalRequest.update({
           where: { id: withdrawal.id },

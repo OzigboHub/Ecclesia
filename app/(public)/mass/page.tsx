@@ -93,8 +93,7 @@ export default async function Masses({
               <Link
                 key={parish.id}
                 href={`/mass/${parish.id}`}
-                className="rounded-xl border bg-card p-6 transition hover:shadow-md hover:border-primary/50"
-              >
+                className="rounded-xl border bg-card p-6 transition hover:shadow-md hover:border-primary/50">
                 <div className="flex items-start gap-3">
                   <Church className="h-5 w-5 text-primary mt-0.5 shrink-0" />
                   <div className="min-w-0 flex-1">

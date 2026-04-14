@@ -2,6 +2,7 @@ import { auth } from "@/auth";
 import { MassCalendar } from "@/components/mass/mass-calendar";
 import { MassCreateDialog } from "@/components/mass/mass-create-dialog";
 import { MassGenerateDialog } from "@/components/mass/mass-generate-dialog";
+import { assignDefaultPaymentTypesToSundayMasses } from "@/app/actions/payment-type.actions";
 import { canManageMassIntentions } from "@/lib/permissions";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,11 @@ export default async function MassesPage() {
   const session = await auth();
   const canGenerate = MASS_GENERATE_ROLES.includes(session?.user?.role ?? "");
   const canManage = canManageMassIntentions(session?.user?.role ?? "");
+
+  // Ensure default payment types exist and are linked to Sunday masses
+  if (session?.user?.organizationId) {
+    await assignDefaultPaymentTypesToSundayMasses(session.user.organizationId);
+  }
 
   return (
     <div className="space-y-6">
@@ -31,7 +37,13 @@ export default async function MassesPage() {
         )}
       </div>
 
-      <MassCalendar canManage={canManage} />
+      <MassCalendar
+        canManage={canManage}
+        userEmail={session?.user?.email ?? undefined}
+        userName={session?.user?.name ?? undefined}
+        parishionerId={session?.user?.parishionerId}
+        organizationId={session?.user?.organizationId}
+      />
     </div>
   );
 }

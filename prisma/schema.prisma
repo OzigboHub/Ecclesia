@@ -58,6 +58,7 @@ model Organization {
   users                          User[]
   withdrawals                    WithdrawalRequest[]
   financialEntries               ParishFinancialEntry[]
+  paymentTypes                   PaymentType[]
 
   @@index([parentId])
 }
@@ -132,6 +133,7 @@ model User {
   sessions                 UserSession[]
   withdrawalsRequested     WithdrawalRequest[]       @relation("WithdrawalRequester")
   financialEntriesRecorded ParishFinancialEntry[]    @relation("FinancialEntryRecorder")
+  paymentTypesCreated      PaymentType[]             @relation("PaymentTypeCreator")
 
   @@index([organizationId])
   @@index([email])
@@ -238,6 +240,7 @@ model Mass {
   liveStream         LiveStream?
   organization       Organization    @relation(fields: [organizationId], references: [id])
   intentions         MassIntention[]
+  paymentTypes       MassPaymentType[]
 
   @@unique([organizationId, date, time])
   @@index([organizationId])
@@ -495,6 +498,7 @@ model Payment {
   massIntentionId    String?
   donationCampaignId String?
   donationId         String?
+  paymentTypeId      String?
   recordedById       String
   notes              String?
   receiptNumber      String?           @unique
@@ -514,6 +518,7 @@ model Payment {
   donationCampaign   DonationCampaign? @relation(fields: [donationCampaignId], references: [id])
   donation           Donation?         @relation(fields: [donationId], references: [id])
   massIntention      MassIntention?    @relation(fields: [massIntentionId], references: [id])
+  paymentType        PaymentType?      @relation(fields: [paymentTypeId], references: [id])
   organization       Organization      @relation(fields: [organizationId], references: [id])
   parishioner        Parishioner?      @relation(fields: [parishionerId], references: [id])
   recordedBy         User              @relation("PaymentRecorder", fields: [recordedById], references: [id])
@@ -526,6 +531,7 @@ model Payment {
   @@index([massIntentionId])
   @@index([donationCampaignId])
   @@index([donationId])
+  @@index([paymentTypeId])
   @@index([societyId])
   @@index([paymentDate])
   @@index([month])
@@ -984,4 +990,48 @@ enum ParishFinancialEntryType {
   FIRST_COLLECTION
   SECOND_COLLECTION
   OTHER
+}
+
+// ============================================
+// PAYMENT TYPES (Admin-created)
+// ============================================
+
+enum PaymentTypeCategory {
+  OFFERING
+  TITHE
+  DONATION
+  OTHER
+}
+
+model PaymentType {
+  id             String              @id @default(uuid())
+  name           String
+  description    String?
+  category       PaymentTypeCategory
+  isActive       Boolean             @default(true)
+  organizationId String
+  createdById    String
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  organization   Organization        @relation(fields: [organizationId], references: [id])
+  createdBy      User                @relation("PaymentTypeCreator", fields: [createdById], references: [id])
+  payments       Payment[]
+  masses         MassPaymentType[]
+
+  @@unique([name, organizationId])
+  @@index([organizationId])
+  @@index([category])
+  @@index([isActive])
+}
+
+model MassPaymentType {
+  massId        String
+  paymentTypeId String
+  createdAt     DateTime    @default(now())
+  mass          Mass        @relation(fields: [massId], references: [id], onDelete: Cascade)
+  paymentType   PaymentType @relation(fields: [paymentTypeId], references: [id], onDelete: Cascade)
+
+  @@id([massId, paymentTypeId])
+  @@index([massId])
+  @@index([paymentTypeId])
 }

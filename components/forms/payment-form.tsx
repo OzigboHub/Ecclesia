@@ -39,6 +39,7 @@ export function PaymentForm({ onSuccess }: PaymentFormProps) {
       payerName: "",
       payerEmail: "",
       payerPhone: "",
+      paymentDate: "",
       notes: "",
     },
   });
