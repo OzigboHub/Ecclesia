@@ -4,6 +4,7 @@ import type { Prisma } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import type { NextAuthConfig } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
+import { cookies } from "next/headers";
 import { randomUUID } from "node:crypto";
 import { ZodError } from "zod";
 
@@ -301,6 +302,7 @@ export const authConfig: NextAuthConfig = {
 						id: user.id,
 						email: user.email,
 						name: `${user.firstName} ${user.lastName}`,
+						displayPicture: user.displayPicture,
 						role: user.role,
 						organizationId: user.organizationId,
 						organizationName: user.organization?.name ?? null,
@@ -325,12 +327,15 @@ export const authConfig: NextAuthConfig = {
 		maxAge: 24 * 60 * 60, // 24 hours
 	},
 	callbacks: {
-		async jwt({ token, user }) {
+		async jwt({ token, user, trigger, session }) {
 			// Initial sign in - extend token with custom user fields
 			if (user) {
 				token.id = user.id as string;
 				token.role = (user as unknown as Record<string, unknown>)
 					.role as string;
+				token.displayPicture = (
+					user as unknown as Record<string, unknown>
+				).displayPicture as string;
 				token.organizationId = (
 					user as unknown as Record<string, unknown>
 				).organizationId as string;
@@ -347,6 +352,13 @@ export const authConfig: NextAuthConfig = {
 					.sessionId as string;
 			}
 
+			if (trigger === "update" && session?.user) {
+				token.organizationId =
+					session.user.organizationId ?? token.organizationId;
+				token.organizationName =
+					session.user.organizationName ?? token.organizationName;
+			}
+
 			if (!token.id || typeof token.id !== "string") {
 				return token;
 			}
@@ -358,6 +370,8 @@ export const authConfig: NextAuthConfig = {
 					lockedUntil: true,
 					sessionVersion: true,
 					activeSessionId: true,
+					organizationId: true,
+					organization: { select: { name: true } },
 				},
 			});
 
@@ -476,7 +490,60 @@ export const authConfig: NextAuthConfig = {
 				data: { lastSeenAt: new Date() },
 			});
 
+			const cookieStore = await cookies();
+			const contextId =
+				token.role === "SUPER_ADMIN" ?
+					cookieStore.get("org-context-id")?.value
+				:	undefined;
+			let contextOrganization: {
+				id: string;
+				name: string | null;
+			} | null = null;
+			if (contextId) {
+				contextOrganization = await db.organization.findUnique({
+					where: { id: contextId },
+					select: { id: true, name: true },
+				});
+			}
+
+			let defaultOrganization: {
+				id: string;
+				name: string | null;
+			} | null =
+				currentUser.organizationId ?
+					{
+						id: currentUser.organizationId,
+						name: currentUser.organization?.name ?? null,
+					}
+				:	null;
+
+			if (token.role === "SUPER_ADMIN" && !contextOrganization) {
+				const firstOrganization = await db.organization.findFirst({
+					orderBy: { createdAt: "asc" },
+					select: { id: true, name: true },
+				});
+
+				if (firstOrganization) {
+					defaultOrganization = firstOrganization;
+					if (currentUser.organizationId !== firstOrganization.id) {
+						await db.user.update({
+							where: { id: token.id },
+							data: { organizationId: firstOrganization.id },
+						});
+					}
+				}
+			}
+
 			token.sessionVersion = currentUser.sessionVersion;
+			token.organizationId =
+				contextOrganization?.id ??
+				defaultOrganization?.id ??
+				currentUser.organizationId;
+			token.organizationName =
+				contextOrganization?.name ??
+				defaultOrganization?.name ??
+				currentUser.organization?.name ??
+				null;
 			return token;
 		},
 		session({ session, token }) {
@@ -491,6 +558,7 @@ export const authConfig: NextAuthConfig = {
 			if (session.user) {
 				session.user.id = token.id as string;
 				session.user.role = token.role as string;
+				session.user.displayPicture = token.displayPicture as string;
 				session.user.organizationId = token.organizationId as string;
 				session.user.organizationName = token.organizationName as
 					| string

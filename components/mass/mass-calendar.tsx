@@ -61,13 +61,13 @@ export function MassCalendar({ canManage = false }: MassCalendarProps) {
 	return (
 		<div className="grid md:grid-cols-[350px_1fr] gap-8 items-start">
 			<Card className="shadow-lg border-none bg-secondary/5">
-				<CardContent className="p-4">
+				<CardContent className="p-4 h-full">
 					<Calendar
 						mode="single"
 						selected={date}
 						onSelect={setDate}
 						onMonthChange={setCurrentMonth}
-						className="rounded-xl border shadow-sm bg-background"
+						className="rounded-xl border shadow-sm bg-background w-full h-full"
 						modifiers={{
 							hasMass: massDays,
 						}}
