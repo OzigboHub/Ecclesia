@@ -1,9 +1,10 @@
-'use server';
+"use server";
 
-import { auth } from '@/auth';
-import db from '@/lib/db';
-import type { ActionResponse } from '@/types';
-import type { Organization, User, Parishioner, Society } from '@prisma/client';
+import { auth } from "@/auth";
+import db from "@/lib/db";
+import type { ActionResponse } from "@/types";
+import type { Organization, Parishioner, Society, User } from "@prisma/client";
+import { cookies } from "next/headers";
 
 // ============================================
 // TYPE DEFINITIONS
@@ -45,7 +46,11 @@ export interface PaginatedResult<T> {
 
 export interface RecentActivity {
 	id: string;
-	type: 'user_created' | 'parishioner_created' | 'society_created' | 'sacramental_record';
+	type:
+		| "user_created"
+		| "parishioner_created"
+		| "society_created"
+		| "sacramental_record";
 	organizationId: string;
 	organizationName: string;
 	description: string;
@@ -58,8 +63,8 @@ export interface RecentActivity {
 
 async function requireSuperAdmin() {
 	const session = await auth();
-	if (!session?.user || session.user.role !== 'SUPER_ADMIN') {
-		throw new Error('Unauthorized: Super Admin access required');
+	if (!session?.user || session.user.role !== "SUPER_ADMIN") {
+		throw new Error("Unauthorized: Super Admin access required");
 	}
 	return session;
 }
@@ -87,8 +92,8 @@ export async function getSystemMetrics(): Promise<
 			totalConfirmations,
 			totalMarriages,
 		] = await Promise.all([
-			db.organization.count({ where: { level: 'PARISH' } }),
-			db.organization.count({ where: { level: 'OUTSTATION' } }),
+			db.organization.count({ where: { level: "PARISH" } }),
+			db.organization.count({ where: { level: "OUTSTATION" } }),
 			db.user.count(),
 			db.parishioner.count(),
 			db.society.count(),
@@ -112,15 +117,17 @@ export async function getSystemMetrics(): Promise<
 
 		return {
 			success: true,
-			message: 'System metrics retrieved',
+			message: "System metrics retrieved",
 			data: metrics,
 		};
 	} catch (error) {
-		console.error('Get system metrics error:', error);
+		console.error("Get system metrics error:", error);
 		return {
 			success: false,
 			message:
-				error instanceof Error ? error.message : 'Failed to fetch system metrics',
+				error instanceof Error ?
+					error.message
+				:	"Failed to fetch system metrics",
 		};
 	}
 }
@@ -136,14 +143,14 @@ export async function getAllOrganizationsWithMetrics(
 	page: number = 1,
 	pageSize: number = 20,
 	searchQuery?: string,
-	level?: 'PARISH' | 'OUTSTATION'
+	level?: "PARISH" | "OUTSTATION",
 ): Promise<ActionResponse<PaginatedResult<OrganizationWithMetrics>>> {
 	try {
 		await requireSuperAdmin();
 
 		const where = {
 			...(searchQuery && {
-				name: { contains: searchQuery, mode: 'insensitive' as const },
+				name: { contains: searchQuery, mode: "insensitive" as const },
 			}),
 			...(level && { level }),
 		};
@@ -170,7 +177,7 @@ export async function getAllOrganizationsWithMetrics(
 						},
 					},
 				},
-				orderBy: { name: 'asc' },
+				orderBy: { name: "asc" },
 				skip: (page - 1) * pageSize,
 				take: pageSize,
 			}),
@@ -181,7 +188,7 @@ export async function getAllOrganizationsWithMetrics(
 
 		return {
 			success: true,
-			message: 'Organizations retrieved',
+			message: "Organizations retrieved",
 			data: {
 				data: organizations,
 				total,
@@ -191,13 +198,13 @@ export async function getAllOrganizationsWithMetrics(
 			},
 		};
 	} catch (error) {
-		console.error('Get organizations error:', error);
+		console.error("Get organizations error:", error);
 		return {
 			success: false,
 			message:
-				error instanceof Error
-					? error.message
-					: 'Failed to fetch organizations',
+				error instanceof Error ?
+					error.message
+				:	"Failed to fetch organizations",
 		};
 	}
 }
@@ -207,7 +214,7 @@ export async function getAllOrganizationsWithMetrics(
  */
 export async function getOrganizationDetailedView(
 	organizationId: string,
-	limit: number = 5
+	limit: number = 5,
 ): Promise<
 	ActionResponse<{
 		organization: Organization;
@@ -239,58 +246,85 @@ export async function getOrganizationDetailedView(
 		if (!organization) {
 			return {
 				success: false,
-				message: 'Organization not found',
+				message: "Organization not found",
 			};
 		}
 
-		const [users, parishioners, societies, outstations, baptisms, confirmations, marriages] =
-			await Promise.all([
-				db.user.findMany({
-					where: { organizationId },
-					orderBy: { createdAt: 'desc' },
+		const [
+			users,
+			parishioners,
+			societies,
+			outstations,
+			baptisms,
+			confirmations,
+			marriages,
+		] = await Promise.all([
+			db.user.findMany({
+				where: { organizationId },
+				orderBy: { createdAt: "desc" },
+				take: limit,
+			}),
+			db.parishioner.findMany({
+				where: { organizationId },
+				orderBy: { createdAt: "desc" },
+				take: limit,
+			}),
+			db.society.findMany({
+				where: { organizationId },
+				orderBy: { createdAt: "desc" },
+				take: limit,
+			}),
+			organization.level === "PARISH" ?
+				db.organization.findMany({
+					where: { parentId: organizationId },
+					orderBy: { name: "asc" },
 					take: limit,
-				}),
-				db.parishioner.findMany({
-					where: { organizationId },
-					orderBy: { createdAt: 'desc' },
-					take: limit,
-				}),
-				db.society.findMany({
-					where: { organizationId },
-					orderBy: { createdAt: 'desc' },
-					take: limit,
-				}),
-				organization.level === 'PARISH'
-					? db.organization.findMany({
-							where: { parentId: organizationId },
-							orderBy: { name: 'asc' },
-							take: limit,
-					  })
-					: Promise.resolve([]),
-				db.baptism.findMany({ where: { organizationId }, take: limit, orderBy: { date: 'desc' } }),
-				db.confirmation.findMany({ where: { organizationId }, take: limit, orderBy: { date: 'desc' } }),
-				db.marriage.findMany({ where: { organizationId }, take: limit, orderBy: { date: 'desc' } }),
-			]);
+				})
+			:	Promise.resolve([]),
+			db.baptism.findMany({
+				where: { organizationId },
+				take: limit,
+				orderBy: { date: "desc" },
+			}),
+			db.confirmation.findMany({
+				where: { organizationId },
+				take: limit,
+				orderBy: { date: "desc" },
+			}),
+			db.marriage.findMany({
+				where: { organizationId },
+				take: limit,
+				orderBy: { date: "desc" },
+			}),
+		]);
 
 		// Get counts separately to avoid transaction type issues
-		const [totalUsers, totalParishioners, totalSocieties, totalBaptisms, totalConfirmations, totalMarriages] =
-			await db.$transaction([
-				db.user.count({ where: { organizationId } }),
-				db.parishioner.count({ where: { organizationId } }),
-				db.society.count({ where: { organizationId } }),
-				db.baptism.count({ where: { organizationId } }),
-				db.confirmation.count({ where: { organizationId } }),
-				db.marriage.count({ where: { organizationId } }),
-			]);
+		const [
+			totalUsers,
+			totalParishioners,
+			totalSocieties,
+			totalBaptisms,
+			totalConfirmations,
+			totalMarriages,
+		] = await db.$transaction([
+			db.user.count({ where: { organizationId } }),
+			db.parishioner.count({ where: { organizationId } }),
+			db.society.count({ where: { organizationId } }),
+			db.baptism.count({ where: { organizationId } }),
+			db.confirmation.count({ where: { organizationId } }),
+			db.marriage.count({ where: { organizationId } }),
+		]);
 
 		const totalOutstations =
-			organization.level === 'PARISH'
-				? await db.organization.count({ where: { parentId: organizationId } })
-				: 0;
+			organization.level === "PARISH" ?
+				await db.organization.count({
+					where: { parentId: organizationId },
+				})
+			:	0;
 
 		return {
 			success: true,
-			message: 'Organization details retrieved',
+			message: "Organization details retrieved",
 			data: {
 				organization,
 				users,
@@ -312,13 +346,13 @@ export async function getOrganizationDetailedView(
 			},
 		};
 	} catch (error) {
-		console.error('Get organization detailed view error:', error);
+		console.error("Get organization detailed view error:", error);
 		return {
 			success: false,
 			message:
-				error instanceof Error
-					? error.message
-					: 'Failed to fetch organization details',
+				error instanceof Error ?
+					error.message
+				:	"Failed to fetch organization details",
 		};
 	}
 }
@@ -332,10 +366,12 @@ export async function getOrganizationDetailedView(
  * This allows super admins to "view as" a specific organization
  */
 export async function setOrganizationContext(
-	organizationId: string | null
+	organizationId: string | null,
 ): Promise<ActionResponse<{ organizationId: string | null }>> {
 	try {
 		const session = await requireSuperAdmin();
+		const cookieStore = await cookies();
+		const contextCookieName = "org-context-id";
 
 		// Verify organization exists if provided
 		if (organizationId) {
@@ -346,28 +382,39 @@ export async function setOrganizationContext(
 			if (!org) {
 				return {
 					success: false,
-					message: 'Organization not found',
+					message: "Organization not found",
 				};
 			}
 		}
 
-		// Note: In a real implementation, you'd store this in session state
-		// For now, we'll return success and handle client-side state
+		if (organizationId) {
+			cookieStore.set(contextCookieName, organizationId, {
+				httpOnly: true,
+				sameSite: "lax",
+				secure: process.env.NODE_ENV === "production",
+				path: "/",
+				maxAge: 60 * 60 * 24 * 7,
+			});
+		} else {
+			cookieStore.delete(contextCookieName);
+		}
+
 		return {
 			success: true,
-			message: organizationId
-				? 'Organization context set'
-				: 'Organization context cleared',
+			message:
+				organizationId ?
+					"Organization context set"
+				:	"Organization context cleared",
 			data: { organizationId },
 		};
 	} catch (error) {
-		console.error('Set organization context error:', error);
+		console.error("Set organization context error:", error);
 		return {
 			success: false,
 			message:
-				error instanceof Error
-					? error.message
-					: 'Failed to set organization context',
+				error instanceof Error ?
+					error.message
+				:	"Failed to set organization context",
 		};
 	}
 }
@@ -380,30 +427,30 @@ export async function setOrganizationContext(
  * Get recent system-wide activity
  */
 export async function getRecentSystemActivity(
-	limit: number = 20
+	limit: number = 20,
 ): Promise<ActionResponse<RecentActivity[]>> {
 	try {
 		await requireSuperAdmin();
 
 		// Get recent users
 		const recentUsers = await db.user.findMany({
-			where: { role: { not: 'SUPER_ADMIN' } },
+			where: { role: { not: "SUPER_ADMIN" } },
 			include: { organization: { select: { name: true } } },
-			orderBy: { createdAt: 'desc' },
+			orderBy: { createdAt: "desc" },
 			take: limit,
 		});
 
 		// Get recent parishioners
 		const recentParishioners = await db.parishioner.findMany({
 			include: { organization: { select: { name: true } } },
-			orderBy: { createdAt: 'desc' },
+			orderBy: { createdAt: "desc" },
 			take: limit,
 		});
 
 		// Get recent societies
 		const recentSocieties = await db.society.findMany({
 			include: { organization: { select: { name: true } } },
-			orderBy: { createdAt: 'desc' },
+			orderBy: { createdAt: "desc" },
 			take: limit,
 		});
 
@@ -411,7 +458,7 @@ export async function getRecentSystemActivity(
 		const activities: RecentActivity[] = [
 			...recentUsers.map((user) => ({
 				id: user.id,
-				type: 'user_created' as const,
+				type: "user_created" as const,
 				organizationId: user.organizationId,
 				organizationName: user.organization.name,
 				description: `New user: ${user.firstName} ${user.lastName} (${user.role})`,
@@ -419,7 +466,7 @@ export async function getRecentSystemActivity(
 			})),
 			...recentParishioners.map((p) => ({
 				id: p.id,
-				type: 'parishioner_created' as const,
+				type: "parishioner_created" as const,
 				organizationId: p.organizationId,
 				organizationName: p.organization.name,
 				description: `New parishioner: ${p.firstName} ${p.lastName}`,
@@ -427,7 +474,7 @@ export async function getRecentSystemActivity(
 			})),
 			...recentSocieties.map((s) => ({
 				id: s.id,
-				type: 'society_created' as const,
+				type: "society_created" as const,
 				organizationId: s.organizationId,
 				organizationName: s.organization.name,
 				description: `New society: ${s.name}`,
@@ -439,17 +486,17 @@ export async function getRecentSystemActivity(
 
 		return {
 			success: true,
-			message: 'Recent activity retrieved',
+			message: "Recent activity retrieved",
 			data: activities,
 		};
 	} catch (error) {
-		console.error('Get recent activity error:', error);
+		console.error("Get recent activity error:", error);
 		return {
 			success: false,
 			message:
-				error instanceof Error
-					? error.message
-					: 'Failed to fetch recent activity',
+				error instanceof Error ?
+					error.message
+				:	"Failed to fetch recent activity",
 		};
 	}
 }

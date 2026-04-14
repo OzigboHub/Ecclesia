@@ -604,7 +604,17 @@ export async function confirmTwoFactorEnrollment(data: {
     }
 
     if (challenge.consumedAt) {
-      return { success: false, message: "Verification already used" };
+      const result = await signIn("credentials", {
+        email: setupSession.user.email,
+        twoFactorToken: parsed.data.challengeToken,
+        redirect: false,
+      });
+
+      if (!result || result.error) {
+        return { success: false, message: "Verification failed" };
+      }
+
+      return { success: true, message: "Login successful" };
     }
 
     if (challenge.attempts >= TWO_FACTOR_MAX_ATTEMPTS) {
@@ -673,6 +683,21 @@ export async function confirmTwoFactorEnrollment(data: {
 
     return { success: true, message: "Two-factor enabled" };
   } catch (error) {
+    if (error instanceof AuthError) {
+      switch (error.type) {
+        case "CredentialsSignin":
+        case "CallbackRouteError":
+          return {
+            success: false,
+            message: "Verification failed",
+          };
+        default:
+          return {
+            success: false,
+            message: "Authentication failed",
+          };
+      }
+    }
     console.error("Two-factor enrollment confirm error:", error);
     return { success: false, message: "Failed to confirm setup" };
   }
@@ -782,6 +807,21 @@ export async function verifyTwoFactor(data: {
 
     return { success: true, message: "Login successful" };
   } catch (error) {
+    if (error instanceof AuthError) {
+      switch (error.type) {
+        case "CredentialsSignin":
+        case "CallbackRouteError":
+          return {
+            success: false,
+            message: "Verification failed",
+          };
+        default:
+          return {
+            success: false,
+            message: "Authentication failed",
+          };
+      }
+    }
     console.error("Two-factor verification error:", error);
     return { success: false, message: "Verification failed" };
   }
@@ -1081,6 +1121,7 @@ export async function register(data: {
   phone: string;
   dateOfBirth: string;
   address?: string;
+  displayPicture?: string;
   password: string;
   confirmPassword: string;
   organizationId: string;
@@ -1134,6 +1175,7 @@ export async function register(data: {
           address: parsed.data.address || null,
           dateOfBirth: new Date(parsed.data.dateOfBirth),
           password: hashedPassword,
+          displayPicture: parsed.data.displayPicture || "",
           organizationId: parsed.data.organizationId,
           role: userRole,
           isActive: true,
@@ -1150,6 +1192,7 @@ export async function register(data: {
             phone: parsed.data.phone,
             address: parsed.data.address || null,
             dateOfBirth: new Date(parsed.data.dateOfBirth),
+            photoUrl: parsed.data.displayPicture || null,
             organizationId: parsed.data.organizationId,
           },
         });

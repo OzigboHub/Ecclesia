@@ -1,6 +1,6 @@
 import { auth } from "@/auth";
 import { MassScheduleManager } from "@/components/mass/mass-schedule-manager";
-import { canManageMassIntentions } from "@/lib/permissions";
+import { canManageMassIntentions, isAdminRole } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 
 export default async function MassSchedulePage() {
@@ -25,7 +25,7 @@ export default async function MassSchedulePage() {
 				</p>
 			</div>
 
-			<MassScheduleManager />
+			<MassScheduleManager canDelete={isAdminRole(session.user.role)} />
 		</div>
 	);
 }

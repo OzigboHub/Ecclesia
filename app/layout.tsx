@@ -1,5 +1,6 @@
 import { AuthProvider } from "@/components/providers/auth-provider";
-import type { Metadata } from "next";
+import { ServiceWorkerRegistration } from "@/components/providers/sw-registration";
+import type { Metadata, Viewport } from "next";
 import { Montserrat } from "next/font/google";
 import NextTopLoader from "nextjs-toploader";
 
@@ -16,6 +17,21 @@ const montserrat = Montserrat({
 export const metadata: Metadata = {
   title: "Ecclesia DPM - Digital Parish Manager",
   description: "Comprehensive parish management system",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Ecclesia",
+  },
+  formatDetection: {
+    telephone: false,
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#eab308",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
 };
 
 export default function RootLayout({
@@ -25,10 +41,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+      </head>
       <body
         className={`${montserrat.className} scroll-smooth text-[13px] antialiased`}
         suppressHydrationWarning>
         <AuthProvider>
+          <ServiceWorkerRegistration />
           <NextTopLoader
             initialPosition={0.08}
             crawlSpeed={200}

@@ -1,5 +1,6 @@
 "use client";
 
+import { getAllOrganizationsWithMetrics } from "@/app/actions/super-admin.actions";
 import {
   ADMIN_EXTENDED,
   SIDEBAR,
@@ -9,35 +10,75 @@ import {
 import {
   canBookAppointments,
   canBookMassIntentions,
+  canManageFinancials,
+  canManageMassIntentions,
   canManageOrganizations,
   canManageParishioners,
   canManageUsers,
   canRecordPayments,
+  canViewLiveStreams,
   canViewMassCalendar,
   canViewSocieties,
+  isSocietyHead,
 } from "@/lib/permissions";
 import { getInitials } from "@/lib/utils";
-import { LogOut } from "lucide-react";
+import { LogOut, Settings, Download, User } from "lucide-react";
 import { signOut, useSession } from "next-auth/react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
-import { Avatar, AvatarFallback } from "../ui/avatar";
+import { useEffect, useState } from "react";
+import { OrganizationContextSwitcher } from "../admin/organization-context-switcher";
+import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Badge } from "../ui/badge";
 import { Separator } from "../ui/separator";
+import { usePwaInstall } from "@/hooks/use-pwa-install";
 
 export default function ProtectedNavbar() {
   const [open, setOpen] = useState(false);
   const router = useRouter();
   const pathName = usePathname();
   const session = useSession();
+  const { canInstall, install } = usePwaInstall();
   const user = session.data?.user;
   const userRole = user?.role;
   const isSuperAdmin = userRole === "SUPER_ADMIN";
   const contextId = user?.organizationId;
-
   const isParishioner = userRole === "PARISHIONER";
+
+  const [organizations, setOrganizations] = useState<
+    { id: string; name: string }[]
+  >([]);
+  const [mySocietyId, setMySocietyId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isSuperAdmin) {
+      getAllOrganizationsWithMetrics(1, 100).then((result) => {
+        if (result.success && result.data) {
+          setOrganizations(
+            result.data.data.map((org) => ({
+              id: org.id,
+              name: org.name,
+            })),
+          );
+        }
+      });
+    }
+  }, [isSuperAdmin]);
+
+  useEffect(() => {
+    if (userRole && isSocietyHead(userRole)) {
+      import("@/app/actions/society.actions").then(
+        ({ getSocietyForCurrentUser }) => {
+          getSocietyForCurrentUser().then((result) => {
+            if (result.success && result.data) {
+              setMySocietyId(result.data.id);
+            }
+          });
+        },
+      );
+    }
+  }, [userRole]);
 
   const PARISHIONER_LINKS = [
     "Dashboard",
@@ -46,6 +87,7 @@ export default function ProtectedNavbar() {
     "Appointments",
     "Announcements",
     "Societies",
+    "Live Streams",
   ];
 
   const mainNav = SIDEBAR.filter((item) => {
@@ -58,8 +100,11 @@ export default function ProtectedNavbar() {
     if (item.name === "Payments") return canRecordPayments(userRole);
     if (item.name === "Mass Intentions") return canBookMassIntentions(userRole);
     if (item.name === "Mass Calendar") return canViewMassCalendar(userRole);
+    if (item.name === "Mass Schedule") return canManageMassIntentions(userRole);
     if (item.name === "Appointments") return canBookAppointments(userRole);
     if (item.name === "Societies") return canViewSocieties(userRole);
+    if (item.name === "Live Streams") return canViewLiveStreams(userRole);
+    if (item.name === "Parish Finances") return canManageFinancials(userRole);
     if (item.name === "Settings") return isSuperAdmin;
     return true;
   });
@@ -79,9 +124,9 @@ export default function ProtectedNavbar() {
   };
 
   return (
-    <div className="z-50 bg-secondary fixed w-full lg:w-[84%] py-2.5 lg:px-15">
-      <div className="w-full flex items-center justify-between">
-        <div className="lg:hidden inline w-25">
+    <div className="fixed inset-x-0 top-0 z-50 bg-secondary/95 backdrop-blur lg:left-[280px] lg:w-[calc(100%-280px)]">
+      <div className="flex h-16 w-full items-center justify-between px-4 md:px-6 lg:px-8">
+        <div className="lg:hidden inline w-28">
           <Image
             src={"/standalone-golden-yellow-logo-typography.png"}
             width={"1000"}
@@ -91,58 +136,41 @@ export default function ProtectedNavbar() {
           />
         </div>
 
-        <div
-          onClick={handleToggleOpen}
-          className="w-full flex items-center justify-end flex-row gap-3">
-          <Avatar>
-            <AvatarFallback className="bg-primary text-secondary font-extrabold">
-              {getInitials(user?.name ?? "")}
-            </AvatarFallback>
-          </Avatar>
-          <div className="flex flex-col items-start text-left">
-            <div className="flex flex-row-reverse gap-4">
-              <p className="text-primary font-bold">{user?.name}</p>
+        <div className="flex w-full items-center justify-end gap-3">
+          <Link
+            href="/profile"
+            className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+            <Avatar>
+              <AvatarImage
+                src={user?.displayPicture || undefined}
+                alt={user?.name ?? "User"}
+              />
+              <AvatarFallback className="bg-primary text-secondary font-extrabold">
+                {getInitials(user?.name ?? "")}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex flex-col items-start text-left">
+              <div className="flex flex-row-reverse gap-4">
+                <p className="text-primary font-bold">{user?.name}</p>
+              </div>
+              <Badge className="text-[10px]">
+                {user?.role.replaceAll("_", " ")}
+              </Badge>
             </div>
-            <Badge className="text-[10px]">
-              {user?.role.replaceAll("_", " ")}
-            </Badge>
-          </div>
+          </Link>
+          <button
+            onClick={handleToggleOpen}
+            className="lg:hidden p-1 text-primary">
+            <User className="w-5 h-5" />
+          </button>
         </div>
       </div>
 
       {open && (
-        <div className="bg-secondary absolute px-2.5 left-0 top-0 w-full h-screen">
-          <div className="w-full py-2.5 flex items-center justify-between">
-            <div className="lg:hidden inline w-25">
-              <Image
-                src={"/standalone-golden-yellow-logo-typography.png"}
-                width={"1000"}
-                height={"1000"}
-                alt="logo"
-                className="w-full object-cover"
-              />
-            </div>
-            <div
-              onClick={handleToggleOpen}
-              className="w-full flex items-center justify-end flex-row gap-3">
-              <Avatar>
-                <AvatarFallback className="bg-primary text-secondary font-extrabold">
-                  {getInitials(user?.name ?? "")}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex flex-col items-start text-left">
-                <div className="flex flex-row-reverse gap-4">
-                  <p className="text-primary font-bold">{user?.name}</p>
-                </div>
-                <div className="text-[12px] text-primary">
-                  <p>{user?.email}</p>
-                </div>
-              </div>
-            </div>
-          </div>
+        <div className="fixed inset-x-0 top-16 h-[calc(100vh-4rem)] bg-secondary px-3 py-4 overflow-y-auto lg:hidden">
           <div className="mt-5">
-            <div className="flex justify-between flex-col h-full">
-              <div className="flex justify-between gap-3 flex-col">
+            <div className="flex min-h-[calc(100vh-10rem)] flex-col justify-between">
+              <div className="flex flex-col gap-3">
                 {isSuperAdmin && (
                   <div className="px-2 pb-2">
                     <p className="text-[11px] text-primary/70 font-bold uppercase tracking-wider mb-2">
@@ -156,25 +184,35 @@ export default function ProtectedNavbar() {
                         className={`${
                           pathName === i.href
                             ? "text-secondary bg-primary "
-                            : " text-white"
-                        }  items-center py-2.5  flex gap-5 rounded-[10px] px-5`}>
-                        <div>{i.icon}</div>
-                        <div className="text-[13px]">
-                          <p>{i.name}</p>
-                        </div>
+                            : " text-white hover:bg-white/10"
+                        } items-center py-2.5 flex gap-4 rounded-[10px] px-4 mb-1 transition-all`}>
+                        <div className="shrink-0">{i.icon}</div>
+                        <div className="text-[13px] font-medium">{i.name}</div>
                       </Link>
                     ))}
-                    <Separator className="my-3" />
+                    <Separator className="my-3 bg-white/10" />
+                  </div>
+                )}
+
+                {isSuperAdmin && (
+                  <div className="px-2 mb-4">
+                    <p className="text-[11px] text-primary/70 font-bold uppercase tracking-wider mb-3">
+                      Organization Context
+                    </p>
+                    <OrganizationContextSwitcher
+                      organizations={organizations}
+                      currentOrgId={contextId}
+                    />
                   </div>
                 )}
 
                 {(!isSuperAdmin || contextId) && (
                   <div className="px-2">
-                    {contextId && isSuperAdmin ? (
+                    {contextId && (
                       <p className="text-[11px] text-primary/70 font-bold uppercase tracking-wider mb-2">
-                        Viewing Organization
+                        Viewing Parish
                       </p>
-                    ) : null}
+                    )}
                     {mainNav.map((i, k) => (
                       <Link
                         href={i.href}
@@ -183,23 +221,40 @@ export default function ProtectedNavbar() {
                         className={`${
                           pathName === i.href
                             ? "text-secondary bg-primary "
-                            : " text-white"
-                        }  items-center py-2.5  flex gap-5 rounded-[10px] px-5`}>
-                        <div>{i.icon}</div>
-                        <div className="text-[13px]">
-                          <p>{i.name}</p>
-                        </div>
+                            : " text-white hover:bg-white/10"
+                        } items-center py-2.5 flex gap-4 rounded-[10px] px-4 mb-1 transition-all`}>
+                        <div className="shrink-0">{i.icon}</div>
+                        <div className="text-[13px] font-medium">{i.name}</div>
                       </Link>
                     ))}
+                    {mySocietyId && (
+                      <Link
+                        href={`/dashboard/societies/${mySocietyId}/manage`}
+                        onClick={() => setOpen(false)}
+                        className={`${
+                          pathName.includes(`/societies/${mySocietyId}/manage`)
+                            ? "text-secondary bg-primary "
+                            : " text-white hover:bg-white/10"
+                        } items-center py-2.5 flex gap-4 rounded-[10px] px-4 mb-1 transition-all`}>
+                        <div className="shrink-0">
+                          <Settings className="w-5 h-5" />
+                        </div>
+                        <div className="text-[13px] font-medium">
+                          My Society
+                        </div>
+                      </Link>
+                    )}
                   </div>
                 )}
               </div>
 
-              <div className="mt-5">
+              <div className="mt-5 px-2">
                 {!isSuperAdmin && filteredAdmin.length > 0 && (
                   <>
-                    <p className="text-[13px] text-primary font-bold">Manage</p>
-                    <div className="mt-2.5">
+                    <p className="text-[11px] text-primary/70 font-bold uppercase tracking-wider mb-2">
+                      Manage
+                    </p>
+                    <div className="mt-2">
                       {filteredAdmin.map((i, k) => (
                         <Link
                           onClick={() => setOpen(false)}
@@ -208,11 +263,11 @@ export default function ProtectedNavbar() {
                           className={`${
                             pathName === i.href
                               ? "text-secondary bg-primary "
-                              : " text-white"
-                          }  items-center py-2.5  flex gap-5 rounded-[10px] px-5`}>
-                          <div>{i.icon}</div>
-                          <div className="text-[13px]">
-                            <p>{i.name}</p>
+                              : " text-white hover:bg-white/10"
+                          } items-center py-2.5 flex gap-4 rounded-[10px] px-4 mb-1 transition-all`}>
+                          <div className="shrink-0">{i.icon}</div>
+                          <div className="text-[13px] font-medium">
+                            {i.name}
                           </div>
                         </Link>
                       ))}
@@ -221,11 +276,11 @@ export default function ProtectedNavbar() {
                 )}
 
                 {isSuperAdmin && (
-                  <div className="mt-2.5">
-                    <p className="text-[13px] text-primary font-bold">
+                  <div className="mt-4">
+                    <p className="text-[11px] text-primary/70 font-bold uppercase tracking-wider mb-2">
                       Admin Tools
                     </p>
-                    <div className="mt-2.5">
+                    <div className="mt-2">
                       {SUPERADMIN_EXTENDED.map((i, k) => (
                         <Link
                           onClick={() => setOpen(false)}
@@ -234,11 +289,11 @@ export default function ProtectedNavbar() {
                           className={`${
                             pathName === i.href
                               ? "text-secondary bg-primary "
-                              : " text-white"
-                          }  items-center py-2.5  flex gap-5 rounded-[10px] px-5`}>
-                          <div>{i.icon}</div>
-                          <div className="text-[13px]">
-                            <p>{i.name}</p>
+                              : " text-white hover:bg-white/10"
+                          } items-center py-2.5 flex gap-4 rounded-[10px] px-4 mb-1 transition-all`}>
+                          <div className="shrink-0">{i.icon}</div>
+                          <div className="text-[13px] font-medium">
+                            {i.name}
                           </div>
                         </Link>
                       ))}
@@ -246,15 +301,34 @@ export default function ProtectedNavbar() {
                   </div>
                 )}
 
-                <Separator className="my-5" />
+                <Separator className="my-4 bg-white/10" />
+                <Link
+                  href="/profile"
+                  onClick={() => setOpen(false)}
+                  className={`${
+                    pathName === "/profile"
+                      ? "text-secondary bg-primary "
+                      : " text-white hover:bg-white/10"
+                  } items-center py-2.5 flex gap-4 rounded-[10px] px-4 mb-1 transition-all`}>
+                  <User className="w-5 h-5 shrink-0" />
+                  <div className="text-[13px] font-medium">My Profile</div>
+                </Link>
+                {canInstall && (
+                  <div
+                    onClick={install}
+                    className="px-4 py-2 text-primary cursor-pointer hover:bg-white/10 rounded-[10px] gap-4 flex items-center mb-1 transition-all">
+                    <Download className="w-5 h-5 shrink-0" />
+                    <p className="text-[13px] font-bold">Install App</p>
+                  </div>
+                )}
                 <div
                   onClick={async () => {
                     await signOut({ redirect: false });
                     router.push("/auth/login");
                   }}
-                  className="px-5 mt-5 text-primary cursor-pointer gap-5 flex flex-row">
-                  <LogOut className="w-5 h-5" />
-                  <p className="text-[13px] font-extrabold">Logout</p>
+                  className="px-4 py-2 text-primary cursor-pointer hover:bg-white/10 rounded-[10px] gap-4 flex items-center mb-6 transition-all">
+                  <LogOut className="w-5 h-5 shrink-0" />
+                  <p className="text-[13px] font-bold">Logout</p>
                 </div>
               </div>
             </div>

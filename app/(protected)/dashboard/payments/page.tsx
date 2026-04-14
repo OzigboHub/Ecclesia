@@ -84,7 +84,7 @@ export default async function PaymentsPage({
 						</a>
 					</Button>
 					<Button asChild>
-						<Link href='/dashboard/payments/new'>
+						<Link href='/payments/new'>
 							<Plus className='mr-2 h-4 w-4' /> Record Payment
 						</Link>
 					</Button>

@@ -145,7 +145,7 @@ export function DashboardPaymentsTable({
 					No payments recorded yet
 				</p>
 				<Button asChild className='mt-4'>
-					<Link href='/dashboard/payments/new'>
+					<Link href='/payments/new'>
 						<Plus className='mr-2 h-4 w-4' /> Record First Payment
 					</Link>
 				</Button>

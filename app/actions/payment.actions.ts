@@ -531,16 +531,32 @@ export async function createPayment(
     const {
       eventId: _eventId,
       paymentGateway: _paymentGateway,
+      description: _description,
+      paymentDate: formPaymentDate,
       ...restPaymentData
     } = paymentData;
+
+    // Derive month from paymentDate if provided, otherwise use form month
+    const derivedMonth = formPaymentDate
+      ? new Date(formPaymentDate).getMonth() + 1
+      : restPaymentData.month;
+
+    // Combine description into notes if provided
+    const combinedNotes = [_description, restPaymentData.notes]
+      .filter(Boolean)
+      .join(" — ");
+
     const payment = await db.payment.create({
       data: {
         ...restPaymentData,
+        month: derivedMonth,
+        notes: combinedNotes || restPaymentData.notes || undefined,
         payerName: paymentData.payerName ?? "Guest",
         purpose: dbPurpose,
         paymentMethod,
         currency: "NGN",
         paymentStatus: paymentMethod === "CASH" ? "COMPLETED" : "PENDING",
+        paymentDate: formPaymentDate ? new Date(formPaymentDate) : undefined,
         receiptNumber,
         organizationId: targetOrgId,
         recordedById,

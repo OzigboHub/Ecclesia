@@ -169,6 +169,23 @@ export function isSocietyHead(role: string): boolean {
   return ["SOCIETY_PRESIDENT", "SOCIETY_SECRETARY"].includes(role);
 }
 
+export function canManagePaymentTypes(role: string): boolean {
+  return ["SUPER_ADMIN", "PARISH_ADMIN", "PARISH_SECRETARY"].includes(role);
+}
+
+export function canMakePayments(role: string): boolean {
+  return [
+    "SUPER_ADMIN",
+    "PARISH_ADMIN",
+    "PARISH_SECRETARY",
+    "PARISH_STAFF",
+    "OUTSTATION_ADMIN",
+    "SOCIETY_PRESIDENT",
+    "SOCIETY_SECRETARY",
+    "PARISHIONER",
+  ].includes(role);
+}
+
 export function canManageSocietyDues(role: string): boolean {
   return [
     "SUPER_ADMIN",

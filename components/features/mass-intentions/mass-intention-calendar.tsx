@@ -399,13 +399,16 @@ export function MassIntentionCalendar({
                     // Disable booking 30 minutes before mass start time
                     const now = new Date();
                     const massDate = new Date(mass.date);
-                    const isToday = massDate.toDateString() === now.toDateString();
+                    const isToday =
+                      massDate.toDateString() === now.toDateString();
                     let massClosed = false;
                     if (isToday && mass.time) {
                       const [h, m] = mass.time.split(":").map(Number);
                       const massStart = new Date(massDate);
                       massStart.setHours(h, m, 0, 0);
-                      const cutoff = new Date(massStart.getTime() - 30 * 60 * 1000);
+                      const cutoff = new Date(
+                        massStart.getTime() - 30 * 60 * 1000,
+                      );
                       massClosed = now >= cutoff;
                     }
                     const canBook = !isCancelled && !massClosed;
@@ -464,7 +467,8 @@ export function MassIntentionCalendar({
                               </Badge>
                             ) : (
                               <Badge variant="default" className="text-xs">
-                                {mass.intentions.length} intention{mass.intentions.length !== 1 ? "s" : ""}
+                                {mass.intentions.length} intention
+                                {mass.intentions.length !== 1 ? "s" : ""}
                               </Badge>
                             )}
                           </div>
@@ -474,7 +478,8 @@ export function MassIntentionCalendar({
                         {!isCancelled && mass.intentions.length > 0 && (
                           <div className="mt-3">
                             <p className="text-xs text-muted-foreground">
-                              {mass.intentions.length} intention{mass.intentions.length !== 1 ? "s" : ""} booked
+                              {mass.intentions.length} intention
+                              {mass.intentions.length !== 1 ? "s" : ""} booked
                             </p>
                           </div>
                         )}
