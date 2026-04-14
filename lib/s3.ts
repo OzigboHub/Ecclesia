@@ -1,25 +1,9 @@
-import {
-  S3Client,
-  PutObjectCommand,
-  DeleteObjectCommand,
-} from "@aws-sdk/client-s3";
+import crypto from "crypto";
 
-/**
- * S3 client configuration (works with AWS S3, DigitalOcean Spaces, etc.)
- */
-const s3Client = new S3Client({
-  region: process.env.AWS_REGION || "us-east-1",
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID || "",
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || "",
-  },
-});
-
-const BUCKET_NAME = process.env.AWS_BUCKET_NAME || "";
 const IMAGES_FOLDER = process.env.IMAGES_FOLDER || "uploads";
 
 /**
- * Upload a file to S3/Spaces
+ * Upload a file to Cloudinary using signed upload (REST API)
  */
 export async function uploadToS3(
   file: Buffer,
@@ -27,24 +11,46 @@ export async function uploadToS3(
   contentType: string,
 ): Promise<{ success: boolean; url?: string; error?: string }> {
   try {
-    const key = `${IMAGES_FOLDER}/${fileName}`;
+    const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+    const apiKey = process.env.CLOUDINARY_API_KEY;
+    const apiSecret = process.env.CLOUDINARY_SECRET;
 
-    const command = new PutObjectCommand({
-      Bucket: BUCKET_NAME,
-      Key: key,
-      Body: file,
-      ContentType: contentType,
-      ACL: "public-read",
-    });
+    if (!cloudName || !apiKey || !apiSecret) {
+      return { success: false, error: "Cloudinary is not configured" };
+    }
 
-    await s3Client.send(command);
+    const folder = IMAGES_FOLDER;
+    const timestamp = Math.floor(Date.now() / 1000);
+    const signatureBase = `folder=${folder}&timestamp=${timestamp}${apiSecret}`;
+    const signature = crypto
+      .createHash("sha1")
+      .update(signatureBase)
+      .digest("hex");
 
-    // Construct the public URL
-    const url = `https://${BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+    const blob = new Blob([new Uint8Array(file)], { type: contentType });
+    const uploadForm = new FormData();
+    uploadForm.append("file", blob, fileName);
+    uploadForm.append("api_key", apiKey);
+    uploadForm.append("timestamp", timestamp.toString());
+    uploadForm.append("signature", signature);
+    uploadForm.append("folder", folder);
 
-    return { success: true, url };
+    const response = await fetch(
+      `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
+      { method: "POST", body: uploadForm },
+    );
+
+    const result = await response.json();
+    if (!response.ok) {
+      return {
+        success: false,
+        error: result?.error?.message || "Upload failed",
+      };
+    }
+
+    return { success: true, url: result.secure_url || result.url };
   } catch (error) {
-    console.error("S3 upload error:", error);
+    console.error("Cloudinary upload error:", error);
     return {
       success: false,
       error: error instanceof Error ? error.message : "Upload failed",
@@ -53,26 +59,55 @@ export async function uploadToS3(
 }
 
 /**
- * Delete a file from S3/Spaces
+ * Delete a file from Cloudinary using signed API call
  */
 export async function deleteFromS3(
   fileUrl: string,
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    // Extract the key from the URL
+    const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+    const apiKey = process.env.CLOUDINARY_API_KEY;
+    const apiSecret = process.env.CLOUDINARY_SECRET;
+
+    if (!cloudName || !apiKey || !apiSecret) {
+      return { success: false, error: "Cloudinary is not configured" };
+    }
+
+    // Extract public_id from Cloudinary URL
     const url = new URL(fileUrl);
-    const key = url.pathname.slice(1); // Remove leading slash
+    const parts = url.pathname.split("/upload/");
+    if (parts.length < 2) {
+      return { success: false, error: "Invalid Cloudinary URL" };
+    }
+    const afterUpload = parts[1].replace(/^v\d+\//, "");
+    const publicId = afterUpload.replace(/\.[^/.]+$/, "");
 
-    const command = new DeleteObjectCommand({
-      Bucket: BUCKET_NAME,
-      Key: key,
-    });
+    const timestamp = Math.floor(Date.now() / 1000);
+    const signatureBase = `public_id=${publicId}&timestamp=${timestamp}${apiSecret}`;
+    const signature = crypto
+      .createHash("sha1")
+      .update(signatureBase)
+      .digest("hex");
 
-    await s3Client.send(command);
+    const deleteForm = new FormData();
+    deleteForm.append("public_id", publicId);
+    deleteForm.append("api_key", apiKey);
+    deleteForm.append("timestamp", timestamp.toString());
+    deleteForm.append("signature", signature);
+
+    const response = await fetch(
+      `https://api.cloudinary.com/v1_1/${cloudName}/image/destroy`,
+      { method: "POST", body: deleteForm },
+    );
+
+    const result = await response.json();
+    if (result.result !== "ok") {
+      return { success: false, error: "Failed to delete image" };
+    }
 
     return { success: true };
   } catch (error) {
-    console.error("S3 delete error:", error);
+    console.error("Cloudinary delete error:", error);
     return {
       success: false,
       error: error instanceof Error ? error.message : "Delete failed",

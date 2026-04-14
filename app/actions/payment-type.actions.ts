@@ -73,9 +73,7 @@ export async function getActivePaymentTypes(
   }
 }
 
-export async function getPaymentType(
-  id: string,
-): Promise<ActionResponse> {
+export async function getPaymentType(id: string): Promise<ActionResponse> {
   try {
     const session = await auth();
     if (!session) {
@@ -228,9 +226,7 @@ export async function updatePaymentType(
   }
 }
 
-export async function deletePaymentType(
-  id: string,
-): Promise<ActionResponse> {
+export async function deletePaymentType(id: string): Promise<ActionResponse> {
   try {
     const session = await auth();
     if (!session) {
@@ -290,7 +286,7 @@ export async function getMassPaymentTypes(
     const mass = await db.mass.findFirst({
       where: { id: massId, ...(orgId ? { organizationId: orgId } : {}) },
       include: {
-        paymentTypes: {
+        MassPaymentType: {
           include: {
             paymentType: true,
           },
@@ -302,7 +298,7 @@ export async function getMassPaymentTypes(
       return { success: false, message: "Mass not found" };
     }
 
-    const paymentTypes = mass.paymentTypes.map((mpt) => mpt.paymentType);
+    const paymentTypes = mass.MassPaymentType.map((mpt) => mpt.paymentType);
 
     return {
       success: true,
@@ -406,7 +402,10 @@ export async function ensureDefaultPaymentTypes(
     if (!pt) {
       // Find an admin user to be the creator
       const adminUser = await db.user.findFirst({
-        where: { organizationId, role: { in: ["PARISH_ADMIN", "SUPER_ADMIN"] } },
+        where: {
+          organizationId,
+          role: { in: ["PARISH_ADMIN", "SUPER_ADMIN"] },
+        },
         select: { id: true },
       });
 
@@ -456,13 +455,15 @@ export async function assignDefaultPaymentTypesToSundayMasses(
         status: { not: "CANCELLED" },
       },
       include: {
-        paymentTypes: { select: { paymentTypeId: true } },
+        MassPaymentType: { select: { paymentTypeId: true } },
       },
     });
 
     let assignedCount = 0;
     for (const mass of sundayMasses) {
-      const existingPtIds = new Set(mass.paymentTypes.map((mpt) => mpt.paymentTypeId));
+      const existingPtIds = new Set(
+        mass.MassPaymentType.map((mpt) => mpt.paymentTypeId),
+      );
       const missingIds = defaultIds.filter((id) => !existingPtIds.has(id));
 
       if (missingIds.length > 0) {
@@ -483,6 +484,9 @@ export async function assignDefaultPaymentTypesToSundayMasses(
     };
   } catch (error) {
     console.error("Failed to assign default payment types:", error);
-    return { success: false, message: "Failed to assign default payment types" };
+    return {
+      success: false,
+      message: "Failed to assign default payment types",
+    };
   }
 }

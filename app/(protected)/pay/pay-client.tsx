@@ -153,8 +153,7 @@ export function PayClient({
           Back to payment types
         </button>
 
-        <div
-          className={`rounded-lg border p-6 space-y-1 ${meta.color}`}>
+        <div className={`rounded-lg border p-6 space-y-1 ${meta.color}`}>
           <div className="flex items-center gap-3">
             <Icon className="h-8 w-8" />
             <div>

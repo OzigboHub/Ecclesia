@@ -5,6 +5,7 @@ import { Users, Calendar, Church } from "lucide-react";
 import { NairaSign } from "@/components/ui/naira-sign";
 import type { Session } from "next-auth";
 import type { OrganizationDashboardMetrics } from "@/app/actions/dashboard.actions";
+import { isAdminRole } from "@/lib/permissions";
 
 interface OrganizationDashboardProps {
   session: Session;
@@ -17,6 +18,8 @@ export function OrganizationDashboard({
   announcements,
   metrics,
 }: OrganizationDashboardProps) {
+  const isAdmin = isAdminRole(session.user.role);
+
   const stats = [
     {
       name: "Total Parishioners",
@@ -24,12 +27,16 @@ export function OrganizationDashboard({
       icon: Users,
       change: "",
     },
-    {
-      name: "Completed Payments",
-      value: `₦${metrics.totalPaymentAmount.toLocaleString("en-NG")}`,
-      icon: NairaSign,
-      change: `${metrics.totalPayments.toLocaleString("en-NG")} records`,
-    },
+    ...(isAdmin
+      ? [
+          {
+            name: "Completed Payments",
+            value: `₦${metrics.totalPaymentAmount.toLocaleString("en-NG")}`,
+            icon: NairaSign,
+            change: `${metrics.totalPayments.toLocaleString("en-NG")} records`,
+          },
+        ]
+      : []),
     {
       name: "Upcoming Appointments",
       value: metrics.upcomingAppointments.toLocaleString("en-NG"),

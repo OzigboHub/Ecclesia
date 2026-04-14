@@ -302,7 +302,7 @@ export const authConfig: NextAuthConfig = {
 						id: user.id,
 						email: user.email,
 						name: `${user.firstName} ${user.lastName}`,
-						displayPicture: user.displayPicture,
+						displayPicture: user.displayPicture ?? undefined,
 						role: user.role,
 						organizationId: user.organizationId,
 						organizationName: user.organization?.name ?? null,
@@ -371,6 +371,9 @@ export const authConfig: NextAuthConfig = {
 					sessionVersion: true,
 					activeSessionId: true,
 					organizationId: true,
+					firstName: true,
+					lastName: true,
+					displayPicture: true,
 					organization: { select: { name: true } },
 				},
 			});
@@ -535,6 +538,8 @@ export const authConfig: NextAuthConfig = {
 			}
 
 			token.sessionVersion = currentUser.sessionVersion;
+			token.name = `${currentUser.firstName} ${currentUser.lastName}`;
+			token.displayPicture = currentUser.displayPicture ?? undefined;
 			token.organizationId =
 				contextOrganization?.id ??
 				defaultOrganization?.id ??

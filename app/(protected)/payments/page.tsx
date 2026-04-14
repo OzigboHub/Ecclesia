@@ -114,9 +114,7 @@ export default async function PaymentsPage({
         <div className="flex gap-2">
           {canManageTypes && (
             <Button variant="outline" asChild>
-              <Link href="/payments/types">
-                Payment Types
-              </Link>
+              <Link href="/payments/types">Payment Types</Link>
             </Button>
           )}
           <Button variant="outline" asChild>
@@ -134,39 +132,39 @@ export default async function PaymentsPage({
 
       {/* Quick Stats — admin only */}
       {canViewStats && (
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-background border border-border rounded-lg p-4 shadow-sm">
-          <p className="text-xs font-medium text-muted-foreground uppercase">
-            Today's Revenue
-          </p>
-          <p className="text-2xl font-bold text-foreground">
-            {new Intl.NumberFormat("en-NG", {
-              style: "currency",
-              currency: "NGN",
-            }).format(todayRevenue)}
-          </p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="bg-background border border-border rounded-lg p-4 shadow-sm">
+            <p className="text-xs font-medium text-muted-foreground uppercase">
+              Today's Revenue
+            </p>
+            <p className="text-2xl font-bold text-foreground">
+              {new Intl.NumberFormat("en-NG", {
+                style: "currency",
+                currency: "NGN",
+              }).format(todayRevenue)}
+            </p>
+          </div>
+          <div className="bg-background border border-border rounded-lg p-4 shadow-sm">
+            <p className="text-xs font-medium text-muted-foreground uppercase">
+              Year Total ({new Date().getFullYear()})
+            </p>
+            <p className="text-2xl font-bold text-foreground">
+              {new Intl.NumberFormat("en-NG", {
+                style: "currency",
+                currency: "NGN",
+              }).format(stats.totalAmount)}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {stats.totalCount} payments
+            </p>
+          </div>
+          <div className="bg-background border border-border rounded-lg p-4 shadow-sm">
+            <p className="text-xs font-medium text-muted-foreground uppercase">
+              Pending Payments
+            </p>
+            <p className="text-2xl font-bold text-yellow-600">{pendingCount}</p>
+          </div>
         </div>
-        <div className="bg-background border border-border rounded-lg p-4 shadow-sm">
-          <p className="text-xs font-medium text-muted-foreground uppercase">
-            Year Total ({new Date().getFullYear()})
-          </p>
-          <p className="text-2xl font-bold text-foreground">
-            {new Intl.NumberFormat("en-NG", {
-              style: "currency",
-              currency: "NGN",
-            }).format(stats.totalAmount)}
-          </p>
-          <p className="text-xs text-muted-foreground mt-1">
-            {stats.totalCount} payments
-          </p>
-        </div>
-        <div className="bg-background border border-border rounded-lg p-4 shadow-sm">
-          <p className="text-xs font-medium text-muted-foreground uppercase">
-            Pending Payments
-          </p>
-          <p className="text-2xl font-bold text-yellow-600">{pendingCount}</p>
-        </div>
-      </div>
       )}
 
       {canManageWallet && (
@@ -183,9 +181,11 @@ export default async function PaymentsPage({
           }
           canManage={canManageWallet}
           banks={
-            bankListResult.success ? (bankListResult.data as PaystackBank[]) : []
-        }
-      />
+            bankListResult.success
+              ? (bankListResult.data as PaystackBank[])
+              : []
+          }
+        />
       )}
 
       {/* Filters */}

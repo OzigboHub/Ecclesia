@@ -60,7 +60,11 @@ const templateSchema = z.object({
 
 type FormData = z.infer<typeof templateSchema>;
 
-export function MassScheduleManager() {
+interface MassScheduleManagerProps {
+  canDelete?: boolean;
+}
+
+export function MassScheduleManager({ canDelete = false }: MassScheduleManagerProps) {
   const [templates, setTemplates] = useState<MassScheduleTemplate[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -257,12 +261,14 @@ export function MassScheduleManager() {
                         {t.language} • {t.location}
                       </div>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleDelete(t.id)}>
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
+                    {canDelete && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDelete(t.id)}>
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    )}
                   </div>
                 ))}
               </CardContent>

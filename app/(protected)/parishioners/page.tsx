@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { CsvImportDialog } from "@/components/features/parishioners/csv-import-dialog";
 import { ParishionersList } from "@/components/features/parishioners/parishioners-list";
 import { Button } from "@/components/ui/button";
+import { isAdminRole } from "@/lib/permissions";
 import { Plus } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -57,7 +58,7 @@ export default async function ParishionersPage({
 			</div>
 
 			{/* Parishioners List */}
-			<ParishionersList parishioners={parishioners} />
+			<ParishionersList parishioners={parishioners} canDelete={isAdminRole(session.user.role)} />
 		</div>
 	);
 }

@@ -92,7 +92,8 @@ export function PublicPaymentForm({
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
         <div className="rounded-md bg-muted/50 px-3 py-2 text-sm text-muted-foreground">
           <p>
-            You are paying for {title}. Bank charges will be applied at checkout.
+            You are paying for {title}. Bank charges will be applied at
+            checkout.
           </p>
         </div>
         <FormField
