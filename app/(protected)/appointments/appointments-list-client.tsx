@@ -92,6 +92,14 @@ export default function AppointmentsListClient({
   const [isPending, startTransition] = useTransition();
   const showScheduledOnly = userRole === "PARISH_ADMIN";
 
+  const canManage = [
+    "SUPER_ADMIN",
+    "PARISH_ADMIN",
+    "PARISH_SECRETARY",
+    "PARISH_STAFF",
+    "OUTSTATION_ADMIN",
+  ].includes(userRole || "");
+
   // Filter state
   const [search, setSearch] = React.useState(searchParams.search || "");
   const [statusFilter, setStatusFilter] = React.useState(
@@ -330,7 +338,7 @@ export default function AppointmentsListClient({
                 <Button variant="ghost" size="sm" className="text-xs" asChild>
                   <Link href={`/appointments/${row.id}`}>View</Link>
                 </Button>
-                {row.status === "PENDING" && (
+                {canManage && row.status === "PENDING" && (
                   <Button
                     variant="default"
                     size="sm"
@@ -340,16 +348,18 @@ export default function AppointmentsListClient({
                     Approve
                   </Button>
                 )}
-                {row.status !== "CANCELLED" && row.status !== "COMPLETED" && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-xs text-destructive"
-                    onClick={() => handleCancel(row.id)}
-                    disabled={isPending}>
-                    Cancel
-                  </Button>
-                )}
+                {canManage &&
+                  row.status !== "CANCELLED" &&
+                  row.status !== "COMPLETED" && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-xs text-destructive"
+                      onClick={() => handleCancel(row.id)}
+                      disabled={isPending}>
+                      Cancel
+                    </Button>
+                  )}
               </div>
             )}
           />

@@ -92,7 +92,7 @@ export function ParishionerMassIntentions({
   );
   const [isPending, startTransition] = useTransition();
 
-  // Filter to only upcoming masses whose start time hasn't passed
+  // Filter to only upcoming masses — close bookings 30 minutes before start
   const upcomingMasses = useMemo(() => {
     const now = new Date();
     return masses.filter((mass) => {
@@ -100,12 +100,13 @@ export function ParishionerMassIntentions({
       const massDate = new Date(mass.date);
       // Past dates entirely
       if (massDate < new Date(now.toDateString())) return false;
-      // For today, check time
+      // For today, close bookings 30 minutes before Mass starts
       if (massDate.toDateString() === now.toDateString() && mass.time) {
         const [h, m] = mass.time.split(":").map(Number);
         const massStart = new Date(massDate);
         massStart.setHours(h, m, 0, 0);
-        if (now >= massStart) return false;
+        const cutoff = new Date(massStart.getTime() - 30 * 60 * 1000);
+        if (now >= cutoff) return false;
       }
       return true;
     });

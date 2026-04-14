@@ -28,9 +28,22 @@ import { revalidatePath } from "next/cache";
 
 const PAYMENT_ADMIN_ROLES = ["SUPER_ADMIN", "PARISH_ADMIN"];
 const PAYMENT_VIEW_ROLES = ["SUPER_ADMIN", "PARISH_ADMIN", "PARISH_SECRETARY"];
-const PLATFORM_FLAT_FEE_NAIRA = Number(
-  process.env.PAYSTACK_PLATFORM_FLAT_FEE_NAIRA || "20",
-);
+
+/**
+ * Calculate the platform fee (charged on top of the intended amount).
+ * - Below ₦2,400: 2.5% of amount
+ * - ₦2,500 and above: 2.5% of amount + ₦100
+ *
+ * From this fee, Paystack takes their cut (1.5%, +₦100 for ≥₦2,500);
+ * the remainder stays in the main (platform) account.
+ * The original intended amount goes to the church subaccount untouched.
+ */
+function calculatePlatformFee(amount: number): number {
+  if (amount < 2500) {
+    return Math.ceil(amount * 0.025);
+  }
+  return Math.ceil(amount * 0.025) + 100;
+}
 
 type AppSession = {
   user: {
@@ -242,8 +255,11 @@ export async function configureOrganizationPaystackProfile(
     const profile = parsed.data;
     const businessName = profile.businessName || organization.name;
     const contactEmail =
-      profile.contactEmail || organization.contactEmail || getFallbackPaystackEmail(organization.id);
-    const contactPhone = profile.contactPhone || organization.contactPhone || undefined;
+      profile.contactEmail ||
+      organization.contactEmail ||
+      getFallbackPaystackEmail(organization.id);
+    const contactPhone =
+      profile.contactPhone || organization.contactPhone || undefined;
 
     const resolvedAccount = await paystackRequest<PaystackResolvedBankAccount>(
       `/bank/resolve?account_number=${encodeURIComponent(
@@ -262,55 +278,64 @@ export async function configureOrganizationPaystackProfile(
         }),
       });
     } else {
-      const customer = await paystackRequest<PaystackCustomerData>("/customer", {
-        method: "POST",
-        body: JSON.stringify({
-          email: contactEmail,
-          first_name: businessName,
-          last_name: organization.level,
-          phone: contactPhone,
-          metadata: {
-            organizationId: organization.id,
-            organizationName: organization.name,
-          },
-        }),
-      });
+      const customer = await paystackRequest<PaystackCustomerData>(
+        "/customer",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            email: contactEmail,
+            first_name: businessName,
+            last_name: organization.level,
+            phone: contactPhone,
+            metadata: {
+              organizationId: organization.id,
+              organizationName: organization.name,
+            },
+          }),
+        },
+      );
       customerCode = customer.data.customer_code;
     }
 
     let subaccountCode = organization.paystackSubaccountCode;
     if (subaccountCode) {
-      await paystackRequest(`/subaccount/${encodeURIComponent(subaccountCode)}`, {
-        method: "PUT",
-        body: JSON.stringify({
-          business_name: businessName,
-          description: `${organization.level} wallet on Ecclesia`,
-          bank_code: profile.bankCode,
-          account_number: profile.accountNumber,
-          percentage_charge: 0,
-          settlement_schedule: profile.settlementSchedule,
-          primary_contact_email: contactEmail,
-          primary_contact_name: businessName,
-          primary_contact_phone: contactPhone,
-          active: true,
-          metadata: JSON.stringify({ organizationId: organization.id }),
-        }),
-      });
+      await paystackRequest(
+        `/subaccount/${encodeURIComponent(subaccountCode)}`,
+        {
+          method: "PUT",
+          body: JSON.stringify({
+            business_name: businessName,
+            description: `${organization.level} wallet on Ecclesia`,
+            bank_code: profile.bankCode,
+            account_number: profile.accountNumber,
+            percentage_charge: 0,
+            settlement_schedule: profile.settlementSchedule,
+            primary_contact_email: contactEmail,
+            primary_contact_name: businessName,
+            primary_contact_phone: contactPhone,
+            active: true,
+            metadata: JSON.stringify({ organizationId: organization.id }),
+          }),
+        },
+      );
     } else {
-      const subaccount = await paystackRequest<PaystackSubaccountData>("/subaccount", {
-        method: "POST",
-        body: JSON.stringify({
-          business_name: businessName,
-          settlement_bank: profile.bankCode,
-          account_number: profile.accountNumber,
-          percentage_charge: 0,
-          description: `${organization.level} wallet on Ecclesia`,
-          primary_contact_email: contactEmail,
-          primary_contact_name: businessName,
-          primary_contact_phone: contactPhone,
-          metadata: JSON.stringify({ organizationId: organization.id }),
-        }),
-      });
+      const subaccount = await paystackRequest<PaystackSubaccountData>(
+        "/subaccount",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            business_name: businessName,
+            settlement_bank: profile.bankCode,
+            account_number: profile.accountNumber,
+            percentage_charge: 0,
+            description: `${organization.level} wallet on Ecclesia`,
+            primary_contact_email: contactEmail,
+            primary_contact_name: businessName,
+            primary_contact_phone: contactPhone,
+            metadata: JSON.stringify({ organizationId: organization.id }),
+          }),
+        },
+      );
       subaccountCode = subaccount.data.subaccount_code;
     }
 
@@ -332,11 +357,13 @@ export async function configureOrganizationPaystackProfile(
       },
     );
 
-    let dedicatedAccount:
-      | PaystackDedicatedAccountData
-      | undefined;
+    let dedicatedAccount: PaystackDedicatedAccountData | undefined;
     let dvaWarning: string | undefined;
-    if (profile.createDedicatedAccount && customerCode && !organization.paystackDedicatedAccountId) {
+    if (
+      profile.createDedicatedAccount &&
+      customerCode &&
+      !organization.paystackDedicatedAccountId
+    ) {
       try {
         const dva = await paystackRequest<PaystackDedicatedAccountData>(
           "/dedicated_account",
@@ -354,7 +381,9 @@ export async function configureOrganizationPaystackProfile(
         dedicatedAccount = dva.data;
       } catch (dvaError: any) {
         console.warn("DVA creation skipped:", dvaError?.message || dvaError);
-        dvaWarning = dvaError?.message || "Dedicated account not available for your business";
+        dvaWarning =
+          dvaError?.message ||
+          "Dedicated account not available for your business";
       }
     }
 
@@ -370,10 +399,10 @@ export async function configureOrganizationPaystackProfile(
         paystackSubaccountStatus: "ACTIVE",
         paystackSubaccountName: businessName,
         paystackTransferRecipientCode: recipient.data.recipient_code,
-        paystackDedicatedAccountId:
-          dedicatedAccount ? String(dedicatedAccount.id) : undefined,
-        paystackDedicatedAccountNumber:
-          dedicatedAccount?.account_number,
+        paystackDedicatedAccountId: dedicatedAccount
+          ? String(dedicatedAccount.id)
+          : undefined,
+        paystackDedicatedAccountNumber: dedicatedAccount?.account_number,
         paystackDedicatedBankName: dedicatedAccount?.bank.name,
         paystackDedicatedProviderSlug:
           dedicatedAccount?.bank.slug ||
@@ -441,16 +470,18 @@ export async function configureOrganizationPaystackProfile(
 export async function initializePaystackPayment(
   formData: unknown,
   organizationId?: string,
-): Promise<ActionResponse<{
-  paymentId: string;
-  reference: string;
-  authorizationUrl: string;
-  accessCode: string;
-  intendedAmount: number;
-  grossAmount: number;
-  platformFee: number;
-  processorFee: number;
-}>> {
+): Promise<
+  ActionResponse<{
+    paymentId: string;
+    reference: string;
+    authorizationUrl: string;
+    accessCode: string;
+    intendedAmount: number;
+    grossAmount: number;
+    platformFee: number;
+    processorFee: number;
+  }>
+> {
   const session = await auth();
   const parsed = paystackInitializeSchema.safeParse(formData);
   if (!parsed.success) {
@@ -466,7 +497,8 @@ export async function initializePaystackPayment(
     return { success: false, message: "Organization context required" };
   }
 
-  const onlinePaymentsEnabled = await ensureOnlinePaymentsEnabled(targetOrganizationId);
+  const onlinePaymentsEnabled =
+    await ensureOnlinePaymentsEnabled(targetOrganizationId);
   if (!onlinePaymentsEnabled) {
     return { success: false, message: "Online payments are not enabled" };
   }
@@ -485,17 +517,17 @@ export async function initializePaystackPayment(
     return { success: false, message: "Organization not found" };
   }
 
-  if (!organization.paystackSubaccountCode || organization.paystackSubaccountStatus !== "ACTIVE") {
+  if (
+    !organization.paystackSubaccountCode ||
+    organization.paystackSubaccountStatus !== "ACTIVE"
+  ) {
     return {
       success: false,
       message: "Organization Paystack profile is not configured",
     };
   }
 
-  if (
-    parsed.data.purpose === "MASS_INTENTION" &&
-    parsed.data.amount < 500
-  ) {
+  if (parsed.data.purpose === "MASS_INTENTION" && parsed.data.amount < 500) {
     return {
       success: false,
       message: "Mass intention payment must be at least ₦500",
@@ -503,7 +535,7 @@ export async function initializePaystackPayment(
     };
   }
 
-  const platformFee = PLATFORM_FLAT_FEE_NAIRA;
+  const platformFee = calculatePlatformFee(parsed.data.amount);
   const processorFee = 0;
   const grossAmount = Number(
     (parsed.data.amount + platformFee + processorFee).toFixed(2),
@@ -539,6 +571,7 @@ export async function initializePaystackPayment(
         payerEmail: parsed.data.email,
         massIntentionId: parsed.data.massIntentionId,
         donationCampaignId: parsed.data.donationCampaignId,
+        paymentTypeId: parsed.data.paymentTypeId,
         month: parsed.data.month,
         recordedById,
         receiptNumber,
@@ -570,6 +603,7 @@ export async function initializePaystackPayment(
             purpose: parsed.data.purpose,
             massIntentionId: parsed.data.massIntentionId,
             donationCampaignId: parsed.data.donationCampaignId,
+            paymentTypeId: parsed.data.paymentTypeId,
           },
         }),
       },
@@ -623,7 +657,11 @@ export async function verifyPaystackPayment(
     }
 
     if (payment.paymentStatus === "COMPLETED") {
-      return { success: true, message: "Payment already verified", data: payment };
+      return {
+        success: true,
+        message: "Payment already verified",
+        data: payment,
+      };
     }
 
     const verification = await paystackRequest<PaystackVerifyTransactionData>(
@@ -631,7 +669,8 @@ export async function verifyPaystackPayment(
     );
 
     const expectedGrossAmount = payment.grossAmount ?? payment.amount;
-    const amountMatches = verification.data.amount === nairaToKobo(expectedGrossAmount);
+    const amountMatches =
+      verification.data.amount === nairaToKobo(expectedGrossAmount);
 
     if (
       verification.data.status === "success" &&
@@ -762,9 +801,7 @@ export async function requestOrganizationWithdrawal(
       success: false,
       message: "Insufficient available balance for withdrawal",
       errors: {
-        amount: [
-          `Available balance is ₦${wallet.availableBalance.toFixed(2)}`,
-        ],
+        amount: [`Available balance is ₦${wallet.availableBalance.toFixed(2)}`],
       },
     };
   }

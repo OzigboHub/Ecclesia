@@ -28,13 +28,13 @@ export default function UserNotFound() {
 						variant='outline'
 						asChild
 					>
-						<Link href='/dashboard/users'>
+						<Link href='/users'>
 							<ArrowLeft className='mr-2 h-4 w-4' />
 							Back to Users
 						</Link>
 					</Button>
 					<Button asChild>
-						<Link href='/dashboard/users/new'>
+						<Link href='/users/new'>
 							<Users className='mr-2 h-4 w-4' />
 							Add New User
 						</Link>

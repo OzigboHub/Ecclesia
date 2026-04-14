@@ -33,7 +33,8 @@ const BLESSINGS = [
 
 function getBlessing() {
   const dayOfYear = Math.floor(
-    (Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000,
+    (Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) /
+      86400000,
   );
   return BLESSINGS[dayOfYear % BLESSINGS.length];
 }
@@ -164,7 +165,11 @@ export function ParishionerDashboard({
             <h2 className="text-xl font-bold tracking-tight">
               Community Notes
             </h2>
-            <Button variant="ghost" size="sm" className="text-xs uppercase tracking-wider font-semibold text-muted-foreground hover:text-foreground" asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-xs uppercase tracking-wider font-semibold text-muted-foreground hover:text-foreground"
+              asChild>
               <Link href="/announcements">View All</Link>
             </Button>
           </div>
@@ -188,9 +193,12 @@ export function ParishionerDashboard({
                         </Badge>
                       )}
                       <span className="text-[11px] text-muted-foreground">
-                        {formatDistanceToNow(new Date(announcement.publishedAt), {
-                          addSuffix: true,
-                        })}
+                        {formatDistanceToNow(
+                          new Date(announcement.publishedAt),
+                          {
+                            addSuffix: true,
+                          },
+                        )}
                       </span>
                     </div>
                   </div>
@@ -232,9 +240,7 @@ export function ParishionerDashboard({
               size="sm"
               className="text-xs uppercase tracking-wider font-semibold text-muted-foreground hover:text-foreground"
               asChild>
-              <Link href="/societies">
-                View All
-              </Link>
+              <Link href="/societies">View All</Link>
             </Button>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -272,7 +278,7 @@ export function ParishionerDashboard({
           </div>
         </div>
         <Button size="sm" asChild>
-          <Link href="/payments">
+          <Link href="/pay">
             Give Online <ArrowRight className="ml-2 h-3 w-3" />
           </Link>
         </Button>

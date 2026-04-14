@@ -1,19 +1,19 @@
 "use server";
 
 import { auth } from "@/auth";
-import { revalidatePath } from "next/cache";
 import db from "@/lib/db";
 import { canBypassFeatureToggle } from "@/lib/features.server";
 import {
   createParishionerSchema,
-  updateParishionerSchema,
   csvParishionerSchema,
-  type CsvParishionerInput,
+  updateParishionerSchema,
   type CsvImportResult,
+  type CsvParishionerInput,
 } from "@/lib/validators/parishioner.schema";
 import type { ActionResponse } from "@/types";
 import type { Parishioner } from "@prisma/client";
 import { Prisma } from "@prisma/client";
+import { revalidatePath } from "next/cache";
 
 // Unified type merging Parishioner records + Users with PARISHIONER role
 export type UnifiedParishioner = {
@@ -46,18 +46,46 @@ type ParishionerWithRelations = Prisma.ParishionerGetPayload<{
  * Get all parishioners for the current organization.
  * Includes Parishioner records AND users with PARISHIONER role (de-duped by email).
  */
-export async function getParishioners(): Promise<
-  ActionResponse<UnifiedParishioner[]>
-> {
+export async function getParishioners(
+  targetOrganizationId?: string,
+): Promise<ActionResponse<UnifiedParishioner[]>> {
   try {
     const session = await auth();
     if (!session?.user) {
       return { success: false, message: "Unauthorized" };
     }
 
+    const isSuperAdmin = session.user.role === "SUPER_ADMIN";
+    const isParishioner = session.user.role === "PARISHIONER";
+    let resolvedOrganizationId: string | null = isSuperAdmin
+      ? (targetOrganizationId ?? session.user.organizationId ?? null)
+      : (session.user.organizationId ?? null);
+
+    if (isParishioner && !resolvedOrganizationId) {
+      const fallbackOrg = await db.organization.findFirst({
+        orderBy: { createdAt: "asc" },
+        select: { id: true },
+      });
+      resolvedOrganizationId = fallbackOrg?.id ?? null;
+    }
+
+    if (isSuperAdmin && !resolvedOrganizationId) {
+      return {
+        success: false,
+        message: "Select an organization to view parishioners.",
+      };
+    }
+
+    if (!resolvedOrganizationId) {
+      return {
+        success: false,
+        message: "Organization not found.",
+      };
+    }
+
     // Check if feature is enabled
     const settings = await db.organizationFeatureSettings.findUnique({
-      where: { organizationId: session.user.organizationId },
+      where: { organizationId: resolvedOrganizationId },
     });
 
     if (
@@ -73,14 +101,14 @@ export async function getParishioners(): Promise<
     const [parishioners, parishionerUsers] = await Promise.all([
       db.parishioner.findMany({
         where: {
-          organizationId: session.user.organizationId,
+          organizationId: resolvedOrganizationId,
           isActive: true,
         },
         orderBy: { lastName: "asc" },
       }),
       db.user.findMany({
         where: {
-          organizationId: session.user.organizationId,
+          organizationId: resolvedOrganizationId,
           role: "PARISHIONER",
           isActive: true,
         },

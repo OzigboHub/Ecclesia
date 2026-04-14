@@ -10,16 +10,19 @@ import {
 import {
   canBookAppointments,
   canBookMassIntentions,
+  canManageFinancials,
   canManageMassIntentions,
   canManageOrganizations,
   canManageParishioners,
   canManageUsers,
+  canMakePayments,
   canRecordPayments,
   canViewLiveStreams,
   canViewMassCalendar,
   canViewSocieties,
+  isSocietyHead,
 } from "@/lib/permissions";
-import { LogOut } from "lucide-react";
+import { LogOut, Settings, Download, User } from "lucide-react";
 import { signOut, useSession } from "next-auth/react";
 import Image from "next/image";
 import Link from "next/link";
@@ -27,13 +30,23 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { OrganizationContextSwitcher } from "../admin/organization-context-switcher";
 import { Separator } from "../ui/separator";
+import { usePwaInstall } from "@/hooks/use-pwa-install";
 
 export default function Sidebar() {
   const router = useRouter();
   const pathName = usePathname();
   const { data: session } = useSession();
+  const { canInstall, install } = usePwaInstall();
   const userRole = session?.user?.role;
   const isSuperAdmin = userRole === "SUPER_ADMIN";
+  const linkBaseClass =
+    "items-center py-2.5 flex gap-4 rounded-[10px] px-4 mb-1 transition-all";
+  const getLinkClass = (href: string) =>
+    `${
+      pathName === href
+        ? "text-secondary bg-primary "
+        : " text-white hover:bg-white/10"
+    } ${linkBaseClass}`;
 
   // Organization context state (in a real app, this might come from the session or a cookie)
   // For this refactor, we'll assume it's part of the session if a super admin has switched context
@@ -42,6 +55,7 @@ export default function Sidebar() {
   const [organizations, setOrganizations] = useState<
     { id: string; name: string }[]
   >([]);
+  const [mySocietyId, setMySocietyId] = useState<string | null>(null);
 
   useEffect(() => {
     if (isSuperAdmin) {
@@ -58,11 +72,26 @@ export default function Sidebar() {
     }
   }, [isSuperAdmin]);
 
+  useEffect(() => {
+    if (userRole && isSocietyHead(userRole)) {
+      import("@/app/actions/society.actions").then(
+        ({ getSocietyForCurrentUser }) => {
+          getSocietyForCurrentUser().then((result) => {
+            if (result.success && result.data) {
+              setMySocietyId(result.data.id);
+            }
+          });
+        },
+      );
+    }
+  }, [userRole]);
+
   const isParishioner = userRole === "PARISHIONER";
 
   // Parishioners get a curated set of links
   const PARISHIONER_LINKS = [
     "Dashboard",
+    "Pay",
     "Mass Intentions",
     "Mass Calendar",
     "Appointments",
@@ -72,7 +101,7 @@ export default function Sidebar() {
   ];
 
   // Filter sidebar items based on role or active context
-  let mainNav = SIDEBAR.filter((item) => {
+  const mainNav = SIDEBAR.filter((item) => {
     if (!userRole) return false;
     // If super admin and no context, show super admin primary nav
     if (isSuperAdmin && !contextId) return false; // Handled separately below
@@ -82,12 +111,14 @@ export default function Sidebar() {
 
     if (item.name === "Parishioners") return canManageParishioners(userRole);
     if (item.name === "Payments") return canRecordPayments(userRole);
+    if (item.name === "Pay") return canMakePayments(userRole);
     if (item.name === "Mass Intentions") return canBookMassIntentions(userRole);
     if (item.name === "Mass Calendar") return canViewMassCalendar(userRole);
     if (item.name === "Mass Schedule") return canManageMassIntentions(userRole);
     if (item.name === "Appointments") return canBookAppointments(userRole);
     if (item.name === "Societies") return canViewSocieties(userRole);
     if (item.name === "Live Streams") return canViewLiveStreams(userRole);
+    if (item.name === "Parish Finances") return canManageFinancials(userRole);
     if (item.name === "Settings") return isSuperAdmin; // Only Super Admin / System Admin
     return true; // Dashboard
   });
@@ -98,19 +129,19 @@ export default function Sidebar() {
     if (isSuperAdmin) return false; // Handled by SUPERADMIN_SIDEBAR/EXTENDED
     if (item.name === "Manage Organizations")
       return canManageOrganizations(userRole);
-    if (item.name === "Manage Users") return userRole === "SUPER_ADMIN";
+    if (item.name === "Manage Users") return canManageUsers(userRole);
     return false;
   });
 
   return (
-    <div className="hidden bg-secondary w-[20%] h-screen shrink-0 py-[20px] px-[10px] justify-start items-center lg:flex flex-col gap-8 overflow-y-auto">
+    <div className="sidebar-scroll hidden w-[280px] bg-secondary h-screen shrink-0 py-5 px-3 justify-start items-center lg:flex flex-col gap-8 overflow-y-auto overflow-x-hidden">
       <Link href="/dashboard">
         <Image
           src={"/standalone-golden-yellow-logo-typography.png"}
           width={"150"}
           height={"150"}
           alt="logo"
-          className=" w-[150px] object-cover"
+          className=" w-37.5 object-cover"
         />
       </Link>
 
@@ -123,15 +154,11 @@ export default function Sidebar() {
                 <p className="text-[11px] text-primary/70 font-bold uppercase tracking-wider mb-2">
                   System Admin
                 </p>
-                {SUPERADMIN_SIDEBAR.map((i, k) => (
+                {SUPERADMIN_SIDEBAR.map((i) => (
                   <Link
                     href={i.href}
-                    key={k}
-                    className={` ${
-                      pathName === i.href
-                        ? "text-secondary bg-primary "
-                        : " text-white hover:bg-white/10"
-                    }  items-center py-2.5 flex gap-4 rounded-[10px] px-4 mb-1 transition-all`}>
+                    key={i.href}
+                    className={getLinkClass(i.href)}>
                     <div className="shrink-0">{i.icon}</div>
                     <div className="text-[13px] font-medium">{i.name}</div>
                   </Link>
@@ -159,22 +186,33 @@ export default function Sidebar() {
             <div className="px-2">
               {contextId && (
                 <p className="text-[11px] text-primary/70 font-bold uppercase tracking-wider mb-2">
-                  Viewing Organization
+                  Viewing Parish
                 </p>
               )}
-              {mainNav.map((i, k) => (
+              {mainNav.map((i) => (
                 <Link
                   href={i.href}
-                  key={k}
-                  className={` ${
-                    pathName === i.href
-                      ? "text-secondary bg-primary "
-                      : " text-white hover:bg-white/10"
-                  }  items-center py-2.5 flex gap-4 rounded-[10px] px-4 mb-1 transition-all`}>
+                  key={i.href}
+                  className={getLinkClass(i.href)}>
                   <div className="shrink-0">{i.icon}</div>
                   <div className="text-[13px] font-medium">{i.name}</div>
                 </Link>
               ))}
+              {/* Society Head Management Link */}
+              {mySocietyId && (
+                <Link
+                  href={`/dashboard/societies/${mySocietyId}/manage`}
+                  className={`${
+                    pathName.includes(`/societies/${mySocietyId}/manage`)
+                      ? "text-secondary bg-primary "
+                      : " text-white hover:bg-white/10"
+                  } ${linkBaseClass}`}>
+                  <div className="shrink-0">
+                    <Settings className="w-5 h-5" />
+                  </div>
+                  <div className="text-[13px] font-medium">My Society</div>
+                </Link>
+              )}
             </div>
           )}
         </div>
@@ -188,15 +226,11 @@ export default function Sidebar() {
                 Manage
               </p>
               <div className="mt-2">
-                {filteredAdmin.map((i, k) => (
+                {filteredAdmin.map((i) => (
                   <Link
                     href={i.href}
-                    key={k}
-                    className={` ${
-                      pathName === i.href
-                        ? "text-secondary bg-primary "
-                        : " text-white hover:bg-white/10"
-                    }  items-center py-2.5 flex gap-4 rounded-[10px] px-4 mb-1 transition-all`}>
+                    key={i.href}
+                    className={getLinkClass(i.href)}>
                     <div className="shrink-0">{i.icon}</div>
                     <div className="text-[13px] font-medium">{i.name}</div>
                   </Link>
@@ -208,15 +242,11 @@ export default function Sidebar() {
           {/* Super Admin Secondary Nav */}
           {isSuperAdmin && (
             <div className="mt-4">
-              {SUPERADMIN_EXTENDED.map((i, k) => (
+              {SUPERADMIN_EXTENDED.map((i) => (
                 <Link
                   href={i.href}
-                  key={k}
-                  className={` ${
-                    pathName === i.href
-                      ? "text-secondary bg-primary "
-                      : " text-white hover:bg-white/10"
-                  }  items-center py-2.5 flex gap-4 rounded-[10px] px-4 mb-1 transition-all`}>
+                  key={i.href}
+                  className={getLinkClass(i.href)}>
                   <div className="shrink-0">{i.icon}</div>
                   <div className="text-[13px] font-medium">{i.name}</div>
                 </Link>
@@ -226,6 +256,18 @@ export default function Sidebar() {
 
           <div className="mt-6">
             <Separator className="my-4 bg-white/10" />
+            <Link href="/profile" className={getLinkClass("/profile")}>
+              <User className="w-5 h-5 shrink-0" />
+              <p className="text-[13px] font-bold">My Profile</p>
+            </Link>
+            {canInstall && (
+              <div
+                onClick={install}
+                className="px-4 py-2 text-primary cursor-pointer hover:bg-white/10 rounded-[10px] gap-4 flex items-center mb-1 transition-all">
+                <Download className="w-5 h-5 shrink-0" />
+                <p className="text-[13px] font-bold">Install App</p>
+              </div>
+            )}
             <div
               onClick={async () => {
                 await signOut({ redirect: false });

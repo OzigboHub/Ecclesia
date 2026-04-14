@@ -3,7 +3,7 @@
 import { auth } from "@/auth";
 import db from "@/lib/db";
 import { isFeatureEnabled } from "@/lib/features.server";
-import { canManageSocieties } from "@/lib/permissions";
+import { canManageSocieties, canManageSocietyDues } from "@/lib/permissions";
 import {
   addMemberSchema,
   createMeetingSchema,
@@ -1223,5 +1223,612 @@ export async function rejectJoinRequest(
   } catch (error) {
     console.error("Failed to reject join request:", error);
     return { success: false, message: "Failed to reject join request" };
+  }
+}
+
+// ============================================
+// SOCIETY HEAD MANAGEMENT
+// ============================================
+
+export type SocietyHeadInfo = Prisma.SocietyGetPayload<{
+  include: {
+    president: {
+      select: { id: true; firstName: true; lastName: true };
+    };
+    secretary: {
+      select: { id: true; firstName: true; lastName: true };
+    };
+    _count: {
+      select: { members: true; payments: true };
+    };
+  };
+}>;
+
+/**
+ * Get the society that the current user leads (as president or secretary)
+ */
+export async function getSocietyForCurrentUser(): Promise<
+  ActionResponse<SocietyHeadInfo>
+> {
+  try {
+    const session = await auth();
+    if (!session?.user) {
+      return { success: false, message: "Unauthorized" };
+    }
+
+    const enabled = await isFeatureEnabled(
+      session.user.organizationId,
+      "enableSocieties",
+    );
+    if (!enabled) {
+      return { success: false, message: "Societies feature is not enabled" };
+    }
+
+    const society = await db.society.findFirst({
+      where: {
+        organizationId: session.user.organizationId,
+        OR: [
+          { presidentId: session.user.id },
+          { secretaryId: session.user.id },
+        ],
+      },
+      include: {
+        president: {
+          select: { id: true, firstName: true, lastName: true },
+        },
+        secretary: {
+          select: { id: true, firstName: true, lastName: true },
+        },
+        _count: {
+          select: { members: true, payments: true },
+        },
+      },
+    });
+
+    if (!society) {
+      return { success: false, message: "You are not a leader of any society" };
+    }
+
+    return {
+      success: true,
+      message: "Society retrieved successfully",
+      data: society,
+    };
+  } catch (error) {
+    console.error("Failed to get society for user:", error);
+    return { success: false, message: "Failed to retrieve society" };
+  }
+}
+
+export type MemberDuesStatus = {
+  parishionerId: string;
+  firstName: string;
+  lastName: string;
+  phone: string | null;
+  email: string | null;
+  joinedAt: Date;
+  role: string;
+  monthsPaid: number[];
+  monthsOwing: number[];
+  totalPaid: number;
+  totalOwing: number;
+};
+
+/**
+ * Get dues overview for all members showing paid/owing months for a given year
+ */
+export async function getSocietyDuesOverview(
+  societyId: string,
+  year?: number,
+): Promise<
+  ActionResponse<{
+    members: MemberDuesStatus[];
+    monthlyDueAmount: number | null;
+    year: number;
+  }>
+> {
+  try {
+    const session = await auth();
+    if (!session?.user) {
+      return { success: false, message: "Unauthorized" };
+    }
+
+    if (!canManageSocietyDues(session.user.role)) {
+      // Also allow if user is leader of this specific society
+      const society = await db.society.findFirst({
+        where: {
+          id: societyId,
+          organizationId: session.user.organizationId,
+          OR: [
+            { presidentId: session.user.id },
+            { secretaryId: session.user.id },
+          ],
+        },
+        select: { id: true },
+      });
+      if (!society) {
+        return { success: false, message: "Permission denied" };
+      }
+    }
+
+    const targetYear = year || new Date().getFullYear();
+    const startOfYear = new Date(targetYear, 0, 1);
+    const endOfYear = new Date(targetYear, 11, 31, 23, 59, 59);
+
+    const societyData = await db.society.findFirst({
+      where: {
+        id: societyId,
+        organizationId: session.user.organizationId,
+      },
+      select: {
+        id: true,
+        monthlyDueAmount: true,
+        members: {
+          include: {
+            parishioner: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                phone: true,
+                email: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!societyData) {
+      return { success: false, message: "Society not found" };
+    }
+
+    // Get all SOCIETY_DUES payments for this society in the year
+    const payments = await db.payment.findMany({
+      where: {
+        societyId,
+        purpose: "SOCIETY_DUES",
+        paymentStatus: "COMPLETED",
+        paymentDate: { gte: startOfYear, lte: endOfYear },
+      },
+      select: {
+        parishionerId: true,
+        month: true,
+        amount: true,
+      },
+    });
+
+    // Build lookup: parishionerId -> Set of paid months
+    const paidMap = new Map<string, Map<number, number>>();
+    for (const p of payments) {
+      if (p.parishionerId && p.month) {
+        const existing =
+          paidMap.get(p.parishionerId) || new Map<number, number>();
+        existing.set(p.month, (existing.get(p.month) || 0) + p.amount);
+        paidMap.set(p.parishionerId, existing);
+      }
+    }
+
+    const currentMonth =
+      targetYear === new Date().getFullYear() ? new Date().getMonth() + 1 : 12;
+    const dueAmount = societyData.monthlyDueAmount || 0;
+
+    const members: MemberDuesStatus[] = societyData.members.map((m) => {
+      const parishioner = m.parishioner;
+      const memberPayments = paidMap.get(parishioner.id) || new Map();
+      const monthsPaid: number[] = [];
+      const monthsOwing: number[] = [];
+      let totalPaid = 0;
+
+      for (let month = 1; month <= currentMonth; month++) {
+        const paidAmount = memberPayments.get(month) || 0;
+        if (paidAmount > 0) {
+          monthsPaid.push(month);
+          totalPaid += paidAmount;
+        } else {
+          monthsOwing.push(month);
+        }
+      }
+
+      const totalOwing = dueAmount > 0 ? monthsOwing.length * dueAmount : 0;
+
+      return {
+        parishionerId: parishioner.id,
+        firstName: parishioner.firstName,
+        lastName: parishioner.lastName,
+        phone: parishioner.phone,
+        email: parishioner.email,
+        joinedAt: m.joinedAt,
+        role: m.role,
+        monthsPaid,
+        monthsOwing,
+        totalPaid,
+        totalOwing,
+      };
+    });
+
+    return {
+      success: true,
+      message: "Dues overview retrieved",
+      data: {
+        members,
+        monthlyDueAmount: societyData.monthlyDueAmount,
+        year: targetYear,
+      },
+    };
+  } catch (error) {
+    console.error("Failed to get dues overview:", error);
+    return { success: false, message: "Failed to retrieve dues overview" };
+  }
+}
+
+export type SocietyPaymentRecord = Prisma.PaymentGetPayload<{
+  include: {
+    parishioner: {
+      select: {
+        id: true;
+        firstName: true;
+        lastName: true;
+      };
+    };
+    recordedBy: {
+      select: {
+        id: true;
+        firstName: true;
+        lastName: true;
+      };
+    };
+  };
+}>;
+
+/**
+ * Get all payment records for a society
+ */
+export async function getSocietyPayments(
+  societyId: string,
+  query?: { page?: number; limit?: number; year?: number; month?: number },
+): Promise<
+  ActionResponse<{ payments: SocietyPaymentRecord[]; total: number }>
+> {
+  try {
+    const session = await auth();
+    if (!session?.user) {
+      return { success: false, message: "Unauthorized" };
+    }
+
+    // Verify user has access (is society leader or admin)
+    const society = await db.society.findFirst({
+      where: {
+        id: societyId,
+        organizationId: session.user.organizationId,
+      },
+      select: { presidentId: true, secretaryId: true },
+    });
+
+    if (!society) {
+      return { success: false, message: "Society not found" };
+    }
+
+    const isSocietyLeader =
+      society.presidentId === session.user.id ||
+      society.secretaryId === session.user.id;
+
+    if (!canManageSocietyDues(session.user.role) && !isSocietyLeader) {
+      return { success: false, message: "Permission denied" };
+    }
+
+    const page = query?.page || 1;
+    const limit = Math.min(query?.limit || 20, 100);
+
+    const where: Prisma.PaymentWhereInput = {
+      societyId,
+      purpose: "SOCIETY_DUES",
+      organizationId: session.user.organizationId,
+      ...(query?.month && { month: query.month }),
+      ...(query?.year && {
+        paymentDate: {
+          gte: new Date(query.year, 0, 1),
+          lte: new Date(query.year, 11, 31, 23, 59, 59),
+        },
+      }),
+    };
+
+    const [payments, total] = await Promise.all([
+      db.payment.findMany({
+        where,
+        include: {
+          parishioner: {
+            select: { id: true, firstName: true, lastName: true },
+          },
+          recordedBy: {
+            select: { id: true, firstName: true, lastName: true },
+          },
+        },
+        orderBy: { paymentDate: "desc" },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      db.payment.count({ where }),
+    ]);
+
+    return {
+      success: true,
+      message: "Payments retrieved",
+      data: { payments, total },
+    };
+  } catch (error) {
+    console.error("Failed to get society payments:", error);
+    return { success: false, message: "Failed to retrieve payments" };
+  }
+}
+
+/**
+ * Record a society due payment for a member
+ */
+export async function recordSocietyDue(
+  societyId: string,
+  formData: {
+    parishionerId: string;
+    amount: number;
+    month: number;
+    year: number;
+    paymentMethod: string;
+    notes?: string;
+  },
+): Promise<ActionResponse> {
+  try {
+    const session = await auth();
+    if (!session?.user) {
+      return { success: false, message: "Unauthorized" };
+    }
+
+    // Verify user is society leader or admin
+    const society = await db.society.findFirst({
+      where: {
+        id: societyId,
+        organizationId: session.user.organizationId,
+      },
+      select: {
+        id: true,
+        presidentId: true,
+        secretaryId: true,
+        monthlyDueAmount: true,
+      },
+    });
+
+    if (!society) {
+      return { success: false, message: "Society not found" };
+    }
+
+    const isSocietyLeader =
+      society.presidentId === session.user.id ||
+      society.secretaryId === session.user.id;
+
+    if (!canManageSocietyDues(session.user.role) && !isSocietyLeader) {
+      return { success: false, message: "Permission denied" };
+    }
+
+    // Verify member belongs to this society
+    const membership = await db.societyMembership.findUnique({
+      where: {
+        parishionerId_societyId: {
+          parishionerId: formData.parishionerId,
+          societyId,
+        },
+      },
+      include: {
+        parishioner: {
+          select: { firstName: true, lastName: true },
+        },
+      },
+    });
+
+    if (!membership) {
+      return {
+        success: false,
+        message: "Parishioner is not a member of this society",
+      };
+    }
+
+    // Validate amount
+    if (formData.amount <= 0) {
+      return { success: false, message: "Amount must be greater than 0" };
+    }
+
+    // Validate month
+    if (formData.month < 1 || formData.month > 12) {
+      return { success: false, message: "Invalid month" };
+    }
+
+    // Generate receipt number
+    const year = new Date().getFullYear();
+    const prefix = `RCP-${year}`;
+    const lastPayment = await db.payment.findFirst({
+      where: {
+        organizationId: session.user.organizationId,
+        receiptNumber: { startsWith: prefix },
+      },
+      orderBy: { receiptNumber: "desc" },
+      select: { receiptNumber: true },
+    });
+    let nextNumber = 1;
+    if (lastPayment?.receiptNumber) {
+      const lastNum = parseInt(
+        lastPayment.receiptNumber.split("-").pop() || "0",
+      );
+      nextNumber = lastNum + 1;
+    }
+    const receiptNumber = `${prefix}-${nextNumber.toString().padStart(6, "0")}`;
+
+    const paymentDate = new Date(formData.year, formData.month - 1, 15);
+
+    await db.payment.create({
+      data: {
+        amount: formData.amount,
+        currency: "NGN",
+        purpose: "SOCIETY_DUES",
+        month: formData.month,
+        paymentMethod: formData.paymentMethod as any,
+        paymentStatus: "COMPLETED",
+        parishionerId: formData.parishionerId,
+        payerName: `${membership.parishioner.firstName} ${membership.parishioner.lastName}`,
+        recordedById: session.user.id,
+        receiptNumber,
+        paymentDate,
+        organizationId: session.user.organizationId,
+        societyId,
+        notes: formData.notes,
+      },
+    });
+
+    revalidatePath(`/dashboard/societies/${societyId}/manage`);
+    revalidatePath(`/dashboard/societies/${societyId}`);
+
+    return { success: true, message: "Due payment recorded successfully" };
+  } catch (error) {
+    console.error("Failed to record society due:", error);
+    return { success: false, message: "Failed to record payment" };
+  }
+}
+
+export type SocietyMemberRecord = {
+  parishionerId: string;
+  firstName: string;
+  lastName: string;
+  otherNames: string | null;
+  email: string | null;
+  phone: string | null;
+  gender: string | null;
+  dateOfBirth: Date | null;
+  address: string | null;
+  joinedAt: Date;
+  role: string;
+};
+
+/**
+ * Get detailed member records for a society
+ */
+export async function getSocietyMemberRecords(
+  societyId: string,
+): Promise<ActionResponse<SocietyMemberRecord[]>> {
+  try {
+    const session = await auth();
+    if (!session?.user) {
+      return { success: false, message: "Unauthorized" };
+    }
+
+    const society = await db.society.findFirst({
+      where: {
+        id: societyId,
+        organizationId: session.user.organizationId,
+      },
+      select: { presidentId: true, secretaryId: true },
+    });
+
+    if (!society) {
+      return { success: false, message: "Society not found" };
+    }
+
+    const isSocietyLeader =
+      society.presidentId === session.user.id ||
+      society.secretaryId === session.user.id;
+
+    if (!canManageSocieties(session.user.role) && !isSocietyLeader) {
+      return { success: false, message: "Permission denied" };
+    }
+
+    const memberships = await db.societyMembership.findMany({
+      where: { societyId },
+      include: {
+        parishioner: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            otherNames: true,
+            email: true,
+            phone: true,
+            gender: true,
+            dateOfBirth: true,
+            address: true,
+          },
+        },
+      },
+      orderBy: { joinedAt: "asc" },
+    });
+
+    const records: SocietyMemberRecord[] = memberships.map((m) => ({
+      parishionerId: m.parishioner.id,
+      firstName: m.parishioner.firstName,
+      lastName: m.parishioner.lastName,
+      otherNames: m.parishioner.otherNames,
+      email: m.parishioner.email,
+      phone: m.parishioner.phone,
+      gender: m.parishioner.gender,
+      dateOfBirth: m.parishioner.dateOfBirth,
+      address: m.parishioner.address,
+      joinedAt: m.joinedAt,
+      role: m.role,
+    }));
+
+    return {
+      success: true,
+      message: "Member records retrieved",
+      data: records,
+    };
+  } catch (error) {
+    console.error("Failed to get member records:", error);
+    return { success: false, message: "Failed to retrieve member records" };
+  }
+}
+
+/**
+ * Update the monthly due amount for a society
+ */
+export async function updateSocietyDueAmount(
+  societyId: string,
+  amount: number,
+): Promise<ActionResponse> {
+  try {
+    const session = await auth();
+    if (!session?.user) {
+      return { success: false, message: "Unauthorized" };
+    }
+
+    const society = await db.society.findFirst({
+      where: {
+        id: societyId,
+        organizationId: session.user.organizationId,
+      },
+      select: { presidentId: true, secretaryId: true },
+    });
+
+    if (!society) {
+      return { success: false, message: "Society not found" };
+    }
+
+    const isSocietyLeader =
+      society.presidentId === session.user.id ||
+      society.secretaryId === session.user.id;
+
+    if (!canManageSocieties(session.user.role) && !isSocietyLeader) {
+      return { success: false, message: "Permission denied" };
+    }
+
+    if (amount < 0) {
+      return { success: false, message: "Amount cannot be negative" };
+    }
+
+    await db.society.update({
+      where: { id: societyId },
+      data: { monthlyDueAmount: amount || null },
+    });
+
+    revalidatePath(`/dashboard/societies/${societyId}/manage`);
+
+    return { success: true, message: "Monthly due amount updated" };
+  } catch (error) {
+    console.error("Failed to update due amount:", error);
+    return { success: false, message: "Failed to update due amount" };
   }
 }

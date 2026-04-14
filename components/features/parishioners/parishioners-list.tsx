@@ -52,10 +52,12 @@ import Link from "next/link";
 
 interface ParishionersListProps {
   parishioners: UnifiedParishioner[];
+  canDelete?: boolean;
 }
 
 export function ParishionersList({
   parishioners: initialParishioners,
+  canDelete = false,
 }: ParishionersListProps) {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
@@ -174,12 +176,14 @@ export function ParishionersList({
                 <Download className="mr-2 h-4 w-4" />
                 Export ({selectedIds.size})
               </Button>
-              <Button
-                variant="destructive"
-                onClick={() => setShowDeleteDialog(true)}>
-                <Trash2 className="mr-2 h-4 w-4" />
-                Delete ({selectedIds.size})
-              </Button>
+              {canDelete && (
+                <Button
+                  variant="destructive"
+                  onClick={() => setShowDeleteDialog(true)}>
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete ({selectedIds.size})
+                </Button>
+              )}
               <Button
                 variant="ghost"
                 size="icon"
@@ -335,19 +339,23 @@ export function ParishionersList({
                                 Edit
                               </Link>
                             </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              className="text-destructive focus:text-destructive"
-                              disabled={isDeleting === p.id}
-                              onClick={() =>
-                                handleDelete(
-                                  p.id,
-                                  `${p.firstName} ${p.lastName}`,
-                                )
-                              }>
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              {isDeleting === p.id ? "Deleting..." : "Delete"}
-                            </DropdownMenuItem>
+                            {canDelete && (
+                              <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  className="text-destructive focus:text-destructive"
+                                  disabled={isDeleting === p.id}
+                                  onClick={() =>
+                                    handleDelete(
+                                      p.id,
+                                      `${p.firstName} ${p.lastName}`,
+                                    )
+                                  }>
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  {isDeleting === p.id ? "Deleting..." : "Delete"}
+                                </DropdownMenuItem>
+                              </>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       ) : (

@@ -22,7 +22,10 @@ const protectedPrefixes = [
 export default auth((req) => {
 	// NextAuth middleware injects auth info onto the request as `req.auth`
 	const session = (req as any).auth;
-	const isLoggedIn = !!session?.user;
+	// Check for actual user identity — an empty JWT ({}) still produces
+	// a truthy `session.user` object with the default session callback,
+	// so we verify a real field exists to avoid redirect loops.
+	const isLoggedIn = !!session?.user?.email;
 	const pathname = req.nextUrl.pathname;
 
 	const isOnAuth = pathname.startsWith("/auth");

@@ -36,7 +36,6 @@ export default async function SocietiesPage() {
   const canReviewRequests = [
     "SUPER_ADMIN",
     "PARISH_ADMIN",
-    "PARISH_SECRETARY",
     "PARISH_STAFF",
   ].includes(session.user.role);
 

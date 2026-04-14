@@ -1,9 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { Users, Calendar, Church } from "lucide-react";
 import { NairaSign } from "@/components/ui/naira-sign";
 import type { Session } from "next-auth";
 import type { OrganizationDashboardMetrics } from "@/app/actions/dashboard.actions";
+import { isAdminRole } from "@/lib/permissions";
 
 interface OrganizationDashboardProps {
   session: Session;
@@ -16,6 +18,8 @@ export function OrganizationDashboard({
   announcements,
   metrics,
 }: OrganizationDashboardProps) {
+  const isAdmin = isAdminRole(session.user.role);
+
   const stats = [
     {
       name: "Total Parishioners",
@@ -23,12 +27,16 @@ export function OrganizationDashboard({
       icon: Users,
       change: "",
     },
-    {
-      name: "Completed Payments",
-      value: `₦${metrics.totalPaymentAmount.toLocaleString("en-NG")}`,
-      icon: NairaSign,
-      change: `${metrics.totalPayments.toLocaleString("en-NG")} records`,
-    },
+    ...(isAdmin
+      ? [
+          {
+            name: "Completed Payments",
+            value: `₦${metrics.totalPaymentAmount.toLocaleString("en-NG")}`,
+            icon: NairaSign,
+            change: `${metrics.totalPayments.toLocaleString("en-NG")} records`,
+          },
+        ]
+      : []),
     {
       name: "Upcoming Appointments",
       value: metrics.upcomingAppointments.toLocaleString("en-NG"),
@@ -110,32 +118,32 @@ export function OrganizationDashboard({
       <div className="bg-background border border-border rounded-lg shadow-sm p-6">
         <h2 className="text-lg font-semibold mb-4">Quick Actions</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <button className="p-4 border border-border rounded-md hover:bg-accent hover:border-primary transition-all text-left">
+          <Link href="/payments" className="p-4 border border-border rounded-md hover:bg-accent hover:border-primary transition-all text-left">
             <NairaSign className="h-8 w-8 text-primary mb-2" />
             <h3 className="font-medium">Record Payment</h3>
             <p className="text-sm text-muted-foreground">
               Add offering or donation
             </p>
-          </button>
-          <button className="p-4 border border-border rounded-md hover:bg-accent hover:border-primary transition-all text-left">
+          </Link>
+          <Link href="/parishioners" className="p-4 border border-border rounded-md hover:bg-accent hover:border-primary transition-all text-left">
             <Users className="h-8 w-8 text-primary mb-2" />
             <h3 className="font-medium">Add Parishioner</h3>
             <p className="text-sm text-muted-foreground">Register new member</p>
-          </button>
-          <button className="p-4 border border-border rounded-md hover:bg-accent hover:border-primary transition-all text-left">
+          </Link>
+          <Link href="/mass-intentions" className="p-4 border border-border rounded-md hover:bg-accent hover:border-primary transition-all text-left">
             <Church className="h-8 w-8 text-primary mb-2" />
             <h3 className="font-medium">Book Mass Intention</h3>
             <p className="text-sm text-muted-foreground">
               Schedule mass intention
             </p>
-          </button>
-          <button className="p-4 border border-border rounded-md hover:bg-accent hover:border-primary transition-all text-left">
+          </Link>
+          <Link href="/appointments" className="p-4 border border-border rounded-md hover:bg-accent hover:border-primary transition-all text-left">
             <Calendar className="h-8 w-8 text-primary mb-2" />
             <h3 className="font-medium">New Appointment</h3>
             <p className="text-sm text-muted-foreground">
               Schedule appointment
             </p>
-          </button>
+          </Link>
         </div>
       </div>
 

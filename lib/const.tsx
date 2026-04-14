@@ -1,10 +1,13 @@
 import {
   Calendar,
+  CalendarCog,
   CalendarDays,
   CirclePile,
   ClipboardList,
   Coins,
+  CreditCard,
   FolderKanban,
+  Landmark,
   LayoutDashboard,
   Megaphone,
   Settings,
@@ -30,14 +33,19 @@ export const SIDEBAR = [
     href: "/parishioners",
   },
   {
+    icon: <CalendarDays className=" w-5 h-5" />,
+    name: "Mass Calendar",
+    href: "/masses",
+  },
+  {
     icon: <ClipboardList className=" w-5 h-5" />,
     name: "Mass Intentions",
     href: "/mass-intentions",
   },
   {
-    icon: <CalendarDays className=" w-5 h-5" />,
-    name: "Mass Calendar",
-    href: "/masses",
+    icon: <CalendarCog className=" w-5 h-5" />,
+    name: "Mass Schedule",
+    href: "/mass-schedule",
   },
   {
     icon: <Calendar className=" w-5 h-5" />,
@@ -60,9 +68,19 @@ export const SIDEBAR = [
     href: "/settings",
   },
   {
+    icon: <CreditCard className=" w-5 h-5" />,
+    name: "Pay",
+    href: "/pay",
+  },
+  {
     icon: <Coins className=" w-5 h-5" />,
     name: "Payments",
     href: "/payments",
+  },
+  {
+    icon: <Landmark className=" w-5 h-5" />,
+    name: "Parish Finances",
+    href: "/parish-finances",
   },
   {
     icon: <RiLiveFill className=" w-5 h-5" />,

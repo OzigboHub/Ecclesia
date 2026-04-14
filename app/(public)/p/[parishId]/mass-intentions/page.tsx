@@ -171,8 +171,7 @@ export default async function PublicMassIntentionsPage({
               <Link
                 key={mass.id}
                 href={`/p/${parishId}/mass-intentions?massId=${mass.id}`}
-                className="rounded-xl border bg-card p-4 transition hover:shadow-md hover:border-primary/50"
-              >
+                className="rounded-xl border bg-card p-4 transition hover:shadow-md hover:border-primary/50">
                 <div className="flex items-center gap-2 mb-2">
                   <Clock className="h-4 w-4 text-primary" />
                   <span className="font-semibold text-sm">{mass.time}</span>

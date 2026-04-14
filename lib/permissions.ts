@@ -117,12 +117,7 @@ export function canManageEvents(role: string): boolean {
 }
 
 export function canManageSocieties(role: string): boolean {
-  return [
-    "SUPER_ADMIN",
-    "PARISH_ADMIN",
-    "PARISH_SECRETARY",
-    "PARISH_STAFF",
-  ].includes(role);
+  return ["SUPER_ADMIN", "PARISH_ADMIN", "PARISH_STAFF"].includes(role);
 }
 
 export function canViewSocieties(role: string): boolean {
@@ -168,4 +163,43 @@ export function canViewLiveStreams(role: string): boolean {
     "SOCIETY_SECRETARY",
     "PARISHIONER",
   ].includes(role);
+}
+
+export function isSocietyHead(role: string): boolean {
+  return ["SOCIETY_PRESIDENT", "SOCIETY_SECRETARY"].includes(role);
+}
+
+export function canManagePaymentTypes(role: string): boolean {
+  return ["SUPER_ADMIN", "PARISH_ADMIN", "PARISH_SECRETARY"].includes(role);
+}
+
+export function canMakePayments(role: string): boolean {
+  return [
+    "SUPER_ADMIN",
+    "PARISH_ADMIN",
+    "PARISH_SECRETARY",
+    "PARISH_STAFF",
+    "OUTSTATION_ADMIN",
+    "SOCIETY_PRESIDENT",
+    "SOCIETY_SECRETARY",
+    "PARISHIONER",
+  ].includes(role);
+}
+
+export function canManageSocietyDues(role: string): boolean {
+  return [
+    "SUPER_ADMIN",
+    "PARISH_ADMIN",
+    "PARISH_SECRETARY",
+    "SOCIETY_PRESIDENT",
+    "SOCIETY_SECRETARY",
+  ].includes(role);
+}
+
+export function canCreateSocietyAnnouncement(role: string): boolean {
+  return ["SOCIETY_PRESIDENT", "SOCIETY_SECRETARY"].includes(role);
+}
+
+export function canApproveAnnouncements(role: string): boolean {
+  return ["SUPER_ADMIN", "PARISH_ADMIN", "PARISH_SECRETARY"].includes(role);
 }

@@ -347,7 +347,7 @@ export async function createUser(
 			},
 		});
 
-		revalidatePath("/dashboard/users");
+		revalidatePath("/users");
 
 		return {
 			success: true,
@@ -476,8 +476,8 @@ export async function updateUser(
 			});
 		}
 
-		revalidatePath("/dashboard/users");
-		revalidatePath(`/dashboard/users/${id}`);
+		revalidatePath("/users");
+		revalidatePath(`/users/${id}`);
 
 		return {
 			success: true,
@@ -649,8 +649,8 @@ export async function toggleUserStatus(
 			},
 		});
 
-		revalidatePath("/dashboard/users");
-		revalidatePath(`/dashboard/users/${id}`);
+		revalidatePath("/users");
+		revalidatePath(`/users/${id}`);
 
 		return {
 			success: true,
@@ -715,7 +715,7 @@ export async function activateUser(
 			data: { isActive: true },
 		});
 
-		revalidatePath("/dashboard/users");
+		revalidatePath("/users");
 
 		return {
 			success: true,
@@ -784,7 +784,7 @@ export async function deactivateUser(
 			data: { isActive: false },
 		});
 
-		revalidatePath("/dashboard/users");
+		revalidatePath("/users");
 
 		return {
 			success: true,
@@ -850,7 +850,7 @@ export async function deleteUser(id: string): Promise<ActionResponse> {
 			where: { id },
 		});
 
-		revalidatePath("/dashboard/users");
+		revalidatePath("/users");
 
 		return {
 			success: true,
@@ -920,8 +920,8 @@ export async function unlockUserAccount(
 			},
 		});
 
-		revalidatePath("/dashboard/users");
-		revalidatePath(`/dashboard/users/${id}`);
+		revalidatePath("/users");
+		revalidatePath(`/users/${id}`);
 
 		return {
 			success: true,
