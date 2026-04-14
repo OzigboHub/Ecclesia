@@ -16,12 +16,23 @@ import {
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { MassEditDialog } from "./mass-edit-dialog";
+import { MassPaymentTypesManager } from "./mass-payment-types";
 
 interface MassCalendarProps {
 	canManage?: boolean;
+	userEmail?: string;
+	userName?: string;
+	parishionerId?: string | null;
+	organizationId?: string;
 }
 
-export function MassCalendar({ canManage = false }: MassCalendarProps) {
+export function MassCalendar({
+	canManage = false,
+	userEmail,
+	userName,
+	parishionerId,
+	organizationId,
+}: MassCalendarProps) {
 	const [date, setDate] = useState<Date | undefined>(new Date());
 	const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
 	const [masses, setMasses] = useState<any[]>([]);
@@ -209,6 +220,15 @@ export function MassCalendar({ canManage = false }: MassCalendarProps) {
 												</span>
 											</div>
 										</div>
+
+										<MassPaymentTypesManager
+											massId={mass.id}
+											canManage={canManage}
+											userEmail={userEmail}
+											userName={userName}
+											parishionerId={parishionerId}
+											organizationId={organizationId}
+										/>
 									</div>
 									{canManage && (
 										<div className="flex items-center gap-2">

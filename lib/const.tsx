@@ -5,6 +5,7 @@ import {
   CirclePile,
   ClipboardList,
   Coins,
+  CreditCard,
   FolderKanban,
   Landmark,
   LayoutDashboard,
@@ -32,14 +33,14 @@ export const SIDEBAR = [
     href: "/parishioners",
   },
   {
-    icon: <ClipboardList className=" w-5 h-5" />,
-    name: "Mass Intentions",
-    href: "/mass-intentions",
-  },
-  {
     icon: <CalendarDays className=" w-5 h-5" />,
     name: "Mass Calendar",
     href: "/masses",
+  },
+  {
+    icon: <ClipboardList className=" w-5 h-5" />,
+    name: "Mass Intentions",
+    href: "/mass-intentions",
   },
   {
     icon: <CalendarCog className=" w-5 h-5" />,
@@ -65,6 +66,11 @@ export const SIDEBAR = [
     icon: <Settings className=" w-5 h-5" />,
     name: "Settings",
     href: "/settings",
+  },
+  {
+    icon: <CreditCard className=" w-5 h-5" />,
+    name: "Pay",
+    href: "/pay",
   },
   {
     icon: <Coins className=" w-5 h-5" />,

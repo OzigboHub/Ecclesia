@@ -25,6 +25,7 @@ export const createPaymentSchema = z
 			'OTHER',
 		]),
 		month: z.number().int().min(1).max(12).optional(),
+		paymentDate: z.string().optional(),
 		paymentMethod: z.enum([
 			'CASH',
 			'BANK_TRANSFER',
@@ -45,14 +46,18 @@ export const createPaymentSchema = z
 		donationCampaignId: z.string().uuid().optional(),
 		eventId: z.string().uuid().optional(),
 		paymentGateway: z.string().optional(),
+		description: z
+			.string()
+			.max(200, 'Description must not exceed 200 characters')
+			.optional(),
 		notes: z
 			.string()
 			.max(1000, 'Notes must not exceed 1000 characters')
 			.optional(),
 	})
-	.refine((data) => data.purpose !== 'OFFERING' || data.month, {
-		message: 'Month is required for offerings',
-		path: ['month'],
+	.refine((data) => data.purpose !== 'OFFERING' || data.paymentDate, {
+		message: 'Payment date is required for offerings',
+		path: ['paymentDate'],
 	})
 	.refine(
 		(data) => data.purpose !== 'MASS_INTENTION' || data.massIntentionId,
@@ -160,6 +165,7 @@ export const paystackInitializeSchema = z.object({
 	massIntentionId: z.string().uuid().optional(),
 	donationCampaignId: z.string().uuid().optional(),
 	eventId: z.string().uuid().optional(),
+	paymentTypeId: z.string().uuid().optional(),
 });
 
 export type PaystackInitializeInput = z.infer<typeof paystackInitializeSchema>;

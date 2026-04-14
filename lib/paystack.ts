@@ -1,5 +1,6 @@
 const PAYSTACK_BASE_URL = "https://api.paystack.co";
-const DEFAULT_DVA_PROVIDER = process.env.PAYSTACK_DVA_PROVIDER_SLUG || "wema-bank";
+const DEFAULT_DVA_PROVIDER =
+  process.env.PAYSTACK_DVA_PROVIDER_SLUG || "wema-bank";
 
 function getPaystackSecretKey() {
   const secretKey = process.env.PAYSTACK_SECRET_KEY;

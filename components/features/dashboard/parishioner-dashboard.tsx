@@ -278,7 +278,7 @@ export function ParishionerDashboard({
           </div>
         </div>
         <Button size="sm" asChild>
-          <Link href="/payments">
+          <Link href="/pay">
             Give Online <ArrowRight className="ml-2 h-3 w-3" />
           </Link>
         </Button>

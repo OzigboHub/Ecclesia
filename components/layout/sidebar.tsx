@@ -8,18 +8,19 @@ import {
 	SUPERADMIN_SIDEBAR,
 } from "@/lib/const";
 import {
-	canBookAppointments,
-	canBookMassIntentions,
-	canManageFinancials,
-	canManageMassIntentions,
-	canManageOrganizations,
-	canManageParishioners,
-	canManageUsers,
-	canRecordPayments,
-	canViewLiveStreams,
-	canViewMassCalendar,
-	canViewSocieties,
-	isSocietyHead,
+  canBookAppointments,
+  canBookMassIntentions,
+  canManageFinancials,
+  canManageMassIntentions,
+  canManageOrganizations,
+  canManageParishioners,
+  canManageUsers,
+  canMakePayments,
+  canRecordPayments,
+  canViewLiveStreams,
+  canViewMassCalendar,
+  canViewSocieties,
+  isSocietyHead,
 } from "@/lib/permissions";
 import { LogOut, Settings } from "lucide-react";
 import { signOut, useSession } from "next-auth/react";
@@ -85,16 +86,17 @@ export default function Sidebar() {
 
 	const isParishioner = userRole === "PARISHIONER";
 
-	// Parishioners get a curated set of links
-	const PARISHIONER_LINKS = [
-		"Dashboard",
-		"Mass Intentions",
-		"Mass Calendar",
-		"Appointments",
-		"Announcements",
-		"Societies",
-		"Live Streams",
-	];
+  // Parishioners get a curated set of links
+  const PARISHIONER_LINKS = [
+    "Dashboard",
+    "Pay",
+    "Mass Intentions",
+    "Mass Calendar",
+    "Appointments",
+    "Announcements",
+    "Societies",
+    "Live Streams",
+  ];
 
 	// Filter sidebar items based on role or active context
 	const mainNav = SIDEBAR.filter((item) => {
@@ -105,22 +107,19 @@ export default function Sidebar() {
 		// Parishioners only see their curated links
 		if (isParishioner) return PARISHIONER_LINKS.includes(item.name);
 
-		if (item.name === "Parishioners")
-			return canManageParishioners(userRole);
-		if (item.name === "Payments") return canRecordPayments(userRole);
-		if (item.name === "Mass Intentions")
-			return canBookMassIntentions(userRole);
-		if (item.name === "Mass Calendar") return canViewMassCalendar(userRole);
-		if (item.name === "Mass Schedule")
-			return canManageMassIntentions(userRole);
-		if (item.name === "Appointments") return canBookAppointments(userRole);
-		if (item.name === "Societies") return canViewSocieties(userRole);
-		if (item.name === "Live Streams") return canViewLiveStreams(userRole);
-		if (item.name === "Parish Finances")
-			return canManageFinancials(userRole);
-		if (item.name === "Settings") return isSuperAdmin; // Only Super Admin / System Admin
-		return true; // Dashboard
-	});
+    if (item.name === "Parishioners") return canManageParishioners(userRole);
+    if (item.name === "Payments") return canRecordPayments(userRole);
+    if (item.name === "Pay") return canMakePayments(userRole);
+    if (item.name === "Mass Intentions") return canBookMassIntentions(userRole);
+    if (item.name === "Mass Calendar") return canViewMassCalendar(userRole);
+    if (item.name === "Mass Schedule") return canManageMassIntentions(userRole);
+    if (item.name === "Appointments") return canBookAppointments(userRole);
+    if (item.name === "Societies") return canViewSocieties(userRole);
+    if (item.name === "Live Streams") return canViewLiveStreams(userRole);
+    if (item.name === "Parish Finances") return canManageFinancials(userRole);
+    if (item.name === "Settings") return isSuperAdmin; // Only Super Admin / System Admin
+    return true; // Dashboard
+  });
 
 	// Filter admin items based on role
 	const filteredAdmin = ADMIN_EXTENDED.filter((item) => {

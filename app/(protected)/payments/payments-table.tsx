@@ -133,7 +133,7 @@ export function PaymentsTable({ payments }: { payments: PaymentRow[] }) {
 					No payments recorded yet
 				</p>
 				<Button asChild className="mt-4">
-					<Link href="/dashboard/payments/new">
+					<Link href="/payments/new">
 						Record First Payment
 					</Link>
 				</Button>
