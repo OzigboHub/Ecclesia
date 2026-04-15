@@ -109,7 +109,6 @@ model User {
   address                  String?
   dateOfBirth              DateTime?
   phone                    String?
-  displayPicture           String?
   failedLoginAttempts      Int                       @default(0)
   lastFailedLoginAt        DateTime?
   lockedUntil              DateTime?
@@ -119,6 +118,7 @@ model User {
   twoFactorEnabled         Boolean                   @default(false)
   twoFactorMethod          TwoFactorMethod?
   twoFactorSecret          String?
+  displayPicture           String?
   appointmentsAssigned     Appointment[]             @relation("AppointmentAssignee")
   appointmentsMade         Appointment[]             @relation("AppointmentCreator")
   availabilitySlots        AppointmentAvailability[] @relation("AppointmentAvailabilityAssignee")
@@ -523,9 +523,8 @@ model Payment {
   organization       Organization      @relation(fields: [organizationId], references: [id])
   parishioner        Parishioner?      @relation(fields: [parishionerId], references: [id])
   paymentType        PaymentType?      @relation(fields: [paymentTypeId], references: [id])
-
-  recordedBy User     @relation("PaymentRecorder", fields: [recordedById], references: [id])
-  society    Society? @relation(fields: [societyId], references: [id])
+  recordedBy         User              @relation("PaymentRecorder", fields: [recordedById], references: [id])
+  society            Society?          @relation(fields: [societyId], references: [id])
 
   @@index([parishionerId])
   @@index([organizationId])
@@ -796,12 +795,12 @@ model PaymentType {
   createdById    String
   createdAt      DateTime            @default(now())
   updatedAt      DateTime            @updatedAt
+  userId         String?
   masses         MassPaymentType[]
   payments       Payment[]
   createdBy      User                @relation("PaymentTypeCreator", fields: [createdById], references: [id])
   organization   Organization        @relation(fields: [organizationId], references: [id])
   user           User?               @relation(fields: [userId], references: [id])
-  userId         String?
 
   @@unique([name, organizationId])
   @@index([organizationId])
