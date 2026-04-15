@@ -19,7 +19,7 @@ export default async function DashboardLayout({
 
 	return (
 		<AuthProvider session={session}>
-			<div className="h-screen overflow-hidden bg-background">
+			<div className="h-screen overflow-hidden">
 				<div className="h-screen lg:grid lg:grid-cols-[280px_1fr]">
 					<Sidebar session={session} />
 					<div className="flex min-h-screen min-w-0 flex-col">
