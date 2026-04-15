@@ -42,6 +42,7 @@ interface AnnouncementsClientProps {
   initialAnnouncements: AnnouncementItem[];
   total: number;
   canWrite: boolean;
+  canDelete: boolean;
 }
 
 function getStatus(
@@ -97,6 +98,7 @@ export default function AnnouncementsClient({
   initialAnnouncements,
   total,
   canWrite,
+  canDelete,
 }: AnnouncementsClientProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -282,15 +284,17 @@ export default function AnnouncementsClient({
                         className="h-8 w-8">
                         <Pencil className="h-4 w-4" />
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        title="Delete"
-                        onClick={() => handleDelete(a)}
-                        disabled={isPending}
-                        className="h-8 w-8 text-destructive hover:text-destructive">
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      {canDelete && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          title="Delete"
+                          onClick={() => handleDelete(a)}
+                          disabled={isPending}
+                          className="h-8 w-8 text-destructive hover:text-destructive">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
                     </div>
                   )}
                 </div>

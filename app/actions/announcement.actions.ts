@@ -316,6 +316,8 @@ export async function updateAnnouncement(
   }
 }
 
+const ANNOUNCEMENT_DELETE_ROLES = ["SUPER_ADMIN", "PARISH_ADMIN"];
+
 export async function deleteAnnouncement(
   id: string,
 ): Promise<ActionResponse<null>> {
@@ -325,8 +327,11 @@ export async function deleteAnnouncement(
       return { success: false, message: "Unauthorized" };
     }
 
-    if (!ANNOUNCEMENT_WRITER_ROLES.includes(session.user.role)) {
-      return { success: false, message: "Permission denied" };
+    if (!ANNOUNCEMENT_DELETE_ROLES.includes(session.user.role)) {
+      return {
+        success: false,
+        message: "Only parish admins can delete announcements",
+      };
     }
 
     const enabled = await isFeatureEnabled(
@@ -480,7 +485,10 @@ export async function createSocietyAnnouncement(
       "enableAnnouncements",
     );
     if (!enabled) {
-      return { success: false, message: "Announcements feature is not enabled" };
+      return {
+        success: false,
+        message: "Announcements feature is not enabled",
+      };
     }
 
     // Verify user is leader of this society
@@ -496,7 +504,10 @@ export async function createSocietyAnnouncement(
     });
 
     if (!society) {
-      return { success: false, message: "You are not a leader of this society" };
+      return {
+        success: false,
+        message: "You are not a leader of this society",
+      };
     }
 
     const parsed = createAnnouncementSchema.safeParse(formData);
@@ -606,7 +617,10 @@ export async function approveSocietyAnnouncement(
     });
 
     if (!announcement) {
-      return { success: false, message: "Announcement not found or already reviewed" };
+      return {
+        success: false,
+        message: "Announcement not found or already reviewed",
+      };
     }
 
     await db.announcement.update({
@@ -659,7 +673,10 @@ export async function rejectSocietyAnnouncement(
     });
 
     if (!announcement) {
-      return { success: false, message: "Announcement not found or already reviewed" };
+      return {
+        success: false,
+        message: "Announcement not found or already reviewed",
+      };
     }
 
     await db.announcement.update({
@@ -729,6 +746,9 @@ export async function getPendingAnnouncements(): Promise<
     };
   } catch (error) {
     console.error("Failed to get pending announcements:", error);
-    return { success: false, message: "Failed to retrieve pending announcements" };
+    return {
+      success: false,
+      message: "Failed to retrieve pending announcements",
+    };
   }
 }

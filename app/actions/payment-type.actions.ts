@@ -226,6 +226,8 @@ export async function updatePaymentType(
   }
 }
 
+const PAYMENT_TYPE_DELETE_ROLES = ["SUPER_ADMIN", "PARISH_ADMIN"];
+
 export async function deletePaymentType(id: string): Promise<ActionResponse> {
   try {
     const session = await auth();
@@ -233,8 +235,8 @@ export async function deletePaymentType(id: string): Promise<ActionResponse> {
       return { success: false, message: "Unauthorized" };
     }
 
-    if (!PAYMENT_TYPE_MANAGE_ROLES.includes(session.user.role)) {
-      return { success: false, message: "Insufficient permissions" };
+    if (!PAYMENT_TYPE_DELETE_ROLES.includes(session.user.role)) {
+      return { success: false, message: "Only parish admins can delete payment types" };
     }
 
     const existing = await db.paymentType.findFirst({

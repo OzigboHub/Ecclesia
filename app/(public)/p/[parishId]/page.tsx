@@ -3,6 +3,7 @@ import { PublicAppointmentBooking } from "@/components/features/appointments/pub
 import { Button } from "@/components/ui/button";
 import db from "@/lib/db";
 import { isFeatureEnabled } from "@/lib/features.server";
+import { formatTime12h } from "@/lib/format-time";
 import { format } from "date-fns";
 import {
   BookOpen,
@@ -409,7 +410,8 @@ export default async function ParishPage({
                     {mass.massType.replace(/_/g, " ")}
                   </h3>
                   <p className="mt-2 text-sm text-muted-foreground">
-                    {format(new Date(mass.date), "MMM d, yyyy")} · {mass.time}
+                    {format(new Date(mass.date), "MMM d, yyyy")} ·{" "}
+                    {formatTime12h(mass.time)}
                   </p>
                   {mass.location && (
                     <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
@@ -470,7 +472,8 @@ export default async function ParishPage({
                         {format(new Date(mi.mass.date), "MMM d, yyyy")}
                       </p>
                       <p>
-                        {mi.mass.time} · {mi.mass.massType.replace(/_/g, " ")}
+                        {formatTime12h(mi.mass.time)} ·{" "}
+                        {mi.mass.massType.replace(/_/g, " ")}
                       </p>
                     </div>
                   </div>

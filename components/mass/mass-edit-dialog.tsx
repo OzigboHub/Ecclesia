@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import {
@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { TimePicker } from "@/components/ui/time-picker";
 import {
   Select,
   SelectContent,
@@ -79,6 +80,7 @@ export function MassEditDialog({ mass, onSuccess }: MassEditDialogProps) {
     handleSubmit,
     setValue,
     watch,
+    control,
     formState: { errors },
   } = useForm<MassEditInput>({
     resolver: zodResolver(massEditSchema),
@@ -174,8 +176,14 @@ export function MassEditDialog({ mass, onSuccess }: MassEditDialogProps) {
               </Popover>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Time (HH:mm)</label>
-              <Input {...register("time")} placeholder="06:00" />
+              <label className="text-sm font-medium">Time</label>
+              <Controller
+                name="time"
+                control={control}
+                render={({ field }) => (
+                  <TimePicker value={field.value} onChange={field.onChange} />
+                )}
+              />
               {errors.time && (
                 <p className="text-xs text-destructive">
                   {errors.time.message}

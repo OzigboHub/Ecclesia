@@ -14,6 +14,8 @@ export default async function PaymentTypesPage() {
   ].includes(session.user.role);
   if (!canManage) redirect("/dashboard");
 
+  const canDelete = ["SUPER_ADMIN", "PARISH_ADMIN"].includes(session.user.role);
+
   const result = await getPaymentTypes();
 
   return (
@@ -31,6 +33,7 @@ export default async function PaymentTypesPage() {
         initialPaymentTypes={
           result.success ? (result.data as PaymentTypeItem[]) : []
         }
+        canDelete={canDelete}
       />
     </div>
   );

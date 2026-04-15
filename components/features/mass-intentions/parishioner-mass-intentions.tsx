@@ -35,6 +35,7 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatTime12h } from "@/lib/format-time";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import type { Prisma } from "@prisma/client";
@@ -103,8 +104,15 @@ export function ParishionerMassIntentions({
       // For today, close bookings 30 minutes before Mass starts
       if (massDate.toDateString() === now.toDateString() && mass.time) {
         const [h, m] = mass.time.split(":").map(Number);
-        const massStart = new Date(massDate);
-        massStart.setHours(h, m, 0, 0);
+        const massStart = new Date(
+          massDate.getFullYear(),
+          massDate.getMonth(),
+          massDate.getDate(),
+          h,
+          m,
+          0,
+          0,
+        );
         const cutoff = new Date(massStart.getTime() - 30 * 60 * 1000);
         if (now >= cutoff) return false;
       }
@@ -149,7 +157,7 @@ export function ParishionerMassIntentions({
     reset,
   } = form;
 
-  const platformFee = 20;
+  const platformFee = 0; // Fee calculated server-side at checkout
   const stipendValue = Number(watch("stipend") || 0);
 
   const openBookingModal = (mass: MassWithIntentions) => {
@@ -160,7 +168,7 @@ export function ParishionerMassIntentions({
     setValue("parishionerId", session?.user?.parishionerId || "");
     setValue(
       "notes",
-      `Booked for ${mass.time} ${mass.massType.replace(/_/g, " ")} mass`,
+      `Booked for ${formatTime12h(mass.time)} ${mass.massType.replace(/_/g, " ")} mass`,
     );
   };
 
@@ -262,7 +270,9 @@ export function ParishionerMassIntentions({
                         <div className="space-y-1.5 min-w-0">
                           <div className="flex items-center gap-2">
                             <Clock className="h-4 w-4 text-primary shrink-0" />
-                            <span className="font-semibold">{mass.time}</span>
+                            <span className="font-semibold">
+                              {formatTime12h(mass.time)}
+                            </span>
                           </div>
                           <p className="text-sm text-muted-foreground">
                             {mass.massType.replace(/_/g, " ")}
@@ -348,7 +358,7 @@ export function ParishionerMassIntentions({
                               )}
                             </span>
                             <span>·</span>
-                            <span>{intention.mass.time}</span>
+                            <span>{formatTime12h(intention.mass.time)}</span>
                           </>
                         )}
                       </div>
@@ -370,7 +380,7 @@ export function ParishionerMassIntentions({
         onClose={closeModal}
         title={
           selectedMass
-            ? `Book Intention — ${format(new Date(selectedMass.date), "d MMM yyyy")} at ${selectedMass.time}`
+            ? `Book Intention — ${format(new Date(selectedMass.date), "d MMM yyyy")} at ${formatTime12h(selectedMass.time)}`
             : ""
         }>
         {selectedMass && (
@@ -381,7 +391,7 @@ export function ParishionerMassIntentions({
                 <Clock className="h-4 w-4 text-primary" />
                 <span className="font-semibold">
                   {format(new Date(selectedMass.date), "MMMM d, yyyy")} ·{" "}
-                  {selectedMass.time}
+                  {formatTime12h(selectedMass.time)}
                 </span>
               </div>
               <p className="text-xs text-muted-foreground mt-1">
@@ -514,16 +524,7 @@ export function ParishionerMassIntentions({
 
             {/* Fee Summary */}
             <div className="rounded-md bg-muted/50 px-3 py-2 text-sm text-muted-foreground">
-              <p>
-                Minimum ₦500. Includes a ₦{platformFee.toLocaleString("en-NG")}{" "}
-                bank charges at checkout.
-              </p>
-              {stipendValue > 0 && (
-                <p className="mt-1 font-medium text-foreground">
-                  Total at checkout: ₦
-                  {(stipendValue + platformFee).toLocaleString("en-NG")}
-                </p>
-              )}
+              <p>Minimum ₦500. Bank charges apply at checkout.</p>
             </div>
 
             {/* Submit */}

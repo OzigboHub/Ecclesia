@@ -1,6 +1,7 @@
 import { PublicMassIntentionBooking } from "@/components/mass-intentions/public-mass-intention-booking";
 import db from "@/lib/db";
 import { isFeatureEnabled } from "@/lib/features.server";
+import { formatTime12h } from "@/lib/format-time";
 import { format } from "date-fns";
 import { BookOpen, Calendar, Church, Clock, MapPin } from "lucide-react";
 import Link from "next/link";
@@ -97,7 +98,7 @@ export default async function PublicMassIntentionsPage({
                 <Clock className="h-4 w-4 text-primary" />
                 <span className="font-semibold">
                   {format(new Date(mass.date), "MMMM d, yyyy")} &middot;{" "}
-                  {mass.time}
+                  {formatTime12h(mass.time)}
                 </span>
               </div>
               <p className="text-sm text-muted-foreground">
@@ -174,7 +175,9 @@ export default async function PublicMassIntentionsPage({
                 className="rounded-xl border bg-card p-4 transition hover:shadow-md hover:border-primary/50">
                 <div className="flex items-center gap-2 mb-2">
                   <Clock className="h-4 w-4 text-primary" />
-                  <span className="font-semibold text-sm">{mass.time}</span>
+                  <span className="font-semibold text-sm">
+                    {formatTime12h(mass.time)}
+                  </span>
                 </div>
                 <p className="text-sm text-muted-foreground">
                   {format(new Date(mass.date), "MMMM d, yyyy")}
