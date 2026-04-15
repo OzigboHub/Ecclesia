@@ -217,16 +217,16 @@ export const FOOTERITEMS = [
   {
     title: "RESOURCES",
     links: [
-      {
-        name: "Documentation",
-        link: "",
-      },
+      // {
+      //   name: "Documentation",
+      //   link: "",
+      // },
       {
         name: "Support Center",
         link: "",
       },
       {
-        name: "Parish Search",
+        name: "Search For Parish",
         link: "",
       },
       {

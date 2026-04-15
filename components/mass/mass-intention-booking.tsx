@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { getMasses } from "@/app/actions/mass.actions";
 import { createMassIntention } from "@/app/actions/mass-intention.actions";
+import { formatTime12h } from "@/lib/format-time";
 import { format } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
@@ -132,7 +133,8 @@ export function MassIntentionBooking() {
                         onClick={() => form.setValue("massId", mass.id)}>
                         <div>
                           <div className="font-semibold">
-                            {mass.time} - {mass.massType.replace("_", " ")}
+                            {formatTime12h(mass.time)} -{" "}
+                            {mass.massType.replace("_", " ")}
                           </div>
                           <div className="text-xs text-muted-foreground">
                             {mass.language}

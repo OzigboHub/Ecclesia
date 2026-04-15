@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { TimePicker } from "@/components/ui/time-picker";
 import {
   Select,
   SelectContent,
@@ -117,15 +118,12 @@ export function MassCreateDialog() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="mass-time">Time</Label>
-            <Input
-              id="mass-time"
-              type="time"
+            <Label>Time</Label>
+            <TimePicker
               value={formData.time}
-              onChange={(event) =>
-                setFormData((prev) => ({ ...prev, time: event.target.value }))
+              onChange={(value) =>
+                setFormData((prev) => ({ ...prev, time: value }))
               }
-              disabled={isPending}
             />
           </div>
 

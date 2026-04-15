@@ -137,8 +137,15 @@ export function MassIntentionForm({
             const isToday = massDate.toDateString() === now.toDateString();
             if (isToday && m.time) {
               const [h, m2] = m.time.split(":").map(Number);
-              const massStart = new Date(massDate);
-              massStart.setHours(h, m2, 0, 0);
+              const massStart = new Date(
+                massDate.getFullYear(),
+                massDate.getMonth(),
+                massDate.getDate(),
+                h,
+                m2,
+                0,
+                0,
+              );
               const cutoff = new Date(massStart.getTime() - 30 * 60 * 1000);
               if (now >= cutoff) return false;
             }
@@ -171,8 +178,8 @@ export function MassIntentionForm({
       const result = await createMassIntention(data);
 
       if (result.success) {
-        // For parishioners, initialize Paystack payment
-        if (isParishioner && data.stipend && data.stipend > 0 && result.data) {
+        // Initialize Paystack payment when stipend is provided
+        if (data.stipend && data.stipend > 0 && result.data) {
           const paymentResult = await initializePaystackPayment({
             amount: data.stipend,
             email: data.contactEmail || session?.user?.email || "",
@@ -187,7 +194,6 @@ export function MassIntentionForm({
             window.location.href = paymentResult.data.authorizationUrl;
             return;
           } else {
-            // Intention created but payment init failed — inform the user
             toast.error(
               paymentResult.message ||
                 "Intention booked but payment could not be initialized. Contact the parish office.",
@@ -198,7 +204,7 @@ export function MassIntentionForm({
           }
         }
 
-        // Staff flow — no Paystack needed
+        // No stipend provided — just confirm booking
         toast.success(result.message);
         reset();
         router.refresh();
@@ -352,19 +358,13 @@ export function MassIntentionForm({
           <Label htmlFor="stipend">
             {isParishioner
               ? "Payment Amount *"
-              : "Stipend Amount (Optional) — Auto-creates Payment"}
+              : "Stipend Amount (Optional)"}
           </Label>
-          {!isParishioner && (
-            <p className="text-xs text-muted-foreground">
-              If provided, a payment record will be automatically created and
-              linked to this intention
-            </p>
-          )}
-          {isParishioner && (
-            <p className="text-xs text-muted-foreground">
-              You will be redirected to Paystack to complete payment
-            </p>
-          )}
+          <p className="text-xs text-muted-foreground">
+            {isParishioner
+              ? "You will be redirected to Paystack to complete payment"
+              : "If provided, you will be redirected to Paystack to complete payment"}
+          </p>
           <div className="relative">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
               ₦
@@ -381,25 +381,12 @@ export function MassIntentionForm({
               aria-describedby="stipend-helper"
             />
           </div>
-          {!isParishioner && (
-            <p id="stipend-helper" className="text-xs text-muted-foreground">
-              Payment will be recorded with receipt number automatically.
-            </p>
-          )}
           {errors.stipend && (
             <p className="text-sm text-destructive">{errors.stipend.message}</p>
           )}
           {isParishioner && (
             <div className="rounded-md bg-muted/50 px-3 py-2 text-sm text-muted-foreground">
-              <p>Minimum ₦500. Includes a ₦20 platform fee at checkout.</p>
-              {Number(form.watch("stipend") || 0) > 0 && (
-                <p className="mt-1 font-medium text-foreground">
-                  Total at checkout: ₦
-                  {(Number(form.watch("stipend") || 0) + 20).toLocaleString(
-                    "en-NG",
-                  )}
-                </p>
-              )}
+              <p>Minimum ₦500. Bank charges apply at checkout.</p>
             </div>
           )}
         </div>
@@ -472,7 +459,7 @@ export function MassIntentionForm({
                       }
                     />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-primary">
                     <SelectItem value="none">None</SelectItem>
                     {parishioners.map((parishioner) => (
                       <SelectItem key={parishioner.id} value={parishioner.id}>
@@ -517,11 +504,7 @@ export function MassIntentionForm({
           Reset
         </Button>
         <Button type="submit" disabled={isPending}>
-          {isPending
-            ? "Processing..."
-            : isParishioner
-              ? "Book & Pay"
-              : "Book Intention"}
+          {isPending ? "Processing..." : "Book & Pay"}
         </Button>
       </div>
     </form>

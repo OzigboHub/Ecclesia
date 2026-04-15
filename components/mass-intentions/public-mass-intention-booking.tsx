@@ -39,7 +39,7 @@ export function PublicMassIntentionBooking({
   massId,
 }: PublicMassIntentionBookingProps) {
   const [isPending, startTransition] = useTransition();
-  const platformFee = 20;
+  const platformFee = 0; // Fee calculated server-side at checkout
 
   const form = useForm<PublicMassIntentionInput>({
     resolver: zodResolver(publicMassIntentionSchema),
@@ -237,14 +237,8 @@ export function PublicMassIntentionBooking({
 
         <div className="rounded-md bg-muted/50 px-3 py-2 text-sm text-muted-foreground">
           <p>
-            Mass intention payment has a minimum of ₦500 and includes a ₦
-            {platformFee.toLocaleString("en-NG")} bank charges at checkout.
-          </p>
-          <p className="mt-1 font-medium text-foreground">
-            Total at checkout: ₦
-            {(Number(form.watch("stipend") || 0) + platformFee).toLocaleString(
-              "en-NG",
-            )}
+            Mass intention payment has a minimum of ₦500. Bank charges apply at
+            checkout.
           </p>
         </div>
 

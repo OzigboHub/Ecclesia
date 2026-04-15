@@ -41,6 +41,7 @@ export default async function AnnouncementsPage({
 
   const { announcements, total } = result.data!;
   const canWrite = ANNOUNCEMENT_WRITER_ROLES.includes(session.user.role);
+  const canDelete = ["SUPER_ADMIN", "PARISH_ADMIN"].includes(session.user.role);
 
   return (
     <div className="space-y-6">
@@ -48,6 +49,7 @@ export default async function AnnouncementsPage({
         initialAnnouncements={announcements}
         total={total}
         canWrite={canWrite}
+        canDelete={canDelete}
       />
     </div>
   );

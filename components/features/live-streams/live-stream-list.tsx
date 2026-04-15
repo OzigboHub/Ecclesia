@@ -8,6 +8,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { canManageLiveStreams } from "@/lib/permissions";
+import { formatTime12h } from "@/lib/format-time";
 import { format } from "date-fns";
 import {
   CirclePlay,
@@ -70,12 +71,13 @@ export function LiveStreamList({ streams, userRole }: LiveStreamListProps) {
   }
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {streams.map((stream) => (
         <LiveStreamCard
           key={stream.id}
           stream={stream}
           canManage={canManage}
+          canDelete={["SUPER_ADMIN", "PARISH_ADMIN"].includes(userRole)}
           onRefresh={() => router.refresh()}
         />
       ))}
@@ -86,10 +88,12 @@ export function LiveStreamList({ streams, userRole }: LiveStreamListProps) {
 function LiveStreamCard({
   stream,
   canManage,
+  canDelete,
   onRefresh,
 }: {
   stream: LiveStreamItem;
   canManage: boolean;
+  canDelete: boolean;
   onRefresh: () => void;
 }) {
   const [isPending, setIsPending] = useState(false);
@@ -180,7 +184,7 @@ function LiveStreamCard({
             </p>
             <p className="text-xs text-muted-foreground">
               {format(new Date(stream.mass.date), "MMM d, yyyy")} at{" "}
-              {stream.mass.time}
+              {formatTime12h(stream.mass.time)}
               {stream.mass.celebrant && ` · ${stream.mass.celebrant}`}
             </p>
           </div>
@@ -234,7 +238,7 @@ function LiveStreamCard({
                 </Button>
               )}
 
-              {!stream.isLive && (
+              {!stream.isLive && canDelete && (
                 <Button
                   size="sm"
                   variant="ghost"

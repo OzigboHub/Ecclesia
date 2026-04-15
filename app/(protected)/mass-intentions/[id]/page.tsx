@@ -2,6 +2,7 @@ import { auth } from "@/auth";
 import { redirect, notFound } from "next/navigation";
 import { getMassIntention } from "@/app/actions/mass-intention.actions";
 import { canManageMassIntentions } from "@/lib/permissions";
+import { formatTime12h } from "@/lib/format-time";
 import { Button } from "@/components/ui/button";
 import {
   ArrowLeft,
@@ -221,7 +222,9 @@ export default async function MassIntentionDetailPage({ params }: PageProps) {
                   <p className="text-sm font-medium text-muted-foreground">
                     Time
                   </p>
-                  <p className="text-base">{intention.mass.time}</p>
+                  <p className="text-base">
+                    {formatTime12h(intention.mass.time)}
+                  </p>
                 </div>
               )}
               {intention.mass.celebrant && (

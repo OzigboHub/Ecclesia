@@ -1,4 +1,5 @@
 import db from "@/lib/db";
+import { formatTime12h } from "@/lib/format-time";
 import { format } from "date-fns";
 import { Calendar, Church, Clock, MapPin } from "lucide-react";
 import Link from "next/link";
@@ -97,7 +98,7 @@ export default async function ParishMassesPage({
                     </h2>
                     <p className="text-sm text-muted-foreground">
                       {format(new Date(mass.date), "EEEE, MMMM d, yyyy")} ·{" "}
-                      {mass.time}
+                      {formatTime12h(mass.time)}
                     </p>
                   </div>
                   <Badge variant="secondary">

@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { formatTime12h } from "@/lib/format-time";
 import { endOfMonth, format, startOfMonth } from "date-fns";
 import {
   Calendar as CalendarIcon,
@@ -70,7 +71,7 @@ export function MassCalendar({
   };
 
   return (
-    <div className="grid md:grid-cols-[350px_1fr] gap-8 items-start">
+    <div className="grid grid-cols-1 md:grid-cols-[350px_1fr] gap-6 md:gap-8 items-start">
       <Card className="shadow-lg border-none bg-secondary/5">
         <CardContent className="p-4 h-full">
           <Calendar
@@ -87,11 +88,13 @@ export function MassCalendar({
       </Card>
 
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold tracking-tight text-primary">
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-lg sm:text-2xl font-bold tracking-tight text-primary">
             {date ? format(date, "EEEE, MMMM do") : "Select a date"}
           </h2>
-          <Badge variant="outline" className="px-3 py-1 text-sm font-medium">
+          <Badge
+            variant="outline"
+            className="px-3 py-1 text-sm font-medium shrink-0">
             {masses.length} {masses.length === 1 ? "Mass" : "Masses"}
           </Badge>
         </div>
@@ -122,16 +125,16 @@ export function MassCalendar({
               <Card
                 key={mass.id}
                 className="group hover:shadow-md transition-all border-none shadow-sm bg-secondary/5">
-                <CardContent className="p-6 flex items-start justify-between">
-                  <div className="space-y-4 flex-1">
-                    <div className="flex items-center gap-3">
+                <CardContent className="p-4 sm:p-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                  <div className="space-y-4 flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                       <div className="bg-primary/10 p-2 rounded-lg">
                         <Clock className="h-5 w-5 text-primary" />
                       </div>
-                      <span className="font-bold text-2xl tracking-tight">
-                        {mass.time}
+                      <span className="font-bold text-xl sm:text-2xl tracking-tight">
+                        {formatTime12h(mass.time)}
                       </span>
-                      <div className="flex gap-2 ml-2">
+                      <div className="flex flex-wrap gap-2">
                         <Badge
                           variant={
                             mass.status === "CANCELLED"
