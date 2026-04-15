@@ -70,7 +70,7 @@ export default async function EditUserPage({ params }: EditUserPageProps) {
 
 	// Can't edit users at same or higher level (unless it's yourself)
 	if (currentUserLevel <= targetUserLevel && session.user.id !== user.id) {
-		redirect('/dashboard/users?error=insufficient_permissions');
+		redirect('/users?error=insufficient_permissions');
 	}
 
 	return (
@@ -83,7 +83,7 @@ export default async function EditUserPage({ params }: EditUserPageProps) {
 						size='icon'
 						asChild
 					>
-						<Link href='/dashboard/users'>
+						<Link href='/users'>
 							<ArrowLeft className='h-4 w-4' />
 							<span className='sr-only'>Back to users</span>
 						</Link>
@@ -101,7 +101,7 @@ export default async function EditUserPage({ params }: EditUserPageProps) {
 					variant='outline'
 					asChild
 				>
-					<Link href={`/dashboard/users/${id}/password`}>
+					<Link href={`/users/${id}/password`}>
 						<KeyRound className='mr-2 h-4 w-4' />
 						Change Password
 					</Link>

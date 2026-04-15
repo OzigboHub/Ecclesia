@@ -1,9 +1,21 @@
-import Link from 'next/link';
-import db from '@/lib/db';
-import { format } from 'date-fns';
-import { Calendar, Heart, MapPin, Radio } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { notFound } from 'next/navigation';
+import { getPublicAppointmentAvailabilities } from "@/app/actions/appointment.actions";
+import { PublicAppointmentBooking } from "@/components/features/appointments/public-appointment-booking";
+import { Button } from "@/components/ui/button";
+import db from "@/lib/db";
+import { isFeatureEnabled } from "@/lib/features.server";
+import { formatTime12h } from "@/lib/format-time";
+import { format } from "date-fns";
+import {
+  BookOpen,
+  Calendar,
+  Heart,
+  Mail,
+  MapPin,
+  Phone,
+  Radio,
+} from "lucide-react";
+import Link from "next/link";
+import { notFound } from "next/navigation";
 
 export default async function ParishPage({
   params,
@@ -18,7 +30,13 @@ export default async function ParishPage({
   // Get organization details
   const org = await db.organization.findUnique({
     where: { id: parishId },
-    select: { id: true, name: true, contactEmail: true, contactPhone: true, address: true },
+    select: {
+      id: true,
+      name: true,
+      contactEmail: true,
+      contactPhone: true,
+      address: true,
+    },
   });
 
   if (!org) {
@@ -41,7 +59,7 @@ export default async function ParishPage({
         isLive: true,
         scheduledFor: true,
       },
-      orderBy: [{ isLive: 'desc' }, { scheduledFor: 'asc' }],
+      orderBy: [{ isLive: "desc" }, { scheduledFor: "asc" }],
       take: 10,
     }),
     db.liveStream.findMany({
@@ -57,30 +75,33 @@ export default async function ParishPage({
         streamUrl: true,
         scheduledFor: true,
       },
-      orderBy: { scheduledFor: 'desc' },
+      orderBy: { scheduledFor: "desc" },
       take: 10,
     }),
   ]);
   const liveNow = livestreams.filter((s) => s.isLive);
   const upcomingStreams = livestreams.filter(
-    (s) => !s.isLive && s.scheduledFor && s.scheduledFor >= now
+    (s) => !s.isLive && s.scheduledFor && s.scheduledFor >= now,
   );
+  const totalStreams = livestreams.length + pastLivestreams.length;
 
-  // Get upcoming events
-  const events = await db.event.findMany({
+  // Get upcoming masses
+  const masses = await db.mass.findMany({
     where: {
       organizationId: parishId,
-      startTime: { gte: new Date() },
-      status: 'SCHEDULED',
+      date: { gte: now },
+      status: { not: "CANCELLED" },
     },
     select: {
       id: true,
-      title: true,
-      startTime: true,
+      date: true,
+      time: true,
+      massType: true,
       location: true,
+      celebrant: true,
     },
-    orderBy: { startTime: 'asc' },
-    take: 5,
+    orderBy: [{ date: "asc" }, { time: "asc" }],
+    take: 6,
   });
 
   // Get active campaigns with progress
@@ -95,7 +116,7 @@ export default async function ParishPage({
       description: true,
       targetAmount: true,
     },
-    orderBy: { createdAt: 'desc' },
+    orderBy: { createdAt: "desc" },
     take: 3,
   });
 
@@ -105,37 +126,158 @@ export default async function ParishPage({
       const raised = await db.payment.aggregate({
         where: {
           donationCampaignId: c.id,
-          paymentStatus: 'COMPLETED',
+          paymentStatus: "COMPLETED",
         },
         _sum: { amount: true },
       });
       return {
         ...c,
         raisedAmount: raised._sum.amount || 0,
-        progress: Math.min(100, ((raised._sum.amount || 0) / c.targetAmount) * 100),
+        progress: Math.min(
+          100,
+          ((raised._sum.amount || 0) / c.targetAmount) * 100,
+        ),
       };
-    })
+    }),
   );
 
+  const appointmentAvailabilityResult =
+    await getPublicAppointmentAvailabilities(parishId);
+
+  // Get approved mass intentions for upcoming masses
+  const massIntentionsEnabled = await isFeatureEnabled(
+    parishId,
+    "enableMassIntentions",
+  );
+  const massIntentions = massIntentionsEnabled
+    ? await db.massIntention.findMany({
+        where: {
+          organizationId: parishId,
+          status: "APPROVED",
+          mass: {
+            date: { gte: now },
+            status: { not: "CANCELLED" },
+          },
+        },
+        select: {
+          id: true,
+          intention: true,
+          intentionType: true,
+          requestedBy: true,
+          intendedFor: true,
+          createdAt: true,
+          mass: {
+            select: {
+              id: true,
+              date: true,
+              time: true,
+              massType: true,
+            },
+          },
+        },
+        orderBy: { mass: { date: "asc" } },
+        take: 20,
+      })
+    : [];
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen pt-[60px] bg-background">
       {/* Hero section */}
-      <section className="border-b bg-muted/30 py-12">
-        <div className="mx-auto max-w-6xl px-4">
-          <h1 className="text-3xl font-bold">{org.name}</h1>
-          <div className="mt-4 space-y-1 text-sm text-muted-foreground">
-            {org.address && <p>{org.address}</p>}
-            {org.contactPhone && <p>📞 {org.contactPhone}</p>}
-            {org.contactEmail && <p>📧 {org.contactEmail}</p>}
+      <section className="border-b bg-gradient-to-b from-muted/50 to-background py-12">
+        <div className="mx-auto flex max-w-6xl flex-col gap-8 px-4">
+          <div className="space-y-3">
+            <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
+              Parish public page
+            </p>
+            <h1 className="text-3xl font-bold md:text-4xl">{org.name}</h1>
+            <p className="text-sm text-muted-foreground md:text-base">
+              Discover upcoming masses, live streams, and parish-led campaigns
+              in one place.
+            </p>
+          </div>
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <Button asChild className="w-full sm:w-auto">
+              <Link href="#masses">View masses</Link>
+            </Button>
+            <Button asChild variant="outline" className="w-full sm:w-auto">
+              <Link href={`/p/${parishId}/campaigns`}>Support parish</Link>
+            </Button>
+          </div>
+          <div className="grid gap-3 md:grid-cols-3">
+            <div className="rounded-xl border bg-card p-4 shadow-sm">
+              <div className="flex items-center gap-2">
+                <MapPin className="h-4 w-4 text-primary" />
+                <p className="text-sm font-semibold">Location</p>
+              </div>
+              <p className="mt-2 text-sm text-muted-foreground">
+                {org.address ?? "Address not available"}
+              </p>
+            </div>
+            <div className="rounded-xl border bg-card p-4 shadow-sm">
+              <div className="flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-primary" />
+                <p className="text-sm font-semibold">Upcoming masses</p>
+              </div>
+              <p className="mt-2 text-sm text-muted-foreground">
+                {masses.length > 0
+                  ? `${masses.length} scheduled`
+                  : "No upcoming masses"}
+              </p>
+            </div>
+            <div className="rounded-xl border bg-card p-4 shadow-sm">
+              <div className="flex items-center gap-2">
+                <Radio className="h-4 w-4 text-primary" />
+                <p className="text-sm font-semibold">Livestreams</p>
+              </div>
+              <p className="mt-2 text-sm text-muted-foreground">
+                {totalStreams > 0
+                  ? `${totalStreams} available`
+                  : "No livestreams listed"}
+              </p>
+            </div>
+          </div>
+          <div className="grid gap-2 text-sm text-muted-foreground md:grid-cols-2">
+            {org.contactPhone && (
+              <div className="flex items-center gap-2 rounded-full border bg-card px-3 py-2">
+                <span className="text-base">
+                  <Phone className=" w-4 h-4" />
+                </span>
+                <span>{org.contactPhone}</span>
+              </div>
+            )}
+            {org.contactEmail && (
+              <div className="flex items-center gap-2 rounded-full border bg-card px-3 py-2">
+                <span className="text-base">
+                  <Mail className=" w-4 h-4" />
+                </span>
+                <span>{org.contactEmail}</span>
+              </div>
+            )}
           </div>
         </div>
       </section>
 
-      <div className="mx-auto max-w-6xl px-4 py-12">
+      <div className="mx-auto max-w-6xl space-y-12 px-4 py-12">
+        {appointmentAvailabilityResult.success && (
+          <section className="space-y-6">
+            <div className="flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-primary" />
+              <h2 className="text-2xl font-bold">Book an Appointment</h2>
+            </div>
+            <PublicAppointmentBooking
+              organizationId={parishId}
+              organizationName={org.name}
+              availabilities={appointmentAvailabilityResult.data ?? []}
+            />
+          </section>
+        )}
+
         {/* Livestream Section */}
-        {(liveNow.length > 0 || upcomingStreams.length > 0 || pastLivestreams.length > 0) && (
-          <section className="mb-12">
-            <div className="flex items-center gap-2 mb-6">
+        {(liveNow.length > 0 ||
+          upcomingStreams.length > 0 ||
+          pastLivestreams.length > 0) && (
+          <section className="space-y-6">
+            <div className="flex items-center gap-2">
               <Radio className="h-5 w-5 text-primary" />
               <h2 className="text-2xl font-bold">Livestream</h2>
             </div>
@@ -145,9 +287,8 @@ export default async function ParishPage({
                 {liveNow.map((stream) => (
                   <div
                     key={stream.id}
-                    className="rounded-lg border bg-card overflow-hidden"
-                  >
-                    <div className="px-4 py-2 bg-red-600 text-white text-sm font-medium flex items-center gap-2">
+                    className="overflow-hidden rounded-xl border bg-card shadow-sm">
+                    <div className="flex items-center gap-2 bg-red-600 px-4 py-2 text-sm font-medium text-white">
                       <span className="relative flex h-2 w-2">
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
                         <span className="relative inline-flex rounded-full h-2 w-2 bg-white" />
@@ -174,14 +315,13 @@ export default async function ParishPage({
             ) : null}
 
             {upcomingStreams.length > 0 && (
-              <div className="mt-6">
+              <div className="space-y-3">
                 <h3 className="text-lg font-semibold mb-3">Upcoming streams</h3>
                 <ul className="space-y-2">
                   {upcomingStreams.map((stream) => (
                     <li
                       key={stream.id}
-                      className="flex items-center justify-between rounded-lg border bg-card px-4 py-3"
-                    >
+                      className="flex items-center justify-between rounded-lg border bg-card px-4 py-3">
                       <div>
                         <p className="font-medium">{stream.title}</p>
                         {stream.description && (
@@ -192,8 +332,11 @@ export default async function ParishPage({
                       </div>
                       <time className="text-sm text-muted-foreground whitespace-nowrap ml-4">
                         {stream.scheduledFor
-                          ? format(new Date(stream.scheduledFor), 'MMM d, h:mm a')
-                          : '—'}
+                          ? format(
+                              new Date(stream.scheduledFor),
+                              "MMM d, h:mm a",
+                            )
+                          : "—"}
                       </time>
                     </li>
                   ))}
@@ -202,14 +345,13 @@ export default async function ParishPage({
             )}
 
             {pastLivestreams.length > 0 && (
-              <div className="mt-6">
+              <div className="space-y-3">
                 <h3 className="text-lg font-semibold mb-3">Past livestreams</h3>
                 <ul className="space-y-2">
                   {pastLivestreams.map((stream) => (
                     <li
                       key={stream.id}
-                      className="flex items-center justify-between gap-4 rounded-lg border bg-card px-4 py-3"
-                    >
+                      className="flex items-center justify-between gap-4 rounded-lg border bg-card px-4 py-3">
                       <div className="min-w-0 flex-1">
                         <p className="font-medium">{stream.title}</p>
                         {stream.description && (
@@ -219,16 +361,22 @@ export default async function ParishPage({
                         )}
                         <time className="text-xs text-muted-foreground mt-1 block">
                           {stream.scheduledFor
-                            ? format(new Date(stream.scheduledFor), 'MMM d, yyyy · h:mm a')
-                            : '—'}
+                            ? format(
+                                new Date(stream.scheduledFor),
+                                "MMM d, yyyy · h:mm a",
+                              )
+                            : "—"}
                         </time>
                       </div>
-                      <Button asChild variant="outline" size="sm" className="shrink-0">
+                      <Button
+                        asChild
+                        variant="outline"
+                        size="sm"
+                        className="shrink-0">
                         <a
                           href={stream.streamUrl}
                           target="_blank"
-                          rel="noopener noreferrer"
-                        >
+                          rel="noopener noreferrer">
                           Watch replay
                         </a>
                       </Button>
@@ -240,50 +388,105 @@ export default async function ParishPage({
           </section>
         )}
 
-        {/* Events Section */}
-        <section className="mb-12">
-          <div className="flex items-center justify-between mb-6">
+        {/* Masses Section */}
+        <section id="masses" className="space-y-6 scroll-mt-28">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <Calendar className="h-5 w-5 text-primary" />
-              <h2 className="text-2xl font-bold">Upcoming Events</h2>
+              <h2 className="text-2xl font-bold">Upcoming Masses</h2>
             </div>
-            {events.length > 0 && (
+            {masses.length > 0 && (
               <Button asChild variant="outline" size="sm">
-                <Link href={`/p/${parishId}/events`}>View All</Link>
+                <Link href={`/mass/${parishId}`}>Browse all masses</Link>
               </Button>
             )}
           </div>
 
-          {events.length > 0 ? (
+          {masses.length > 0 ? (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {events.map((event) => (
-                <Link
-                  key={event.id}
-                  href={`/p/${parishId}/events/${event.id}`}
-                  className="rounded-lg border bg-card p-4 hover:shadow-md transition"
-                >
-                  <h3 className="font-semibold line-clamp-2">{event.title}</h3>
+              {masses.map((mass) => (
+                <div key={mass.id} className="rounded-xl border bg-card p-4">
+                  <h3 className="font-semibold line-clamp-2">
+                    {mass.massType.replace(/_/g, " ")}
+                  </h3>
                   <p className="mt-2 text-sm text-muted-foreground">
-                    {format(new Date(event.startTime), 'MMM d, yyyy')}
+                    {format(new Date(mass.date), "MMM d, yyyy")} ·{" "}
+                    {formatTime12h(mass.time)}
                   </p>
-                  {event.location && (
+                  {mass.location && (
                     <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
                       <MapPin className="h-3 w-3" />
-                      {event.location}
+                      {mass.location}
                     </p>
                   )}
-                </Link>
+                  {mass.celebrant && (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Celebrant: {mass.celebrant}
+                    </p>
+                  )}
+                </div>
               ))}
             </div>
           ) : (
-            <p className="text-muted-foreground">No upcoming events scheduled.</p>
+            <p className="text-muted-foreground">
+              No upcoming masses scheduled.
+            </p>
           )}
         </section>
 
+        {/* Mass Intentions Section */}
+        {massIntentions.length > 0 && (
+          <section className="space-y-6">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <BookOpen className="h-5 w-5 text-primary" />
+                <h2 className="text-2xl font-bold">Mass Intentions</h2>
+              </div>
+              <Button asChild variant="outline" size="sm">
+                <Link href={`/p/${parishId}/mass-intentions`}>
+                  Book an intention
+                </Link>
+              </Button>
+            </div>
+
+            <div className="space-y-3">
+              {massIntentions.map((mi) => (
+                <div
+                  key={mi.id}
+                  className="rounded-xl border bg-card px-4 py-3">
+                  <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+                    <div className="min-w-0 flex-1 space-y-1">
+                      <p className="font-medium text-sm leading-snug">
+                        {mi.intention}
+                      </p>
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                        <span className="rounded-full bg-muted px-2 py-0.5 font-medium">
+                          {mi.intentionType.replace(/_/g, " ")}
+                        </span>
+                        {mi.intendedFor && <span>For: {mi.intendedFor}</span>}
+                        <span>By: {mi.requestedBy || "Anonymous"}</span>
+                      </div>
+                    </div>
+                    <div className="shrink-0 text-xs text-muted-foreground sm:text-right">
+                      <p className="font-medium text-foreground">
+                        {format(new Date(mi.mass.date), "MMM d, yyyy")}
+                      </p>
+                      <p>
+                        {formatTime12h(mi.mass.time)} ·{" "}
+                        {mi.mass.massType.replace(/_/g, " ")}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
         {/* Campaigns Section */}
         {campaignsWithProgress.length > 0 && (
-          <section className="mb-12">
-            <div className="flex items-center justify-between mb-6">
+          <section className="space-y-6">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 <Heart className="h-5 w-5 text-red-500" />
                 <h2 className="text-2xl font-bold">Support Our Parish</h2>
@@ -298,9 +501,10 @@ export default async function ParishPage({
                 <Link
                   key={campaign.id}
                   href={`/p/${parishId}/campaigns/${campaign.id}`}
-                  className="rounded-lg border bg-card p-6 hover:shadow-md transition"
-                >
-                  <h3 className="font-semibold line-clamp-2">{campaign.name}</h3>
+                  className="rounded-xl border bg-card p-6 transition hover:shadow-md">
+                  <h3 className="font-semibold line-clamp-2">
+                    {campaign.name}
+                  </h3>
                   {campaign.description && (
                     <p className="mt-2 text-sm text-muted-foreground line-clamp-2">
                       {campaign.description}
@@ -309,7 +513,9 @@ export default async function ParishPage({
 
                   <div className="mt-4">
                     <div className="flex justify-between text-sm mb-1.5">
-                      <span className="font-medium">₦{campaign.raisedAmount.toLocaleString()}</span>
+                      <span className="font-medium">
+                        ₦{campaign.raisedAmount.toLocaleString()}
+                      </span>
                       <span className="text-muted-foreground">
                         of ₦{campaign.targetAmount.toLocaleString()}
                       </span>
@@ -317,7 +523,9 @@ export default async function ParishPage({
                     <div className="h-2 w-full rounded-full bg-muted">
                       <div
                         className="h-2 rounded-full bg-red-500 transition-all"
-                        style={{ width: `${campaign.progress}%` }}
+                        style={{
+                          width: `${campaign.progress}%`,
+                        }}
                       />
                     </div>
                     <p className="mt-1 text-xs text-muted-foreground">

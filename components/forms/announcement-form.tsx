@@ -1,173 +1,248 @@
-'use client';
+"use client";
 
-import { useTransition } from 'react';
-import { useRouter } from 'next/navigation';
-import { useForm, Controller, type Resolver } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { useForm, Controller, type Resolver } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import {
-	createAnnouncementSchema,
-	type CreateAnnouncementInput,
-	hierarchyLevelEnum,
-} from '@/lib/validators/announcement.schema';
+  createAnnouncementSchema,
+  type CreateAnnouncementInput,
+  hierarchyLevelEnum,
+} from "@/lib/validators/announcement.schema";
 import {
-	createAnnouncement,
-	updateAnnouncement,
-} from '@/app/actions/announcement.actions';
-import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Checkbox } from '@/components/ui/checkbox';
+  createAnnouncement,
+  updateAnnouncement,
+} from "@/app/actions/announcement.actions";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 type AnnouncementFormValues = CreateAnnouncementInput;
 
 type AnnouncementFormData = AnnouncementFormValues & {
-	id?: string;
-	isPublished?: boolean;
+  id?: string;
+  isPublished?: boolean;
 };
 
 interface AnnouncementFormProps {
-	announcement?: AnnouncementFormData;
-	onSuccess?: () => void;
+  announcement?: AnnouncementFormData;
+  onSuccess?: () => void;
 }
 
 const audienceOptions = [
-	{ value: 'PARISH', label: 'Parish' },
-	{ value: 'OUTSTATION', label: 'Outstation' },
+  { value: "PARISH", label: "Parish" },
+  { value: "OUTSTATION", label: "Outstation" },
 ] as const;
 
 function formatDateTimeLocal(value?: Date) {
-	if (!value) return '';
-	const date = new Date(value);
-	const offset = date.getTimezoneOffset();
-	const local = new Date(date.getTime() - offset * 60000);
-	return local.toISOString().slice(0, 16);
+  if (!value) return "";
+  const date = new Date(value);
+  const offset = date.getTimezoneOffset();
+  const local = new Date(date.getTime() - offset * 60000);
+  return local.toISOString().slice(0, 16);
 }
 
 export function AnnouncementForm({
-	announcement,
-	onSuccess,
+  announcement,
+  onSuccess,
 }: AnnouncementFormProps) {
-	const [isPending, startTransition] = useTransition();
-	const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const router = useRouter();
 
-	const form = useForm<AnnouncementFormValues>({
-		resolver: zodResolver(
-			createAnnouncementSchema
-		) as Resolver<AnnouncementFormValues>,
-		defaultValues: {
-			title: announcement?.title ?? '',
-			content: announcement?.content ?? '',
-			publishAt: announcement?.publishAt ?? new Date(),
-		},
-	});
+  const form = useForm<AnnouncementFormValues>({
+    resolver: zodResolver(
+      createAnnouncementSchema,
+    ) as Resolver<AnnouncementFormValues>,
+    defaultValues: {
+      title: announcement?.title ?? "",
+      content: announcement?.content ?? "",
+      imageUrl: announcement?.imageUrl ?? "",
+      publishAt: announcement?.publishAt ?? new Date(),
+      expiresAt: announcement?.expiresAt ?? null,
+    },
+  });
 
-	const {
-		register,
-		handleSubmit,
-		control,
-		formState: { errors },
-		setError,
-	} = form;
+  const {
+    register,
+    handleSubmit,
+    control,
+    formState: { errors },
+    setError,
+    setValue,
+    watch,
+  } = form;
 
-	const onSubmit = (data: CreateAnnouncementInput) => {
-		startTransition(async () => {
-			const result =
-				announcement?.id ?
-					await updateAnnouncement(announcement.id, data)
-				:	await createAnnouncement(data);
+  const imageUrl = watch("imageUrl");
 
-			if (result.success) {
-				toast.success(result.message);
-				router.refresh();
-				onSuccess?.();
-			} else {
-				toast.error(result.message);
-				if (result.errors) {
-					Object.entries(result.errors).forEach(([field, messages]) => {
-						setError(field as keyof CreateAnnouncementInput, {
-							type: 'server',
-							message: messages[0],
-						});
-					});
-				}
-			}
-		});
-	};
+  const handleImageUpload = async (file?: File | null) => {
+    if (!file) return;
 
-	return (
-		<form
-			onSubmit={handleSubmit(onSubmit)}
-			className='space-y-4'
-		>
-			<div className='space-y-2'>
-				<Label htmlFor='title'>Title *</Label>
-				<Input
-					id='title'
-					{...register('title')}
-					placeholder='Announcement title'
-					disabled={isPending}
-					aria-invalid={!!errors.title}
-				/>
-				{errors.title && (
-					<p className='text-sm text-destructive'>{errors.title.message}</p>
-				)}
-			</div>
+    setIsUploadingImage(true);
+    try {
+      const payload = new FormData();
+      payload.append("file", file);
+      payload.append("folderPrefix", "announcement");
 
-			<div className='space-y-2'>
-				<Label htmlFor='content'>Message *</Label>
-				<Textarea
-					id='content'
-					{...register('content')}
-					placeholder='Write the announcement details...'
-					rows={5}
-					disabled={isPending}
-				/>
-				{errors.content && (
-					<p className='text-sm text-destructive'>
-						{errors.content.message}
-					</p>
-				)}
-			</div>
+      const response = await fetch("/api/upload", {
+        method: "POST",
+        body: payload,
+      });
+      const result = await response.json();
 
+      if (!response.ok || !result.success || !result.url) {
+        toast.error(result.message || "Image upload failed");
+        return;
+      }
 
-			<div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-				<div className='space-y-2'>
-					<Label htmlFor='publishAt'>Publish Date *</Label>
-					<Controller
-						name='publishAt'
-						control={control}
-						render={({ field }) => (
-							<Input
-								id='publishAt'
-								type='datetime-local'
-								value={formatDateTimeLocal(field.value)}
-								onChange={(event) => {
-									const value = event.target.value;
-									field.onChange(value ? new Date(value) : undefined);
-								}}
-								disabled={isPending}
-								aria-invalid={!!errors.publishAt}
-							/>
-						)}
-					/>
-					{errors.publishAt && (
-						<p className='text-sm text-destructive'>
-							{errors.publishAt.message as string}
-						</p>
-					)}
-				</div>
-			</div>
+      setValue("imageUrl", result.url, { shouldDirty: true });
+      toast.success("Image uploaded successfully");
+    } catch {
+      toast.error("Image upload failed");
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
 
-			<div className='flex justify-end'>
-				<Button
-					type='submit'
-					disabled={isPending}
-				>
-					{announcement?.id ? 'Update Announcement' : 'Create Announcement'}
-				</Button>
-			</div>
-		</form>
-	);
+  const onSubmit = (data: CreateAnnouncementInput) => {
+    startTransition(async () => {
+      const result = announcement?.id
+        ? await updateAnnouncement(announcement.id, data)
+        : await createAnnouncement(data);
+
+      if (result.success) {
+        toast.success(result.message);
+        router.refresh();
+        onSuccess?.();
+      } else {
+        toast.error(result.message);
+        if (result.errors) {
+          Object.entries(result.errors).forEach(([field, messages]) => {
+            setError(field as keyof CreateAnnouncementInput, {
+              type: "server",
+              message: messages[0],
+            });
+          });
+        }
+      }
+    });
+  };
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="title">Title *</Label>
+        <Input
+          id="title"
+          {...register("title")}
+          placeholder="Announcement title"
+          disabled={isPending}
+          aria-invalid={!!errors.title}
+        />
+        {errors.title && (
+          <p className="text-sm text-destructive">{errors.title.message}</p>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="content">Message *</Label>
+        <Textarea
+          id="content"
+          {...register("content")}
+          placeholder="Write the announcement details..."
+          rows={5}
+          disabled={isPending}
+        />
+        {errors.content && (
+          <p className="text-sm text-destructive">{errors.content.message}</p>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="image">Image (optional)</Label>
+        <Input
+          id="image"
+          type="file"
+          accept="image/*"
+          onChange={(event) =>
+            handleImageUpload(event.target.files?.[0] ?? null)
+          }
+          disabled={isPending || isUploadingImage}
+        />
+        {isUploadingImage && (
+          <p className="text-xs text-muted-foreground">Uploading image...</p>
+        )}
+        {imageUrl && (
+          <div className="rounded-md border border-border p-2">
+            <img
+              src={imageUrl}
+              alt="Announcement"
+              className="h-28 w-full rounded object-cover"
+            />
+          </div>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="publishAt">Publish Date *</Label>
+          <Controller
+            name="publishAt"
+            control={control}
+            render={({ field }) => (
+              <Input
+                id="publishAt"
+                type="datetime-local"
+                value={formatDateTimeLocal(field.value)}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  field.onChange(value ? new Date(value) : undefined);
+                }}
+                disabled={isPending}
+                aria-invalid={!!errors.publishAt}
+              />
+            )}
+          />
+          {errors.publishAt && (
+            <p className="text-sm text-destructive">
+              {errors.publishAt.message as string}
+            </p>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="expiresAt">Expire Date (optional)</Label>
+          <Controller
+            name="expiresAt"
+            control={control}
+            render={({ field }) => (
+              <Input
+                id="expiresAt"
+                type="datetime-local"
+                value={formatDateTimeLocal(field.value ?? undefined)}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  field.onChange(value ? new Date(value) : null);
+                }}
+                disabled={isPending}
+              />
+            )}
+          />
+          {errors.expiresAt && (
+            <p className="text-sm text-destructive">
+              {errors.expiresAt.message as string}
+            </p>
+          )}
+        </div>
+      </div>
+
+      <div className="flex justify-end">
+        <Button type="submit" disabled={isPending}>
+          {announcement?.id ? "Update Announcement" : "Create Announcement"}
+        </Button>
+      </div>
+    </form>
+  );
 }

@@ -1,19 +1,19 @@
-'use server';
+"use server";
 
-import { auth } from '@/auth';
-import { revalidatePath } from 'next/cache';
-import db from '@/lib/db';
-import bcrypt from 'bcryptjs';
+import { auth } from "@/auth";
+import db from "@/lib/db";
 import {
-    createUserSchema,
-    updateUserSchema,
-    changePasswordSchema,
-} from '@/lib/validators/user.schema';
-import type { ActionResponse } from '@/types';
-import type { User, UserRole } from '@prisma/client';
+	changePasswordSchema,
+	createUserSchema,
+	updateUserSchema,
+} from "@/lib/validators/user.schema";
+import type { ActionResponse } from "@/types";
+import type { User, UserRole } from "@prisma/client";
+import bcrypt from "bcryptjs";
+import { revalidatePath } from "next/cache";
 
 // Type for user without password (safe to return)
-type SafeUser = Omit<User, 'password'>;
+type SafeUser = Omit<User, "password">;
 
 // Role hierarchy for authorization checks
 const ROLE_HIERARCHY: Record<string, number> = {
@@ -28,7 +28,7 @@ const ROLE_HIERARCHY: Record<string, number> = {
 };
 
 // Roles that can manage users
-const USER_MANAGEMENT_ROLES: UserRole[] = ['SUPER_ADMIN', 'PARISH_ADMIN'];
+const USER_MANAGEMENT_ROLES: UserRole[] = ["SUPER_ADMIN", "PARISH_ADMIN"];
 
 // Helper function to check if user can manage other users
 function canManageUsers(role: string): boolean {
@@ -59,7 +59,7 @@ function omitPassword(user: User): SafeUser {
  * Org admins can only see their org's users
  */
 export async function getUsers(
-	includeOrganization = false
+	includeOrganization = false,
 ): Promise<
 	ActionResponse<
 		(SafeUser & { organization?: { id: string; name: string } | null })[]
@@ -68,33 +68,33 @@ export async function getUsers(
 	try {
 		const session = await auth();
 		if (!session?.user) {
-			return { success: false, message: 'Unauthorized' };
+			return { success: false, message: "Unauthorized" };
 		}
 
 		// Only admins can view users
 		if (!canManageUsers(session.user.role)) {
 			return {
 				success: false,
-				message: 'You do not have permission to view users',
+				message: "You do not have permission to view users",
 			};
 		}
 
 		// Super admins see all users across all organizations
 		// Org admins see only their organization's users
 		const where =
-			session.user.role === 'SUPER_ADMIN'
-				? {}
-				: { organizationId: session.user.organizationId };
+			session.user.role === "SUPER_ADMIN" ?
+				{}
+			:	{ organizationId: session.user.organizationId };
 
 		const users = await db.user.findMany({
 			where,
 			include: includeOrganization ? { organization: true } : undefined,
-			orderBy: { createdAt: 'desc' },
+			orderBy: { createdAt: "desc" },
 		});
 
 		return {
 			success: true,
-			message: 'Users retrieved successfully',
+			message: "Users retrieved successfully",
 			data: users.map((user) => {
 				const safeUser = omitPassword(user);
 				if (includeOrganization) {
@@ -103,20 +103,21 @@ export async function getUsers(
 					};
 					return {
 						...safeUser,
-						organization: userWithOrg.organization
-							? {
+						organization:
+							userWithOrg.organization ?
+								{
 									id: userWithOrg.organization.id,
 									name: userWithOrg.organization.name,
-							  }
-							: null,
+								}
+							:	null,
 					};
 				}
 				return safeUser;
 			}),
 		};
 	} catch (error) {
-		console.error('Failed to get users:', error);
-		return { success: false, message: 'Failed to retrieve users' };
+		console.error("Failed to get users:", error);
+		return { success: false, message: "Failed to retrieve users" };
 	}
 }
 
@@ -127,16 +128,16 @@ export async function getStaffMembers(): Promise<ActionResponse<SafeUser[]>> {
 	try {
 		const session = await auth();
 		if (!session?.user) {
-			return { success: false, message: 'Unauthorized' };
+			return { success: false, message: "Unauthorized" };
 		}
 
 		// Staff roles that can be assigned to appointments
 		const staffRoles = [
-			'SUPER_ADMIN',
-			'PARISH_ADMIN',
-			'PARISH_SECRETARY',
-			'PARISH_STAFF',
-			'OUTSTATION_ADMIN',
+			"SUPER_ADMIN",
+			"PARISH_ADMIN",
+			"PARISH_SECRETARY",
+			"PARISH_STAFF",
+			"OUTSTATION_ADMIN",
 		];
 
 		const staff = await db.user.findMany({
@@ -145,17 +146,17 @@ export async function getStaffMembers(): Promise<ActionResponse<SafeUser[]>> {
 				role: { in: staffRoles as UserRole[] },
 				isActive: true,
 			},
-			orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
+			orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
 		});
 
 		return {
 			success: true,
-			message: 'Staff members retrieved successfully',
+			message: "Staff members retrieved successfully",
 			data: staff.map(omitPassword),
 		};
 	} catch (error) {
-		console.error('Failed to get staff members:', error);
-		return { success: false, message: 'Failed to retrieve staff members' };
+		console.error("Failed to get staff members:", error);
+		return { success: false, message: "Failed to retrieve staff members" };
 	}
 }
 
@@ -163,19 +164,19 @@ export async function getStaffMembers(): Promise<ActionResponse<SafeUser[]>> {
  * Get a single user by ID
  */
 export async function getUser(
-	id: string
+	id: string,
 ): Promise<ActionResponse<SafeUser & { organization: { name: string } }>> {
 	try {
 		const session = await auth();
 		if (!session?.user) {
-			return { success: false, message: 'Unauthorized' };
+			return { success: false, message: "Unauthorized" };
 		}
 
 		// Only admins can view user details
 		if (!canManageUsers(session.user.role)) {
 			return {
 				success: false,
-				message: 'You do not have permission to view user details',
+				message: "You do not have permission to view user details",
 			};
 		}
 
@@ -192,19 +193,19 @@ export async function getUser(
 		});
 
 		if (!user) {
-			return { success: false, message: 'User not found' };
+			return { success: false, message: "User not found" };
 		}
 
 		const safeUser = omitPassword(user);
 
 		return {
 			success: true,
-			message: 'User retrieved successfully',
+			message: "User retrieved successfully",
 			data: { ...safeUser, organization: user.organization },
 		};
 	} catch (error) {
-		console.error('Failed to get user:', error);
-		return { success: false, message: 'Failed to retrieve user' };
+		console.error("Failed to get user:", error);
+		return { success: false, message: "Failed to retrieve user" };
 	}
 }
 
@@ -212,18 +213,18 @@ export async function getUser(
  * Search users
  */
 export async function searchUsers(
-	searchTerm: string
+	searchTerm: string,
 ): Promise<ActionResponse<SafeUser[]>> {
 	try {
 		const session = await auth();
 		if (!session?.user) {
-			return { success: false, message: 'Unauthorized' };
+			return { success: false, message: "Unauthorized" };
 		}
 
 		if (!canManageUsers(session.user.role)) {
 			return {
 				success: false,
-				message: 'You do not have permission to search users',
+				message: "You do not have permission to search users",
 			};
 		}
 
@@ -234,25 +235,25 @@ export async function searchUsers(
 					{
 						firstName: {
 							contains: searchTerm,
-							mode: 'insensitive',
+							mode: "insensitive",
 						},
 					},
-					{ lastName: { contains: searchTerm, mode: 'insensitive' } },
-					{ email: { contains: searchTerm, mode: 'insensitive' } },
+					{ lastName: { contains: searchTerm, mode: "insensitive" } },
+					{ email: { contains: searchTerm, mode: "insensitive" } },
 				],
 			},
-			orderBy: { lastName: 'asc' },
+			orderBy: { lastName: "asc" },
 			take: 50,
 		});
 
 		return {
 			success: true,
-			message: 'Users found',
+			message: "Users found",
 			data: users.map(omitPassword),
 		};
 	} catch (error) {
-		console.error('Failed to search users:', error);
-		return { success: false, message: 'Failed to search users' };
+		console.error("Failed to search users:", error);
+		return { success: false, message: "Failed to search users" };
 	}
 }
 
@@ -264,19 +265,19 @@ export async function searchUsers(
  * Create a new user
  */
 export async function createUser(
-	formData: unknown
+	formData: unknown,
 ): Promise<ActionResponse<SafeUser>> {
 	try {
 		const session = await auth();
 		if (!session?.user) {
-			return { success: false, message: 'Unauthorized' };
+			return { success: false, message: "Unauthorized" };
 		}
 
 		// Only admins can create users
 		if (!canManageUsers(session.user.role)) {
 			return {
 				success: false,
-				message: 'You do not have permission to create users',
+				message: "You do not have permission to create users",
 			};
 		}
 
@@ -285,7 +286,7 @@ export async function createUser(
 		if (!parsed.success) {
 			return {
 				success: false,
-				message: 'Please check your input and try again',
+				message: "Please check your input and try again",
 				errors: parsed.error.flatten().fieldErrors,
 			};
 		}
@@ -297,7 +298,7 @@ export async function createUser(
 			return {
 				success: false,
 				message:
-					'You cannot assign a role equal or higher than your own',
+					"You cannot assign a role equal or higher than your own",
 			};
 		}
 
@@ -309,8 +310,8 @@ export async function createUser(
 		if (existingUser) {
 			return {
 				success: false,
-				message: 'A user with this email already exists',
-				errors: { email: ['This email is already registered'] },
+				message: "A user with this email already exists",
+				errors: { email: ["This email is already registered"] },
 			};
 		}
 
@@ -333,8 +334,8 @@ export async function createUser(
 		// Audit Log
 		await db.auditLog.create({
 			data: {
-				action: 'CREATE',
-				entityType: 'User',
+				action: "CREATE",
+				entityType: "User",
 				entityId: user.id,
 				performedBy: session.user.id,
 				details: {
@@ -346,16 +347,16 @@ export async function createUser(
 			},
 		});
 
-		revalidatePath('/dashboard/users');
+		revalidatePath("/users");
 
 		return {
 			success: true,
-			message: 'User created successfully',
+			message: "User created successfully",
 			data: omitPassword(user),
 		};
 	} catch (error) {
-		console.error('Failed to create user:', error);
-		return { success: false, message: 'Failed to create user' };
+		console.error("Failed to create user:", error);
+		return { success: false, message: "Failed to create user" };
 	}
 }
 
@@ -368,19 +369,19 @@ export async function createUser(
  */
 export async function updateUser(
 	id: string,
-	formData: unknown
+	formData: unknown,
 ): Promise<ActionResponse<SafeUser>> {
 	try {
 		const session = await auth();
 		if (!session?.user) {
-			return { success: false, message: 'Unauthorized' };
+			return { success: false, message: "Unauthorized" };
 		}
 
 		// Only admins can update users
 		if (!canManageUsers(session.user.role)) {
 			return {
 				success: false,
-				message: 'You do not have permission to update users',
+				message: "You do not have permission to update users",
 			};
 		}
 
@@ -389,7 +390,7 @@ export async function updateUser(
 		if (!parsed.success) {
 			return {
 				success: false,
-				message: 'Please check your input and try again',
+				message: "Please check your input and try again",
 				errors: parsed.error.flatten().fieldErrors,
 			};
 		}
@@ -403,14 +404,14 @@ export async function updateUser(
 		});
 
 		if (!existingUser) {
-			return { success: false, message: 'User not found' };
+			return { success: false, message: "User not found" };
 		}
 
 		// Prevent modifying users with higher or equal role
 		if (!canAssignRole(session.user.role, existingUser.role)) {
 			return {
 				success: false,
-				message: 'You cannot modify this user',
+				message: "You cannot modify this user",
 			};
 		}
 
@@ -422,7 +423,7 @@ export async function updateUser(
 			return {
 				success: false,
 				message:
-					'You cannot assign a role equal or higher than your own',
+					"You cannot assign a role equal or higher than your own",
 			};
 		}
 
@@ -435,8 +436,8 @@ export async function updateUser(
 			if (emailExists) {
 				return {
 					success: false,
-					message: 'This email is already in use',
-					errors: { email: ['This email is already registered'] },
+					message: "This email is already in use",
+					errors: { email: ["This email is already registered"] },
 				};
 			}
 		}
@@ -450,8 +451,8 @@ export async function updateUser(
 		// Audit Log
 		await db.auditLog.create({
 			data: {
-				action: 'UPDATE',
-				entityType: 'User',
+				action: "UPDATE",
+				entityType: "User",
 				entityId: id,
 				performedBy: session.user.id,
 				details: {
@@ -460,17 +461,32 @@ export async function updateUser(
 			},
 		});
 
-		revalidatePath('/dashboard/users');
-		revalidatePath(`/dashboard/users/${id}`);
+		if (parsed.data.role && parsed.data.role !== existingUser.role) {
+			await db.auditLog.create({
+				data: {
+					action: "PERMISSION_CHANGE",
+					entityType: "Auth",
+					entityId: id,
+					performedBy: session.user.id,
+					details: {
+						fromRole: existingUser.role,
+						toRole: parsed.data.role,
+					},
+				},
+			});
+		}
+
+		revalidatePath("/users");
+		revalidatePath(`/users/${id}`);
 
 		return {
 			success: true,
-			message: 'User updated successfully',
+			message: "User updated successfully",
 			data: omitPassword(user),
 		};
 	} catch (error) {
-		console.error('Failed to update user:', error);
-		return { success: false, message: 'Failed to update user' };
+		console.error("Failed to update user:", error);
+		return { success: false, message: "Failed to update user" };
 	}
 }
 
@@ -479,19 +495,19 @@ export async function updateUser(
  */
 export async function changeUserPassword(
 	id: string,
-	formData: unknown
+	formData: unknown,
 ): Promise<ActionResponse> {
 	try {
 		const session = await auth();
 		if (!session?.user) {
-			return { success: false, message: 'Unauthorized' };
+			return { success: false, message: "Unauthorized" };
 		}
 
 		// Only admins can change user passwords
 		if (!canManageUsers(session.user.role)) {
 			return {
 				success: false,
-				message: 'You do not have permission to change passwords',
+				message: "You do not have permission to change passwords",
 			};
 		}
 
@@ -500,7 +516,7 @@ export async function changeUserPassword(
 		if (!parsed.success) {
 			return {
 				success: false,
-				message: 'Please check your input and try again',
+				message: "Please check your input and try again",
 				errors: parsed.error.flatten().fieldErrors,
 			};
 		}
@@ -514,7 +530,7 @@ export async function changeUserPassword(
 		});
 
 		if (!existingUser) {
-			return { success: false, message: 'User not found' };
+			return { success: false, message: "User not found" };
 		}
 
 		// Prevent modifying users with higher or equal role
@@ -528,19 +544,37 @@ export async function changeUserPassword(
 		// Hash new password
 		const hashedPassword = await bcrypt.hash(parsed.data.newPassword, 12);
 
-		// Update password
+		// Update password and invalidate active sessions for the target user.
 		await db.user.update({
 			where: { id },
-			data: { password: hashedPassword },
+			data: {
+				password: hashedPassword,
+				sessionVersion: { increment: 1 },
+				failedLoginAttempts: 0,
+				lastFailedLoginAt: null,
+				lockedUntil: null,
+			},
+		});
+
+		await db.auditLog.create({
+			data: {
+				action: "PASSWORD_CHANGE",
+				entityType: "Auth",
+				entityId: id,
+				performedBy: session.user.id,
+				details: {
+					resetByAdmin: true,
+				},
+			},
 		});
 
 		return {
 			success: true,
-			message: 'Password changed successfully',
+			message: "Password changed successfully",
 		};
 	} catch (error) {
-		console.error('Failed to change password:', error);
-		return { success: false, message: 'Failed to change password' };
+		console.error("Failed to change password:", error);
+		return { success: false, message: "Failed to change password" };
 	}
 }
 
@@ -552,19 +586,19 @@ export async function changeUserPassword(
  * Toggle user active status
  */
 export async function toggleUserStatus(
-	id: string
+	id: string,
 ): Promise<ActionResponse<SafeUser>> {
 	try {
 		const session = await auth();
 		if (!session?.user) {
-			return { success: false, message: 'Unauthorized' };
+			return { success: false, message: "Unauthorized" };
 		}
 
 		// Only admins can toggle user status
 		if (!canManageUsers(session.user.role)) {
 			return {
 				success: false,
-				message: 'You do not have permission to change user status',
+				message: "You do not have permission to change user status",
 			};
 		}
 
@@ -577,14 +611,14 @@ export async function toggleUserStatus(
 		});
 
 		if (!existingUser) {
-			return { success: false, message: 'User not found' };
+			return { success: false, message: "User not found" };
 		}
 
 		// Prevent deactivating yourself
 		if (existingUser.id === session.user.id) {
 			return {
 				success: false,
-				message: 'You cannot deactivate your own account',
+				message: "You cannot deactivate your own account",
 			};
 		}
 
@@ -592,7 +626,7 @@ export async function toggleUserStatus(
 		if (!canAssignRole(session.user.role, existingUser.role)) {
 			return {
 				success: false,
-				message: 'You cannot modify this user',
+				message: "You cannot modify this user",
 			};
 		}
 
@@ -605,29 +639,30 @@ export async function toggleUserStatus(
 		// Audit Log
 		await db.auditLog.create({
 			data: {
-				action: 'UPDATE',
-				entityType: 'User',
+				action: "UPDATE",
+				entityType: "User",
 				entityId: id,
 				performedBy: session.user.id,
 				details: {
-					action: user.isActive ? 'ACTIVATE' : 'DEACTIVATE',
+					action: user.isActive ? "ACTIVATE" : "DEACTIVATE",
 				},
 			},
 		});
 
-		revalidatePath('/dashboard/users');
-		revalidatePath(`/dashboard/users/${id}`);
+		revalidatePath("/users");
+		revalidatePath(`/users/${id}`);
 
 		return {
 			success: true,
-			message: user.isActive
-				? 'User activated successfully'
-				: 'User deactivated successfully',
+			message:
+				user.isActive ?
+					"User activated successfully"
+				:	"User deactivated successfully",
 			data: omitPassword(user),
 		};
 	} catch (error) {
-		console.error('Failed to toggle user status:', error);
-		return { success: false, message: 'Failed to change user status' };
+		console.error("Failed to toggle user status:", error);
+		return { success: false, message: "Failed to change user status" };
 	}
 }
 
@@ -635,18 +670,18 @@ export async function toggleUserStatus(
  * Activate a user
  */
 export async function activateUser(
-	id: string
+	id: string,
 ): Promise<ActionResponse<SafeUser>> {
 	try {
 		const session = await auth();
 		if (!session?.user) {
-			return { success: false, message: 'Unauthorized' };
+			return { success: false, message: "Unauthorized" };
 		}
 
 		if (!canManageUsers(session.user.role)) {
 			return {
 				success: false,
-				message: 'You do not have permission to activate users',
+				message: "You do not have permission to activate users",
 			};
 		}
 
@@ -658,20 +693,20 @@ export async function activateUser(
 		});
 
 		if (!existingUser) {
-			return { success: false, message: 'User not found' };
+			return { success: false, message: "User not found" };
 		}
 
 		if (!canAssignRole(session.user.role, existingUser.role)) {
 			return {
 				success: false,
-				message: 'You cannot modify this user',
+				message: "You cannot modify this user",
 			};
 		}
 
 		if (existingUser.isActive) {
 			return {
 				success: false,
-				message: 'User is already active',
+				message: "User is already active",
 			};
 		}
 
@@ -680,16 +715,16 @@ export async function activateUser(
 			data: { isActive: true },
 		});
 
-		revalidatePath('/dashboard/users');
+		revalidatePath("/users");
 
 		return {
 			success: true,
-			message: 'User activated successfully',
+			message: "User activated successfully",
 			data: omitPassword(user),
 		};
 	} catch (error) {
-		console.error('Failed to activate user:', error);
-		return { success: false, message: 'Failed to activate user' };
+		console.error("Failed to activate user:", error);
+		return { success: false, message: "Failed to activate user" };
 	}
 }
 
@@ -697,18 +732,18 @@ export async function activateUser(
  * Deactivate a user
  */
 export async function deactivateUser(
-	id: string
+	id: string,
 ): Promise<ActionResponse<SafeUser>> {
 	try {
 		const session = await auth();
 		if (!session?.user) {
-			return { success: false, message: 'Unauthorized' };
+			return { success: false, message: "Unauthorized" };
 		}
 
 		if (!canManageUsers(session.user.role)) {
 			return {
 				success: false,
-				message: 'You do not have permission to deactivate users',
+				message: "You do not have permission to deactivate users",
 			};
 		}
 
@@ -720,27 +755,27 @@ export async function deactivateUser(
 		});
 
 		if (!existingUser) {
-			return { success: false, message: 'User not found' };
+			return { success: false, message: "User not found" };
 		}
 
 		if (existingUser.id === session.user.id) {
 			return {
 				success: false,
-				message: 'You cannot deactivate your own account',
+				message: "You cannot deactivate your own account",
 			};
 		}
 
 		if (!canAssignRole(session.user.role, existingUser.role)) {
 			return {
 				success: false,
-				message: 'You cannot modify this user',
+				message: "You cannot modify this user",
 			};
 		}
 
 		if (!existingUser.isActive) {
 			return {
 				success: false,
-				message: 'User is already deactivated',
+				message: "User is already deactivated",
 			};
 		}
 
@@ -749,16 +784,16 @@ export async function deactivateUser(
 			data: { isActive: false },
 		});
 
-		revalidatePath('/dashboard/users');
+		revalidatePath("/users");
 
 		return {
 			success: true,
-			message: 'User deactivated successfully',
+			message: "User deactivated successfully",
 			data: omitPassword(user),
 		};
 	} catch (error) {
-		console.error('Failed to deactivate user:', error);
-		return { success: false, message: 'Failed to deactivate user' };
+		console.error("Failed to deactivate user:", error);
+		return { success: false, message: "Failed to deactivate user" };
 	}
 }
 
@@ -773,14 +808,14 @@ export async function deleteUser(id: string): Promise<ActionResponse> {
 	try {
 		const session = await auth();
 		if (!session?.user) {
-			return { success: false, message: 'Unauthorized' };
+			return { success: false, message: "Unauthorized" };
 		}
 
 		// Only super admins can delete users
-		if (session.user.role !== 'SUPER_ADMIN') {
+		if (session.user.role !== "SUPER_ADMIN") {
 			return {
 				success: false,
-				message: 'Only super admins can delete users',
+				message: "Only super admins can delete users",
 			};
 		}
 
@@ -792,22 +827,22 @@ export async function deleteUser(id: string): Promise<ActionResponse> {
 		});
 
 		if (!existingUser) {
-			return { success: false, message: 'User not found' };
+			return { success: false, message: "User not found" };
 		}
 
 		// Prevent deleting yourself
 		if (existingUser.id === session.user.id) {
 			return {
 				success: false,
-				message: 'You cannot delete your own account',
+				message: "You cannot delete your own account",
 			};
 		}
 
 		// Prevent deleting other super admins
-		if (existingUser.role === 'SUPER_ADMIN') {
+		if (existingUser.role === "SUPER_ADMIN") {
 			return {
 				success: false,
-				message: 'You cannot delete other super admins',
+				message: "You cannot delete other super admins",
 			};
 		}
 
@@ -815,15 +850,158 @@ export async function deleteUser(id: string): Promise<ActionResponse> {
 			where: { id },
 		});
 
-		revalidatePath('/dashboard/users');
+		revalidatePath("/users");
 
 		return {
 			success: true,
-			message: 'User deleted successfully',
+			message: "User deleted successfully",
 		};
 	} catch (error) {
-		console.error('Failed to delete user:', error);
-		return { success: false, message: 'Failed to delete user' };
+		console.error("Failed to delete user:", error);
+		return { success: false, message: "Failed to delete user" };
+	}
+}
+
+/**
+ * Unlock a locked user account by clearing lockout fields.
+ */
+export async function unlockUserAccount(
+	id: string,
+): Promise<ActionResponse<SafeUser>> {
+	try {
+		const session = await auth();
+		if (!session?.user) {
+			return { success: false, message: "Unauthorized" };
+		}
+
+		if (!canManageUsers(session.user.role)) {
+			return {
+				success: false,
+				message: "You do not have permission to unlock user accounts",
+			};
+		}
+
+		const existingUser = await db.user.findFirst({
+			where: {
+				id,
+				organizationId: session.user.organizationId,
+			},
+		});
+
+		if (!existingUser) {
+			return { success: false, message: "User not found" };
+		}
+
+		if (!canAssignRole(session.user.role, existingUser.role)) {
+			return {
+				success: false,
+				message: "You cannot modify this user",
+			};
+		}
+
+		const user = await db.user.update({
+			where: { id },
+			data: {
+				failedLoginAttempts: 0,
+				lastFailedLoginAt: null,
+				lockedUntil: null,
+			},
+		});
+
+		await db.auditLog.create({
+			data: {
+				action: "PERMISSION_CHANGE",
+				entityType: "Auth",
+				entityId: id,
+				performedBy: session.user.id,
+				details: {
+					type: "ACCOUNT_UNLOCKED",
+				},
+			},
+		});
+
+		revalidatePath("/users");
+		revalidatePath(`/users/${id}`);
+
+		return {
+			success: true,
+			message: "User account unlocked successfully",
+			data: omitPassword(user),
+		};
+	} catch (error) {
+		console.error("Failed to unlock user account:", error);
+		return { success: false, message: "Failed to unlock user account" };
+	}
+}
+
+/**
+ * Revoke all active sessions for a specific user.
+ */
+export async function revokeUserSessions(id: string): Promise<ActionResponse> {
+	try {
+		const session = await auth();
+		if (!session?.user) {
+			return { success: false, message: "Unauthorized" };
+		}
+
+		if (!canManageUsers(session.user.role)) {
+			return {
+				success: false,
+				message: "You do not have permission to revoke user sessions",
+			};
+		}
+
+		const existingUser = await db.user.findFirst({
+			where: {
+				id,
+				organizationId: session.user.organizationId,
+			},
+		});
+
+		if (!existingUser) {
+			return { success: false, message: "User not found" };
+		}
+
+		if (!canAssignRole(session.user.role, existingUser.role)) {
+			return {
+				success: false,
+				message: "You cannot modify this user",
+			};
+		}
+
+		await db.user.update({
+			where: { id },
+			data: { sessionVersion: { increment: 1 } },
+		});
+
+		await db.userSession.updateMany({
+			where: {
+				userId: id,
+				revokedAt: null,
+			},
+			data: { revokedAt: new Date() },
+		});
+
+		await db.auditLog.create({
+			data: {
+				action: "PERMISSION_CHANGE",
+				entityType: "Auth",
+				entityId: id,
+				performedBy: session.user.id,
+				details: {
+					type: "SESSION_REVOKE",
+					target: "ALL_DEVICES",
+				},
+			},
+		});
+
+		return {
+			success: true,
+			message: "User sessions revoked successfully",
+		};
+	} catch (error) {
+		console.error("Failed to revoke user sessions:", error);
+		return { success: false, message: "Failed to revoke user sessions" };
 	}
 }
 
@@ -845,13 +1023,13 @@ export async function getUserStats(): Promise<
 	try {
 		const session = await auth();
 		if (!session?.user) {
-			return { success: false, message: 'Unauthorized' };
+			return { success: false, message: "Unauthorized" };
 		}
 
 		if (!canManageUsers(session.user.role)) {
 			return {
 				success: false,
-				message: 'You do not have permission to view user statistics',
+				message: "You do not have permission to view user statistics",
 			};
 		}
 
@@ -866,20 +1044,23 @@ export async function getUserStats(): Promise<
 				},
 			}),
 			db.user.groupBy({
-				by: ['role'],
+				by: ["role"],
 				where: { organizationId: session.user.organizationId },
 				_count: true,
 			}),
 		]);
 
-		const roleStats = byRole.reduce((acc, item) => {
-			acc[item.role] = item._count;
-			return acc;
-		}, {} as Record<string, number>);
+		const roleStats = byRole.reduce(
+			(acc, item) => {
+				acc[item.role] = item._count;
+				return acc;
+			},
+			{} as Record<string, number>,
+		);
 
 		return {
 			success: true,
-			message: 'User statistics retrieved successfully',
+			message: "User statistics retrieved successfully",
 			data: {
 				total,
 				active,
@@ -888,10 +1069,10 @@ export async function getUserStats(): Promise<
 			},
 		};
 	} catch (error) {
-		console.error('Failed to get user stats:', error);
+		console.error("Failed to get user stats:", error);
 		return {
 			success: false,
-			message: 'Failed to retrieve user statistics',
+			message: "Failed to retrieve user statistics",
 		};
 	}
 }

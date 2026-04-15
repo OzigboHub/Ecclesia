@@ -1,16 +1,7 @@
 "use client";
 
-import { useState, useTransition, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import {
-	registerSchema,
-	type RegisterInput,
-} from "@/lib/validators/auth.schema";
-import { register, getOrganizations } from "@/app/actions/auth.actions";
-import { toast } from "sonner";
+import { getOrganizations, register } from "@/app/actions/auth.actions";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,7 +12,17 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import { Eye, EyeOff, Check, X, ArrowLeft } from "lucide-react";
+import {
+	registerSchema,
+	type RegisterInput,
+} from "@/lib/validators/auth.schema";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Check, Eye, EyeOff, Upload, X } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState, useTransition } from "react";
+import { useForm, useWatch } from "react-hook-form";
+import { toast } from "sonner";
 
 interface Organization {
 	id: string;
@@ -36,6 +37,9 @@ export default function RegisterPage() {
 	const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 	const [organizations, setOrganizations] = useState<Organization[]>([]);
 	const [loadingOrgs, setLoadingOrgs] = useState(true);
+	const [displayPictureUrl, setDisplayPictureUrl] = useState("");
+	const [isUploading, setIsUploading] = useState(false);
+	const displayPictureRef = useRef<HTMLInputElement>(null);
 
 	const form = useForm<RegisterInput>({
 		resolver: zodResolver(registerSchema),
@@ -43,6 +47,9 @@ export default function RegisterPage() {
 			firstName: "",
 			lastName: "",
 			email: "",
+			phone: "",
+			dateOfBirth: "",
+			address: "",
 			password: "",
 			confirmPassword: "",
 		},
@@ -52,12 +59,32 @@ export default function RegisterPage() {
 		register: registerField,
 		handleSubmit,
 		formState: { errors },
-		watch,
-		setValue,
 		setError,
 	} = form;
 
-	const password = watch("password");
+	const password = useWatch({
+		control: form.control,
+		name: "password",
+	});
+
+	const firstName = useWatch({
+		control: form.control,
+		name: "firstName",
+	});
+
+	const lastName = useWatch({
+		control: form.control,
+		name: "lastName",
+	});
+
+	const initials = `${firstName || ""} ${lastName || ""}`
+		.trim()
+		.split(" ")
+		.filter(Boolean)
+		.map((part) => part[0])
+		.join("")
+		.toUpperCase()
+		.slice(0, 2);
 
 	// Password requirements check
 	const passwordRequirements = [
@@ -94,6 +121,7 @@ export default function RegisterPage() {
 		startTransition(async () => {
 			const result = await register({
 				...data,
+				displayPicture: displayPictureUrl || undefined,
 				organizationId: selectedOrgId,
 			});
 
@@ -123,29 +151,10 @@ export default function RegisterPage() {
 	};
 
 	return (
-		<div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-pSrimary/10 via-background to-accent/20 p-4">
-			<div className="w-full max-w-md">
-				{/* Back to Login */}
-				<Link
-					href="/auth/login"
-					className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-4"
-				>
-					<ArrowLeft className="mr-2 h-4 w-4" />
-					Back to Login
-				</Link>
-
-				{/* Logo/Branding */}
-				<div className="text-center mb-6">
-					<h1 className="text-4xl font-bold text-primary mb-2">
-						Ecclesia
-					</h1>
-					<p className="text-muted-foreground">
-						Digital Parish Manager
-					</p>
-				</div>
-
+		<div className="min-h-screen flex items-center justify-center bg-linear-to-br from-primary/10 via-background to-accent/20 p-4">
+			<div className="w-full max-w-lg mt-[100px]">
 				{/* Register Card */}
-				<div className="bg-background/80 backdrop-blur-sm border border-border rounded-lg shadow-2xl p-8">
+				<div className="bg-background/80  backdrop-blur-sm border border-border rounded-lg shadow-2xl p-8">
 					<h2 className="text-2xl font-semibold mb-6 text-center">
 						Create Account
 					</h2>
@@ -153,7 +162,114 @@ export default function RegisterPage() {
 					<form
 						onSubmit={handleSubmit(onSubmit)}
 						className="space-y-4"
+						autoComplete="off"
 					>
+						<div className="space-y-2">
+							<Label htmlFor="displayPicture">
+								Display Picture (optional)
+							</Label>
+							<div className="flex items-center gap-4">
+								<Avatar className="h-16 w-16">
+									<AvatarImage
+										src={displayPictureUrl || undefined}
+									/>
+									<AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
+										{initials || "DP"}
+									</AvatarFallback>
+								</Avatar>
+								<div className="flex-1">
+									<Input
+										id="displayPicture"
+										type="file"
+										accept="image/*"
+										disabled={isPending || isUploading}
+										ref={displayPictureRef}
+										onChange={async (event) => {
+											const file =
+												event.target.files?.[0];
+											if (!file) return;
+											if (
+												!file.type.startsWith("image/")
+											) {
+												toast.error(
+													"Please select an image file",
+												);
+												return;
+											}
+											if (file.size > 5 * 1024 * 1024) {
+												toast.error(
+													"Image size must be less than 5MB",
+												);
+												return;
+											}
+
+											setIsUploading(true);
+											try {
+												const formData = new FormData();
+												formData.append("file", file);
+												formData.append(
+													"folderPrefix",
+													"user-avatars",
+												);
+
+												const response = await fetch(
+													"/api/public-upload",
+													{
+														method: "POST",
+														body: formData,
+													},
+												);
+
+												const result =
+													await response.json();
+												if (!result.success) {
+													toast.error(
+														result.message ||
+															"Upload failed",
+													);
+													return;
+												}
+
+												setDisplayPictureUrl(
+													result.url,
+												);
+												toast.success(
+													"Display picture uploaded",
+												);
+											} catch {
+												toast.error(
+													"Failed to upload image",
+												);
+											} finally {
+												setIsUploading(false);
+											}
+										}}
+									/>
+									<div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
+										<Upload className="h-3 w-3" />
+										<span>Upload JPG or PNG (max 5MB)</span>
+										{displayPictureUrl && (
+											<Button
+												variant="ghost"
+												size="sm"
+												className="h-6 px-2 text-xs"
+												onClick={() => {
+													setDisplayPictureUrl("");
+													if (
+														displayPictureRef.current
+													) {
+														displayPictureRef.current.value =
+															"";
+													}
+												}}
+											>
+												Remove
+											</Button>
+										)}
+									</div>
+								</div>
+							</div>
+						</div>
 						{/* Name Fields */}
 						<div className="grid grid-cols-2 gap-4">
 							<div className="space-y-2">
@@ -163,7 +279,9 @@ export default function RegisterPage() {
 									{...registerField("firstName")}
 									placeholder="John"
 									disabled={isPending}
+									autoComplete="given-name"
 									aria-invalid={!!errors.firstName}
+									className="placeholder:text-muted-foreground/30"
 								/>
 								{errors.firstName && (
 									<p className="text-xs text-destructive">
@@ -179,7 +297,9 @@ export default function RegisterPage() {
 									{...registerField("lastName")}
 									placeholder="Doe"
 									disabled={isPending}
+									autoComplete="family-name"
 									aria-invalid={!!errors.lastName}
+									className="placeholder:text-muted-foreground/30"
 								/>
 								{errors.lastName && (
 									<p className="text-xs text-destructive">
@@ -200,10 +320,71 @@ export default function RegisterPage() {
 								disabled={isPending}
 								autoComplete="email"
 								aria-invalid={!!errors.email}
+								className="placeholder:text-muted-foreground/30"
 							/>
 							{errors.email && (
 								<p className="text-xs text-destructive">
 									{errors.email.message}
+								</p>
+							)}
+						</div>
+
+						<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+							<div className="space-y-2">
+								<Label htmlFor="phone">Phone Number *</Label>
+								<Input
+									id="phone"
+									type="tel"
+									{...registerField("phone")}
+									placeholder="08012345678"
+									disabled={isPending}
+									autoComplete="tel"
+									aria-invalid={!!errors.phone}
+									className="placeholder:text-muted-foreground/30"
+								/>
+								{errors.phone && (
+									<p className="text-xs text-destructive">
+										{errors.phone.message}
+									</p>
+								)}
+							</div>
+
+							<div className="space-y-2">
+								<Label htmlFor="dateOfBirth">
+									Date of Birth *
+								</Label>
+								<Input
+									id="dateOfBirth"
+									type="date"
+									{...registerField("dateOfBirth")}
+									disabled={isPending}
+									autoComplete="bday"
+									max={new Date().toISOString().split("T")[0]}
+									aria-invalid={!!errors.dateOfBirth}
+									className="placeholder:text-muted-foreground/30"
+								/>
+								{errors.dateOfBirth && (
+									<p className="text-xs text-destructive">
+										{errors.dateOfBirth.message}
+									</p>
+								)}
+							</div>
+						</div>
+
+						<div className="space-y-2">
+							<Label htmlFor="address">Resident Address</Label>
+							<Input
+								id="address"
+								{...registerField("address")}
+								placeholder="Enter your resident address"
+								disabled={isPending}
+								autoComplete="address-line1"
+								aria-invalid={!!errors.address}
+								className="placeholder:text-muted-foreground/30"
+							/>
+							{errors.address && (
+								<p className="text-xs text-destructive">
+									{errors.address.message}
 								</p>
 							)}
 						</div>
@@ -227,7 +408,7 @@ export default function RegisterPage() {
 										}
 									/>
 								</SelectTrigger>
-								<SelectContent>
+								<SelectContent className=" bg-secondary">
 									{organizations.map((org) => (
 										<SelectItem key={org.id} value={org.id}>
 											{org.name}
@@ -254,6 +435,7 @@ export default function RegisterPage() {
 									disabled={isPending}
 									autoComplete="new-password"
 									aria-invalid={!!errors.password}
+									className="placeholder:text-muted-foreground/30"
 								/>
 								<button
 									type="button"
@@ -318,6 +500,7 @@ export default function RegisterPage() {
 									disabled={isPending}
 									autoComplete="new-password"
 									aria-invalid={!!errors.confirmPassword}
+									className="placeholder:text-muted-foreground/30"
 								/>
 								<button
 									type="button"

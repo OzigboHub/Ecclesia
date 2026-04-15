@@ -42,7 +42,7 @@ export default function PaymentsListClient({
 		if (statusFilter !== 'all') newParams.set('status', statusFilter);
 		if (purposeFilter !== 'all') newParams.set('purpose', purposeFilter);
 		if (methodFilter !== 'all') newParams.set('method', methodFilter);
-		router.push(`/dashboard/payments?${newParams.toString()}`);
+		router.push(`/payments?${newParams.toString()}`);
 	}, [search, statusFilter, purposeFilter, methodFilter, router]);
 
 	// Debounce search
@@ -61,8 +61,8 @@ export default function PaymentsListClient({
 		search || statusFilter !== 'all' || purposeFilter !== 'all' || methodFilter !== 'all';
 
 	return (
-		<div className='bg-background border border-border rounded-lg shadow-sm p-4 mb-6'>
-			<div className='flex flex-col gap-4 md:flex-row md:items-center'>
+		<div className='bg-background border border-border rounded-lg shadow-sm p-3 sm:p-4 mb-4 sm:mb-6'>
+			<div className='flex flex-col gap-3 sm:gap-4 md:flex-row md:items-center'>
 				<div className='relative flex-1'>
 					<Search className='absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground' />
 					<Input
@@ -74,12 +74,12 @@ export default function PaymentsListClient({
 					/>
 				</div>
 
-				<div className='flex gap-2 flex-wrap'>
+				<div className='grid grid-cols-2 sm:flex gap-2 sm:flex-wrap'>
 					<Select
 						value={statusFilter}
 						onValueChange={setStatusFilter}
 					>
-						<SelectTrigger className='w-[140px]'>
+						<SelectTrigger className='w-full sm:w-[140px]'>
 							<SelectValue placeholder='Status' />
 						</SelectTrigger>
 						<SelectContent>
@@ -95,7 +95,7 @@ export default function PaymentsListClient({
 						value={purposeFilter}
 						onValueChange={setPurposeFilter}
 					>
-						<SelectTrigger className='w-[160px]'>
+						<SelectTrigger className='w-full sm:w-[160px]'>
 							<SelectValue placeholder='Purpose' />
 						</SelectTrigger>
 						<SelectContent>
@@ -117,7 +117,7 @@ export default function PaymentsListClient({
 						value={methodFilter}
 						onValueChange={setMethodFilter}
 					>
-						<SelectTrigger className='w-[150px]'>
+						<SelectTrigger className='w-full sm:w-[150px]'>
 							<SelectValue placeholder='Method' />
 						</SelectTrigger>
 						<SelectContent>
@@ -139,7 +139,7 @@ export default function PaymentsListClient({
 								setStatusFilter('all');
 								setPurposeFilter('all');
 								setMethodFilter('all');
-								router.push('/dashboard/payments');
+								router.push('/payments');
 							}}
 						>
 							Clear

@@ -92,7 +92,7 @@ export function UserForm({
 			if (result.success) {
 				toast.success(result.message);
 				reset();
-				router.push('/dashboard/users');
+				router.push('/users');
 				router.refresh();
 				onSuccess?.();
 			} else {

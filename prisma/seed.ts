@@ -4,77 +4,78 @@ import {
 	HierarchyLevel,
 	Gender,
 	MaritalStatus,
-} from '@prisma/client';
-import { PrismaNeon } from '@prisma/adapter-neon';
-import { neonConfig } from '@neondatabase/serverless';
-import bcrypt from 'bcryptjs';
+} from "@prisma/client";
+import { PrismaNeon } from "@prisma/adapter-neon";
+import { neonConfig } from "@neondatabase/serverless";
+import bcrypt from "bcryptjs";
+import WebSocket from "ws";
 
-neonConfig.webSocketConstructor = globalThis.WebSocket;
+neonConfig.webSocketConstructor = WebSocket;
 
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString) {
-	throw new Error('DATABASE_URL environment variable is not set');
+	throw new Error("DATABASE_URL environment variable is not set");
 }
 
 const adapter = new PrismaNeon({ connectionString });
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
-	console.log('Start seeding...');
+	console.log("Start seeding...");
 
-	// 1. Create Default Organization
+	// // 1. Create Default Organization
 	const organization = await prisma.organization.upsert({
-		where: { name: 'Ecclesia Central Parish' },
+		where: { name: "Ecclesia Central Parish" },
 		update: {},
 		create: {
-			name: 'Ecclesia Central Parish',
+			name: "Ecclesia Central Parish",
 			level: HierarchyLevel.PARISH,
-			address: '123 Faith Street, Central City',
-			contactEmail: 'admin@ecclesia.com',
-			contactPhone: '+2348000000000',
+			address: "123 Faith Street, Central City",
+			contactEmail: "admin@ecclesia.com",
+			contactPhone: "+2348000000000",
 		},
 	});
 
-	console.log(`Created organization: ${organization.name}`);
+	// console.log(`Created organization: ${organization.name}`);
 
 	// 2. Create Feature Settings for the Organization
-	await prisma.organizationFeatureSettings.upsert({
-		where: { organizationId: organization.id },
-		update: {},
-		create: {
-			organizationId: organization.id,
-			enableParishionerManagement: true,
-			enableSacramentalRecords: true,
-			enableFinancialManagement: true,
-			enableOfferings: true,
-			enableTithes: true,
-			enableDonationCampaigns: true,
-			enableCustomDonationTypes: true,
-			enableMonthlyTracking: true,
-			enableMassIntentions: true,
-			enableAppointments: true,
-			enableConfessionBooking: true,
-			enableLiveStreaming: true,
-			enableAnnouncements: true,
-			enableSMSNotifications: true,
-			enableEmailNotifications: true,
-			enableSocieties: true,
-			enableEventManagement: true,
-			enableOnlinePayments: true,
-			enablePublicWebsite: true,
-		},
-	});
+	// await prisma.organizationFeatureSettings.upsert({
+	//   where: { organizationId: organization.id },
+	//   update: {},
+	//   create: {
+	//     organizationId: organization.id,
+	//     enableParishionerManagement: true,
+	//     enableSacramentalRecords: true,
+	//     enableFinancialManagement: true,
+	//     enableOfferings: true,
+	//     enableTithes: true,
+	//     enableDonationCampaigns: true,
+	//     enableCustomDonationTypes: true,
+	//     enableMonthlyTracking: true,
+	//     enableMassIntentions: true,
+	//     enableAppointments: true,
+	//     enableConfessionBooking: true,
+	//     enableLiveStreaming: true,
+	//     enableAnnouncements: true,
+	//     enableSMSNotifications: true,
+	//     enableEmailNotifications: true,
+	//     enableSocieties: true,
+	//     enableEventManagement: true,
+	//     enableOnlinePayments: true,
+	//     enablePublicWebsite: true,
+	//   },
+	// });
 
 	// 3. Create Admin User
-	const adminPassword = await bcrypt.hash('admin123', 10);
+	const adminPassword = await bcrypt.hash("@Ecli#$QAWW@20Cia27$", 10);
 	const admin = await prisma.user.upsert({
-		where: { email: 'admin@ecclesia.com' },
+		where: { email: "admin@ecclesialight.com" },
 		update: {},
 		create: {
-			email: 'admin@ecclesia.com',
+			email: "admin@ecclesialight.com",
 			password: adminPassword,
-			firstName: 'System',
-			lastName: 'Admin',
+			firstName: "System",
+			lastName: "Admin",
 			role: UserRole.SUPER_ADMIN,
 			organizationId: organization.id,
 		},
@@ -85,28 +86,28 @@ async function main() {
 	// 4. Create some sample parishioners
 	const parishioners = [
 		{
-			firstName: 'John',
-			lastName: 'Doe',
-			email: 'john.doe@example.com',
-			phone: '08012345678',
-			gender: 'MALE',
-			maritalStatus: 'MARRIED',
+			firstName: "John",
+			lastName: "Doe",
+			email: "john.doe@example.com",
+			phone: "08012345678",
+			gender: "MALE",
+			maritalStatus: "MARRIED",
 		},
 		{
-			firstName: 'Jane',
-			lastName: 'Smith',
-			email: 'jane.smith@example.com',
-			phone: '08087654321',
-			gender: 'FEMALE',
-			maritalStatus: 'SINGLE',
+			firstName: "Jane",
+			lastName: "Smith",
+			email: "jane.smith@example.com",
+			phone: "08087654321",
+			gender: "FEMALE",
+			maritalStatus: "SINGLE",
 		},
 		{
-			firstName: 'Peter',
-			lastName: 'Obi',
-			email: 'peter.obi@example.com',
-			phone: '08011122233',
-			gender: 'MALE',
-			maritalStatus: 'MARRIED',
+			firstName: "Peter",
+			lastName: "Obi",
+			email: "peter.obi@example.com",
+			phone: "08011122233",
+			gender: "MALE",
+			maritalStatus: "MARRIED",
 		},
 	];
 
@@ -126,7 +127,7 @@ async function main() {
 		});
 	}
 
-	console.log('Seeding finished.');
+	console.log("Seeding finished.");
 }
 
 main()

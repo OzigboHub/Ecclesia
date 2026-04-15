@@ -39,13 +39,13 @@ This epic covers the management of societies, societies, and groups within the p
 
 **Acceptance Criteria:**
 
--   [ ] Enter organization name
--   [ ] Select type (Society, Guild, Association, etc.)
--   [ ] Add description and mission
--   [ ] Set patron saint (optional)
--   [ ] Upload logo/image (optional)
--   [ ] Set meeting schedule (day/time)
--   [ ] Set membership requirements
+- [ ] Enter organization name
+- [ ] Select type (Society, Guild, Association, etc.)
+- [ ] Add description and mission
+- [ ] Set patron saint (optional)
+- [ ] Upload logo/image (optional)
+- [ ] Set meeting schedule (day/time)
+- [ ] Set membership requirements
 
 **Priority:** P1
 **Story Points:** 5
@@ -61,12 +61,12 @@ This epic covers the management of societies, societies, and groups within the p
 
 **Acceptance Criteria:**
 
--   [ ] List of all organizations
--   [ ] Shows name, type, member count
--   [ ] Active/inactive status
--   [ ] Search by name
--   [ ] Sort alphabetically or by member count
--   [ ] Filter by type
+- [ ] List of all organizations
+- [ ] Shows name, type, member count
+- [ ] Active/inactive status
+- [ ] Search by name
+- [ ] Sort alphabetically or by member count
+- [ ] Filter by type
 
 **Priority:** P1
 **Story Points:** 3
@@ -82,13 +82,13 @@ This epic covers the management of societies, societies, and groups within the p
 
 **Acceptance Criteria:**
 
--   [ ] Organization name and type
--   [ ] Description and mission
--   [ ] Current leadership
--   [ ] Member count
--   [ ] Meeting schedule
--   [ ] Recent activities
--   [ ] Financial summary (dues collected)
+- [ ] Organization name and type
+- [ ] Description and mission
+- [ ] Current leadership
+- [ ] Member count
+- [ ] Meeting schedule
+- [ ] Recent activities
+- [ ] Financial summary (dues collected)
 
 **Priority:** P1
 **Story Points:** 3
@@ -104,11 +104,11 @@ This epic covers the management of societies, societies, and groups within the p
 
 **Acceptance Criteria:**
 
--   [ ] Edit all organization fields
--   [ ] Change meeting schedule
--   [ ] Update description
--   [ ] Change status (active/inactive)
--   [ ] Audit log of changes
+- [ ] Edit all organization fields
+- [ ] Change meeting schedule
+- [ ] Update description
+- [ ] Change status (active/inactive)
+- [ ] Audit log of changes
 
 **Priority:** P1
 **Story Points:** 3
@@ -124,11 +124,11 @@ This epic covers the management of societies, societies, and groups within the p
 
 **Acceptance Criteria:**
 
--   [ ] Mark as inactive
--   [ ] Historical data preserved
--   [ ] Members' records maintained
--   [ ] Can be reactivated later
--   [ ] Reason for deactivation (optional)
+- [ ] Mark as inactive
+- [ ] Historical data preserved
+- [ ] Members' records maintained
+- [ ] Can be reactivated later
+- [ ] Reason for deactivation (optional)
 
 **Priority:** P2
 **Story Points:** 2
@@ -146,12 +146,12 @@ This epic covers the management of societies, societies, and groups within the p
 
 **Acceptance Criteria:**
 
--   [ ] Select from existing parishioners
--   [ ] Set join date
--   [ ] Set membership status (Active, Probation, etc.)
--   [ ] Set position/role within org (if any)
--   [ ] Add notes
--   [ ] Member receives notification (optional)
+- [ ] Select from existing parishioners
+- [ ] Set join date
+- [ ] Set membership status (Active, Probation, etc.)
+- [ ] Set position/role within org (if any)
+- [ ] Add notes
+- [ ] Member receives notification (optional)
 
 **Priority:** P1
 **Story Points:** 3
@@ -167,12 +167,12 @@ This epic covers the management of societies, societies, and groups within the p
 
 **Acceptance Criteria:**
 
--   [ ] Paginated list of members
--   [ ] Shows name, join date, status, role
--   [ ] Filter by status (Active, Inactive)
--   [ ] Search by name
--   [ ] Sort by name, join date
--   [ ] Export member list
+- [ ] Paginated list of members
+- [ ] Shows name, join date, status, role
+- [ ] Filter by status (Active, Inactive)
+- [ ] Search by name
+- [ ] Sort by name, join date
+- [ ] Export member list
 
 **Priority:** P1
 **Story Points:** 5
@@ -188,11 +188,11 @@ This epic covers the management of societies, societies, and groups within the p
 
 **Acceptance Criteria:**
 
--   [ ] Change status (Active, Inactive, Suspended)
--   [ ] Set effective date
--   [ ] Add reason for change
--   [ ] Historical status tracked
--   [ ] Notification to member (optional)
+- [ ] Change status (Active, Inactive, Suspended)
+- [ ] Set effective date
+- [ ] Add reason for change
+- [ ] Historical status tracked
+- [ ] Notification to member (optional)
 
 **Priority:** P1
 **Story Points:** 2
@@ -208,11 +208,11 @@ This epic covers the management of societies, societies, and groups within the p
 
 **Acceptance Criteria:**
 
--   [ ] Assign role (Secretary, Treasurer, etc.)
--   [ ] Set effective date
--   [ ] Multiple roles allowed
--   [ ] Track role history
--   [ ] Display on member's profile
+- [ ] Assign role (Secretary, Treasurer, etc.)
+- [ ] Set effective date
+- [ ] Multiple roles allowed
+- [ ] Track role history
+- [ ] Display on member's profile
 
 **Priority:** P1
 **Story Points:** 2
@@ -228,11 +228,11 @@ This epic covers the management of societies, societies, and groups within the p
 
 **Acceptance Criteria:**
 
--   [ ] Remove with confirmation
--   [ ] Reason required
--   [ ] Historical record maintained
--   [ ] Dues balance handled
--   [ ] Option to notify member
+- [ ] Remove with confirmation
+- [ ] Reason required
+- [ ] Historical record maintained
+- [ ] Dues balance handled
+- [ ] Option to notify member
 
 **Priority:** P1
 **Story Points:** 2
@@ -248,11 +248,11 @@ This epic covers the management of societies, societies, and groups within the p
 
 **Acceptance Criteria:**
 
--   [ ] Select source organization
--   [ ] Select target organization
--   [ ] Carry over or reset seniority
--   [ ] Transfer date recorded
--   [ ] Both organization records updated
+- [ ] Select source organization
+- [ ] Select target organization
+- [ ] Carry over or reset seniority
+- [ ] Transfer date recorded
+- [ ] Both organization records updated
 
 **Priority:** P3
 **Story Points:** 3
@@ -268,12 +268,12 @@ This epic covers the management of societies, societies, and groups within the p
 
 **Acceptance Criteria:**
 
--   [ ] CSV upload option
--   [ ] Template provided
--   [ ] Match to existing parishioners
--   [ ] Validation and error reporting
--   [ ] Preview before import
--   [ ] Summary after import
+- [ ] CSV upload option
+- [ ] Template provided
+- [ ] Match to existing parishioners
+- [ ] Validation and error reporting
+- [ ] Preview before import
+- [ ] Summary after import
 
 **Priority:** P3
 **Story Points:** 5
@@ -291,12 +291,12 @@ This epic covers the management of societies, societies, and groups within the p
 
 **Acceptance Criteria:**
 
--   [ ] Assign President position
--   [ ] Assign Vice President
--   [ ] Assign Secretary
--   [ ] Assign Treasurer
--   [ ] Other custom positions
--   [ ] Term dates (start/end)
+- [ ] Assign President position
+- [ ] Assign Vice President
+- [ ] Assign Secretary
+- [ ] Assign Treasurer
+- [ ] Other custom positions
+- [ ] Term dates (start/end)
 
 **Priority:** P1
 **Story Points:** 5
@@ -312,11 +312,11 @@ This epic covers the management of societies, societies, and groups within the p
 
 **Acceptance Criteria:**
 
--   [ ] List of past leaders
--   [ ] Position held
--   [ ] Term dates
--   [ ] Filter by position
--   [ ] Filter by year
+- [ ] List of past leaders
+- [ ] Position held
+- [ ] Term dates
+- [ ] Filter by position
+- [ ] Filter by year
 
 **Priority:** P2
 **Story Points:** 3
@@ -332,11 +332,11 @@ This epic covers the management of societies, societies, and groups within the p
 
 **Acceptance Criteria:**
 
--   [ ] Member count and recent changes
--   [ ] Dues collection summary
--   [ ] Upcoming meetings/events
--   [ ] Outstanding dues list
--   [ ] Quick actions (add member, record dues)
+- [ ] Member count and recent changes
+- [ ] Dues collection summary
+- [ ] Upcoming meetings/events
+- [ ] Outstanding dues list
+- [ ] Quick actions (add member, record dues)
 
 **Priority:** P1
 **Story Points:** 5
@@ -352,11 +352,11 @@ This epic covers the management of societies, societies, and groups within the p
 
 **Acceptance Criteria:**
 
--   [ ] Create user accounts for leaders
--   [ ] Assign SOCIETY_PRESIDENT or SOCIETY_SECRETARY role
--   [ ] Scope access to their organization only
--   [ ] Enable/disable access
--   [ ] Access automatically adjusts with role changes
+- [ ] Create user accounts for leaders
+- [ ] Assign SOCIETY_PRESIDENT or SOCIETY_SECRETARY role
+- [ ] Scope access to their organization only
+- [ ] Enable/disable access
+- [ ] Access automatically adjusts with role changes
 
 **Priority:** P1
 **Story Points:** 3
@@ -374,11 +374,11 @@ This epic covers the management of societies, societies, and groups within the p
 
 **Acceptance Criteria:**
 
--   [ ] Set annual/monthly/quarterly dues
--   [ ] Set dues amount
--   [ ] Optional: different rates (new members, seniors)
--   [ ] Due date configuration
--   [ ] Grace period settings
+- [ ] Set annual/monthly/quarterly dues
+- [ ] Set dues amount
+- [ ] Optional: different rates (new members, seniors)
+- [ ] Due date configuration
+- [ ] Grace period settings
 
 **Priority:** P1
 **Story Points:** 3
@@ -394,12 +394,12 @@ This epic covers the management of societies, societies, and groups within the p
 
 **Acceptance Criteria:**
 
--   [ ] Select member
--   [ ] Enter payment amount
--   [ ] Select period covered (month/quarter/year)
--   [ ] Payment method
--   [ ] Date received
--   [ ] Issue receipt
+- [ ] Select member
+- [ ] Enter payment amount
+- [ ] Select period covered (month/quarter/year)
+- [ ] Payment method
+- [ ] Date received
+- [ ] Issue receipt
 
 **Priority:** P1
 **Story Points:** 5
@@ -415,11 +415,11 @@ This epic covers the management of societies, societies, and groups within the p
 
 **Acceptance Criteria:**
 
--   [ ] Current dues status (Paid, Partial, Owing)
--   [ ] Amount outstanding
--   [ ] Payment history
--   [ ] Periods covered
--   [ ] Last payment date
+- [ ] Current dues status (Paid, Partial, Owing)
+- [ ] Amount outstanding
+- [ ] Payment history
+- [ ] Periods covered
+- [ ] Last payment date
 
 **Priority:** P1
 **Story Points:** 3
@@ -435,12 +435,12 @@ This epic covers the management of societies, societies, and groups within the p
 
 **Acceptance Criteria:**
 
--   [ ] List of members owing
--   [ ] Amount owed per member
--   [ ] Total outstanding
--   [ ] Sort by amount or name
--   [ ] Export for follow-up
--   [ ] Bulk reminder option
+- [ ] List of members owing
+- [ ] Amount owed per member
+- [ ] Total outstanding
+- [ ] Sort by amount or name
+- [ ] Export for follow-up
+- [ ] Bulk reminder option
 
 **Priority:** P1
 **Story Points:** 5
@@ -456,12 +456,12 @@ This epic covers the management of societies, societies, and groups within the p
 
 **Acceptance Criteria:**
 
--   [ ] Total dues collected (period)
--   [ ] Outstanding dues
--   [ ] Collection rate
--   [ ] Year-over-year comparison
--   [ ] Dues by member breakdown
--   [ ] Export/print report
+- [ ] Total dues collected (period)
+- [ ] Outstanding dues
+- [ ] Collection rate
+- [ ] Year-over-year comparison
+- [ ] Dues by member breakdown
+- [ ] Export/print report
 
 **Priority:** P2
 **Story Points:** 5
@@ -477,11 +477,11 @@ This epic covers the management of societies, societies, and groups within the p
 
 **Acceptance Criteria:**
 
--   [ ] Dues recorded as payment type
--   [ ] Linked to parishioner payment history
--   [ ] Shows in organization reports
--   [ ] Shows in parish financial reports
--   [ ] Proper categorization
+- [ ] Dues recorded as payment type
+- [ ] Linked to parishioner payment history
+- [ ] Shows in organization reports
+- [ ] Shows in parish financial reports
+- [ ] Proper categorization
 
 **Priority:** P2
 **Story Points:** 3
@@ -499,11 +499,11 @@ This epic covers the management of societies, societies, and groups within the p
 
 **Acceptance Criteria:**
 
--   [ ] Set date and time
--   [ ] Set location
--   [ ] Add agenda (optional)
--   [ ] Mark as regular or special meeting
--   [ ] Notify members (optional)
+- [ ] Set date and time
+- [ ] Set location
+- [ ] Add agenda (optional)
+- [ ] Mark as regular or special meeting
+- [ ] Notify members (optional)
 
 **Priority:** P2
 **Story Points:** 3
@@ -519,12 +519,12 @@ This epic covers the management of societies, societies, and groups within the p
 
 **Acceptance Criteria:**
 
--   [ ] Select meeting
--   [ ] Check off attendees
--   [ ] Quick mark all present
--   [ ] Record late arrivals
--   [ ] Record excused absences
--   [ ] Save attendance
+- [ ] Select meeting
+- [ ] Check off attendees
+- [ ] Quick mark all present
+- [ ] Record late arrivals
+- [ ] Record excused absences
+- [ ] Save attendance
 
 **Priority:** P2
 **Story Points:** 5
@@ -540,11 +540,11 @@ This epic covers the management of societies, societies, and groups within the p
 
 **Acceptance Criteria:**
 
--   [ ] Attendance percentage per member
--   [ ] Meetings attended/missed
--   [ ] Filter by date range
--   [ ] Identify chronic absentees
--   [ ] Attendance report
+- [ ] Attendance percentage per member
+- [ ] Meetings attended/missed
+- [ ] Filter by date range
+- [ ] Identify chronic absentees
+- [ ] Attendance report
 
 **Priority:** P2
 **Story Points:** 3
@@ -560,11 +560,11 @@ This epic covers the management of societies, societies, and groups within the p
 
 **Acceptance Criteria:**
 
--   [ ] Compose message
--   [ ] Send to all members or selected
--   [ ] Via email or SMS (based on settings)
--   [ ] Schedule for later (optional)
--   [ ] View sent announcements
+- [ ] Compose message
+- [ ] Send to all members or selected
+- [ ] Via email or SMS (based on settings)
+- [ ] Schedule for later (optional)
+- [ ] View sent announcements
 
 **Priority:** P2
 **Story Points:** 5
@@ -580,11 +580,11 @@ This epic covers the management of societies, societies, and groups within the p
 
 **Acceptance Criteria:**
 
--   [ ] List of organizations I belong to
--   [ ] My role in each
--   [ ] Dues status
--   [ ] Upcoming meetings
--   [ ] Leadership contacts
+- [ ] List of organizations I belong to
+- [ ] My role in each
+- [ ] Dues status
+- [ ] Upcoming meetings
+- [ ] Leadership contacts
 
 **Priority:** P2
 **Story Points:** 3
@@ -596,18 +596,18 @@ This epic covers the management of societies, societies, and groups within the p
 
 ### Organization Types
 
--   Catholic Men Organization (CMO)
--   Catholic Women Organization (CWO)
--   Legion of Mary
--   Knights of Columbus
--   St. Vincent de Paul Society
--   Altar Servers Guild
--   Choir/Music Ministry
--   Youth Group
--   Young Adults
--   Couples for Christ
--   Charismatic Renewal
--   Custom/Other
+- Catholic Men Organization (CMO)
+- Catholic Women Organization (CWO)
+- Legion of Mary
+- Knights of Columbus
+- St. Vincent de Paul Society
+- Altar Servers Guild
+- Choir/Music Ministry
+- Youth Group
+- Young Adults
+- Couples for Christ
+- Charismatic Renewal
+- Custom/Other
 
 ### Membership Status
 
@@ -619,9 +619,9 @@ PENDING → ACTIVE → INACTIVE
 
 ### Feature Toggle Integration
 
--   Check `enableSocieties` before all operations
--   Dues tracking depends on `enableFinancialManagement`
--   Notifications depend on `enableEmailNotifications` / `enableSMSNotifications`
+- Check `enableSocieties` before all operations
+- Dues tracking depends on `enableFinancialManagement`
+- Notifications depend on `enableEmailNotifications` / `enableSMSNotifications`
 
 ### Database Schema
 
@@ -670,7 +670,7 @@ model SocietyMembership {
 
   id                String                  @id @default(uuid())
   name              String
-  type              PiousOrganizationType
+  type              societyType
   description       String?
   mission           String?
   patronSaint       String?
@@ -685,17 +685,17 @@ model SocietyMembership {
   organizationId    String
   organization      Organization            @relation(...)
 
-  memberships       PiousOrganizationMember[]
-  meetings          PiousOrganizationMeeting[]
+  memberships       societyMember[]
+  meetings          societyMeeting[]
 
   createdAt         DateTime                @default(now())
   updatedAt         DateTime                @updatedAt
 }
 
-model PiousOrganizationMember {
+model societyMember {
   id                    String                   @id @default(uuid())
-  piousOrganizationId   String
-  piousOrganization     PiousOrganization        @relation(...)
+  societyId   String
+  society     society        @relation(...)
   parishionerId         String
   parishioner           Parishioner              @relation(...)
 
@@ -706,36 +706,36 @@ model PiousOrganizationMember {
   createdAt             DateTime                 @default(now())
   updatedAt             DateTime                 @updatedAt
 
-  @@unique([piousOrganizationId, parishionerId])
+  @@unique([societyId, parishionerId])
 }
 
-model PiousOrganizationMeeting {
+model societyMeeting {
   id                    String            @id @default(uuid())
-  piousOrganizationId   String
-  piousOrganization     PiousOrganization @relation(...)
+  societyId   String
+  society     society @relation(...)
   date                  DateTime
   location              String?
   agenda                String?
   type                  MeetingType       @default(REGULAR)
 
-  attendance            PiousOrganizationAttendance[]
+  attendance            societyAttendance[]
 
   createdAt             DateTime          @default(now())
 }
 
-model PiousOrganizationAttendance {
+model societyAttendance {
   id           String                    @id @default(uuid())
   meetingId    String
-  meeting      PiousOrganizationMeeting  @relation(...)
+  meeting      societyMeeting  @relation(...)
   memberId     String
-  member       PiousOrganizationMember   @relation(...)
+  member       societyMember   @relation(...)
   present      Boolean
   notes        String?
 
   @@unique([meetingId, memberId])
 }
 
-enum PiousOrganizationType {
+enum societyType {
   SOCIETY
   GUILD
   ASSOCIATION
@@ -767,29 +767,29 @@ enum MeetingType {
 
 ### Files to Create/Modify
 
--   `app/dashboard/organizations/page.tsx` - List view
--   `app/dashboard/organizations/new/page.tsx` - Create form
--   `app/dashboard/organizations/[id]/page.tsx` - Details
--   `app/dashboard/organizations/[id]/members/page.tsx` - Members list
--   `app/dashboard/organizations/[id]/dues/page.tsx` - Dues tracking
--   `app/dashboard/organizations/[id]/meetings/page.tsx` - Meetings
--   `app/actions/pious-organization.actions.ts` - Server Actions
--   `components/forms/pious-organization-form.tsx` - Form component
--   `lib/validators/pious-organization.schema.ts` - Zod schemas
+- `app/dashboard/organizations/page.tsx` - List view
+- `app/dashboard/organizations/new/page.tsx` - Create form
+- `app/dashboard/organizations/[id]/page.tsx` - Details
+- `app/dashboard/organizations/[id]/members/page.tsx` - Members list
+- `app/dashboard/organizations/[id]/dues/page.tsx` - Dues tracking
+- `app/dashboard/organizations/[id]/meetings/page.tsx` - Meetings
+- `app/actions/pious-organization.actions.ts` - Server Actions
+- `components/forms/pious-organization-form.tsx` - Form component
+- `lib/validators/pious-organization.schema.ts` - Zod schemas
 
 ---
 
 ## Dependencies
 
--   **EPIC-01**: User Management (authentication, role assignment)
--   **EPIC-02**: Organization Management (org scoping, feature toggles)
--   **EPIC-03**: Parishioner Management (member linking)
--   **EPIC-04**: Financial Management (dues as payment type)
--   **EPIC-11**: Integrations (email/SMS for announcements)
+- **EPIC-01**: User Management (authentication, role assignment)
+- **EPIC-02**: Organization Management (org scoping, feature toggles)
+- **EPIC-03**: Parishioner Management (member linking)
+- **EPIC-04**: Financial Management (dues as payment type)
+- **EPIC-11**: Integrations (email/SMS for announcements)
 
 ## Dependent Epics
 
--   None
+- None
 
 ---
 
