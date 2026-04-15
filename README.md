@@ -18,7 +18,7 @@ Ecclesia is a Catholic parish management system that supports parish/outstation 
 - Auth.js (NextAuth v5)
 - Tailwind CSS v4 + shadcn/ui
 - Zod validation
-
+ 
 ## Getting Started
 
 ### 1) Install dependencies
