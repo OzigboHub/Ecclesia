@@ -14,7 +14,9 @@ export default function PublicNavbar() {
   const [open, setOpen] = useState(false);
   const { canInstall, install } = usePwaInstall();
   return (
-    <div className="fixed inset-x-0 top-0 z-50 flex h-16 items-center justify-between bg-secondary/95 px-4 backdrop-blur md:px-8">
+    <div
+      data-public-navbar
+      className="fixed inset-x-0 top-0 z-50 flex h-16 items-center justify-between bg-secondary/95 px-4 backdrop-blur md:px-8">
       <Link href={"/"}>
         <Image
           src={"/standalone-golden-yellow-logo-typography.png"}
