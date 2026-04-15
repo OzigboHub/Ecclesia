@@ -50,7 +50,7 @@ export default function Sidebar({ session }: { session: Session | null }) {
 
 	// Organization context state (in a real app, this might come from the session or a cookie)
 	// For this refactor, we'll assume it's part of the session if a super admin has switched context
-	const contextId = session?.user?.organizationId; // If super admin has switched, this will be the target org
+	const contextId = session?.user?.organizationId;
 
 	const [organizations, setOrganizations] = useState<
 		{ id: string; name: string }[]
@@ -104,7 +104,7 @@ export default function Sidebar({ session }: { session: Session | null }) {
 	const mainNav = SIDEBAR.filter((item) => {
 		if (!userRole) return false;
 		// If super admin and no context, show super admin primary nav
-		if (isSuperAdmin && !contextId) return false; // Handled separately below
+		if (isSuperAdmin && !contextId) return false;
 
 		// Parishioners only see their curated links
 		if (isParishioner) return PARISHIONER_LINKS.includes(item.name);
@@ -124,14 +124,14 @@ export default function Sidebar({ session }: { session: Session | null }) {
 		if (item.name === "Live Streams") return canViewLiveStreams(userRole);
 		if (item.name === "Parish Finances")
 			return canManageFinancials(userRole);
-		if (item.name === "Settings") return isSuperAdmin; // Only Super Admin / System Admin
-		return true; // Dashboard
+		if (item.name === "Settings") return isSuperAdmin;
+		return true;
 	});
 
 	// Filter admin items based on role
 	const filteredAdmin = ADMIN_EXTENDED.filter((item) => {
 		if (!userRole) return false;
-		if (isSuperAdmin) return false; // Handled by SUPERADMIN_SIDEBAR/EXTENDED
+		if (isSuperAdmin) return false;
 		if (item.name === "Manage Organizations")
 			return canManageOrganizations(userRole);
 		if (item.name === "Manage Users") return canManageUsers(userRole);
@@ -141,19 +141,19 @@ export default function Sidebar({ session }: { session: Session | null }) {
 	if (!session?.user) return null;
 
 	return (
-		<div className="sidebar-scroll hidden w-[280px] bg-secondary h-screen shrink-0 py-5 px-3 justify-start items-center lg:flex flex-col gap-8 overflow-y-auto overflow-x-hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-40">
+		<aside className="sidebar-scroll hidden w-[280px] bg-secondary h-screen shrink-0 py-5 px-3 items-center lg:flex flex-col gap-6 overflow-x-hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-40">
 			<Link href="/dashboard">
 				<Image
 					src={"/standalone-golden-yellow-logo-typography.png"}
 					width={"150"}
 					height={"150"}
 					alt="logo"
-					className=" w-37.5 object-cover"
+					className="w-37.5 object-cover"
 				/>
 			</Link>
 
-			<div className=" flex justify-between flex-col h-full w-full">
-				<div className="flex justify-between gap-3 flex-col">
+			<div className="flex h-full min-h-0 w-full flex-col">
+				<div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto">
 					{/* Super Admin Primary Nav */}
 					{isSuperAdmin && (
 						<>
@@ -237,7 +237,7 @@ export default function Sidebar({ session }: { session: Session | null }) {
 					)}
 				</div>
 
-				<div className="px-2">
+				<div className="px-2 pt-4">
 					{/* Role Specific Admin Section (Non-Super Admin) */}
 					{!isSuperAdmin && filteredAdmin.length > 0 && (
 						<>
@@ -312,6 +312,6 @@ export default function Sidebar({ session }: { session: Session | null }) {
 					</div>
 				</div>
 			</div>
-		</div>
+		</aside>
 	);
 }
