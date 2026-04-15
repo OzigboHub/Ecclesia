@@ -24,7 +24,7 @@ Ecclesia is a Catholic parish management system that supports parish/outstation 
 ### 1) Install dependencies
 
 ```bash
-pnpm install
+pnpm install 
 ```
 
 ### 2) Configure environment
