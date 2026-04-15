@@ -115,3 +115,8 @@ body {
 		@apply bg-background text-foreground;
 	}
 }
+
+/* Hide public navbar on docs layout */
+body[data-docs-layout="true"] [data-public-navbar] {
+	display: none !important;
+}
