@@ -1,5 +1,6 @@
 "use client";
 
+import { logout } from "@/app/actions/auth.actions";
 import { getAllOrganizationsWithMetrics } from "@/app/actions/super-admin.actions";
 import { usePwaInstall } from "@/hooks/use-pwa-install";
 import {
@@ -25,16 +26,14 @@ import {
 } from "@/lib/permissions";
 import { Download, LogOut, Settings, User } from "lucide-react";
 import type { Session } from "next-auth";
-import { signOut } from "next-auth/react";
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { OrganizationContextSwitcher } from "../admin/organization-context-switcher";
 import { Separator } from "../ui/separator";
 
 export default function Sidebar({ session }: { session: Session | null }) {
-	const router = useRouter();
 	const pathName = usePathname();
 	const { canInstall, install } = usePwaInstall();
 	const userRole = session?.user?.role;
@@ -303,8 +302,7 @@ export default function Sidebar({ session }: { session: Session | null }) {
 						)}
 						<div
 							onClick={async () => {
-								await signOut({ redirect: false });
-								router.push("/auth/login");
+								await logout();
 							}}
 							className="px-4 py-2 text-primary cursor-pointer hover:bg-white/10 rounded-[10px] gap-4 flex items-center mb-6 transition-all"
 						>

@@ -1,5 +1,6 @@
 "use client";
 
+import { logout } from "@/app/actions/auth.actions";
 import { getAllOrganizationsWithMetrics } from "@/app/actions/super-admin.actions";
 import { usePwaInstall } from "@/hooks/use-pwa-install";
 import {
@@ -25,10 +26,9 @@ import {
 import { getInitials } from "@/lib/utils";
 import { Download, LogOut, Menu, Settings, X } from "lucide-react";
 import type { Session } from "next-auth";
-import { signOut } from "next-auth/react";
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { OrganizationContextSwitcher } from "../admin/organization-context-switcher";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
@@ -41,7 +41,6 @@ export default function ProtectedNavbar({
 	session: Session | null;
 }) {
 	const [open, setOpen] = useState(false);
-	const router = useRouter();
 	const pathName = usePathname();
 	const { canInstall, install } = usePwaInstall();
 	const user = session?.user;
@@ -371,8 +370,7 @@ export default function ProtectedNavbar({
 								)}
 								<div
 									onClick={async () => {
-										await signOut({ redirect: false });
-										router.push("/auth/login");
+										await logout();
 									}}
 									className="px-4 py-2 text-primary cursor-pointer hover:bg-white/10 rounded-[10px] gap-4 flex items-center mb-6 transition-all"
 								>
