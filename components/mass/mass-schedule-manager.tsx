@@ -12,9 +12,11 @@ import { MassScheduleTemplate } from "@prisma/client";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod"; // Reuse or redefine schema constraints
 import { toast } from "sonner";
+import { formatTime12h } from "@/lib/format-time";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { TimePicker } from "@/components/ui/time-picker";
 import {
   Select,
   SelectContent,
@@ -64,7 +66,9 @@ interface MassScheduleManagerProps {
   canDelete?: boolean;
 }
 
-export function MassScheduleManager({ canDelete = false }: MassScheduleManagerProps) {
+export function MassScheduleManager({
+  canDelete = false,
+}: MassScheduleManagerProps) {
   const [templates, setTemplates] = useState<MassScheduleTemplate[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -128,11 +132,13 @@ export function MassScheduleManager({ canDelete = false }: MassScheduleManagerPr
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-semibold">Weekly Schedule Templates</h2>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h2 className="text-xl sm:text-2xl font-semibold">
+          Weekly Schedule Templates
+        </h2>
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
           <DialogTrigger asChild>
-            <Button>
+            <Button size="sm">
               <Plus className="mr-2 h-4 w-4" /> Add Template
             </Button>
           </DialogTrigger>
@@ -141,7 +147,7 @@ export function MassScheduleManager({ canDelete = false }: MassScheduleManagerPr
               <DialogTitle>Add Mass Schedule Template</DialogTitle>
             </DialogHeader>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Day of Week</label>
                   <Controller
@@ -172,8 +178,17 @@ export function MassScheduleManager({ canDelete = false }: MassScheduleManagerPr
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Time (HH:mm)</label>
-                  <Input {...form.register("time")} placeholder="06:00" />
+                  <label className="text-sm font-medium">Time</label>
+                  <Controller
+                    name="time"
+                    control={form.control}
+                    render={({ field }) => (
+                      <TimePicker
+                        value={field.value}
+                        onChange={field.onChange}
+                      />
+                    )}
+                  />
                   {form.formState.errors.time && (
                     <p className="text-red-500 text-sm">
                       {form.formState.errors.time.message}
@@ -217,7 +232,7 @@ export function MassScheduleManager({ canDelete = false }: MassScheduleManagerPr
                 )}
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Language</label>
                   <Input {...form.register("language")} />
@@ -236,29 +251,29 @@ export function MassScheduleManager({ canDelete = false }: MassScheduleManagerPr
         </Dialog>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {days.map((day) => {
           const dayTemplates = templates.filter((t) => t.dayOfWeek === day);
           if (dayTemplates.length === 0) return null;
           return (
             <Card key={day}>
               <CardHeader className="pb-3">
-                <CardTitle className="text-lg">{day}</CardTitle>
+                <CardTitle className="text-base sm:text-lg">{day}</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-3">
                 {dayTemplates.map((t) => (
                   <div
                     key={t.id}
-                    className="flex items-center justify-between p-2 bg-secondary/20 rounded-lg">
-                    <div>
-                      <div className="font-semibold">
-                        {t.time}{" "}
+                    className="flex items-start justify-between gap-2 p-3 bg-secondary/20 rounded-lg">
+                    <div className="min-w-0">
+                      <div className="font-semibold text-sm sm:text-base">
+                        {formatTime12h(t.time)}
                         <span className="text-xs font-normal text-muted-foreground ml-2">
-                          {t.massType}
+                          {t.massType.replace(/_/g, " ")}
                         </span>
                       </div>
-                      <div className="text-xs text-muted-foreground">
-                        {t.language} • {t.location}
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        {t.language} · {t.location}
                       </div>
                     </div>
                     {canDelete && (

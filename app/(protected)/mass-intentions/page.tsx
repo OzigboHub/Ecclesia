@@ -41,15 +41,18 @@ export default async function MassIntentionsPage() {
   if (!intentionsResult.success) {
     return (
       <div className="space-y-4">
-        <div className="flex items-center justify-between gap-3">
+        hbgv{" "}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-3xl font-bold">Mass Intentions</h1>
-            <p className="text-muted-foreground mt-1">
+            <h1 className="text-2xl sm:text-3xl font-bold">Mass Intentions</h1>
+            <p className="text-muted-foreground text-sm mt-1">
               Book a thanksgiving, requiem, or special intention.
             </p>
           </div>
           <Link href="/masses">
-            <Button variant="outline">View Mass Schedule</Button>
+            <Button variant="outline" size="sm">
+              View Mass Schedule
+            </Button>
           </Link>
         </div>
         <div className="rounded-lg border border-destructive bg-destructive/10 p-4">
@@ -66,20 +69,22 @@ export default async function MassIntentionsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Mass Intentions</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="text-2xl sm:text-3xl font-bold">Mass Intentions</h1>
+          <p className="text-muted-foreground text-sm mt-1">
             {isParishioner
               ? "Select a mass below and book your intention."
               : "Book a thanksgiving, requiem, or special intention for an available mass."}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {canExport && <MassIntentionExportButton />}
           {!isParishioner && (
             <Link href="/masses">
-              <Button variant="outline">View Mass Schedule</Button>
+              <Button variant="outline" size="sm">
+                View Mass Schedule
+              </Button>
             </Link>
           )}
         </div>

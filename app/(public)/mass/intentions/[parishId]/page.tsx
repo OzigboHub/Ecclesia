@@ -1,5 +1,6 @@
 import db from "@/lib/db";
 import { isFeatureEnabled } from "@/lib/features.server";
+import { formatTime12h } from "@/lib/format-time";
 import { format } from "date-fns";
 import { BookOpen, Calendar, Church, Clock, MapPin } from "lucide-react";
 import Link from "next/link";
@@ -122,7 +123,7 @@ export default async function ParishIntentionsPage({
                   </div>
                   <p className="text-sm text-muted-foreground">
                     {format(new Date(mass.date), "EEEE, MMMM d, yyyy")} ·{" "}
-                    {mass.time}
+                    {formatTime12h(mass.time)}
                     {mass.location && ` · ${mass.location}`}
                     {mass.celebrant && ` · ${mass.celebrant}`}
                   </p>

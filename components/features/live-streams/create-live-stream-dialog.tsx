@@ -4,6 +4,7 @@ import {
   createLiveStream,
   getMassesForStreamLinking,
 } from "@/app/actions/live-stream.actions";
+import { formatTime12h } from "@/lib/format-time";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -93,7 +94,7 @@ export function CreateLiveStreamDialog() {
   const formatMassLabel = (mass: MassOption) => {
     const date = format(new Date(mass.date), "MMM d, yyyy");
     const type = mass.massType.replace(/_/g, " ");
-    return `${date} at ${mass.time} — ${type}${mass.celebrant ? ` (${mass.celebrant})` : ""}`;
+    return `${date} at ${formatTime12h(mass.time)} — ${type}${mass.celebrant ? ` (${mass.celebrant})` : ""}`;
   };
 
   return (
@@ -162,7 +163,7 @@ export function CreateLiveStreamDialog() {
               <SelectTrigger id="stream-mass">
                 <SelectValue placeholder="Select a mass (optional)" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-primary">
                 <SelectItem value="none">No linked mass</SelectItem>
                 {masses.map((mass) => (
                   <SelectItem key={mass.id} value={mass.id}>

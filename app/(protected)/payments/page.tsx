@@ -104,25 +104,25 @@ export default async function PaymentsPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Payments</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Payments</h1>
+          <p className="text-sm text-muted-foreground mt-1">
             Track offerings, tithes, and donations.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {canManageTypes && (
-            <Button variant="outline" asChild>
+            <Button variant="outline" size="sm" asChild>
               <Link href="/payments/types">Payment Types</Link>
             </Button>
           )}
-          <Button variant="outline" asChild>
+          <Button variant="outline" size="sm" asChild>
             <a href="/api/payments/export">
               <Download className="mr-2 h-4 w-4" /> Export
             </a>
           </Button>
-          <Button asChild>
+          <Button size="sm" asChild>
             <Link href="/payments/new">
               <Plus className="mr-2 h-4 w-4" /> Record Payment
             </Link>
@@ -192,7 +192,7 @@ export default async function PaymentsPage({
       <PaymentsListClient searchParams={searchParams} />
 
       {/* Table Section */}
-      <div className="bg-background border border-border rounded-lg shadow-sm p-6">
+      <div className="bg-background border border-border rounded-lg shadow-sm p-3 sm:p-6">
         <PaymentsTable payments={payments} />
       </div>
     </div>

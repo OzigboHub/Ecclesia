@@ -239,8 +239,8 @@ export async function createMassIntention(
     // Close bookings 30 minutes before Mass starts
     if (mass.date && mass.time) {
       const [h, m] = mass.time.split(":").map(Number);
-      const massStart = new Date(mass.date);
-      massStart.setHours(h, m, 0, 0);
+      const d = new Date(mass.date);
+      const massStart = new Date(d.getFullYear(), d.getMonth(), d.getDate(), h, m, 0, 0);
       const cutoff = new Date(massStart.getTime() - 30 * 60 * 1000);
       if (new Date() >= cutoff) {
         return {
@@ -271,26 +271,6 @@ export async function createMassIntention(
         },
       });
 
-      // Create payment record if stipend provided by STAFF (parishioners pay via Paystack)
-      if (stipend && stipend > 0 && session.user.role !== "PARISHIONER") {
-        await tx.payment.create({
-          data: {
-            amount: stipend,
-            purpose: "MASS_INTENTION",
-            paymentMethod: "CASH",
-            paymentStatus: "COMPLETED",
-            payerName: rest.requestedBy || "Anonymous",
-            organizationId: session.user.organizationId,
-            recordedById: session.user.id,
-            ...(linkedParishionerId && {
-              parishionerId: linkedParishionerId,
-            }),
-            massIntentionId: massIntention.id,
-            notes: `Stipend for mass intention: ${rest.intention}`,
-          },
-        });
-      }
-
       // Audit Log
       await tx.auditLog.create({
         data: {
@@ -318,11 +298,7 @@ export async function createMassIntention(
 
     return {
       success: true,
-      message:
-        "Mass intention scheduled successfully" +
-        (stipend && stipend > 0
-          ? ` and payment recorded (₦${stipend.toLocaleString("en-NG")})`
-          : ""),
+      message: "Mass intention scheduled successfully",
       data: result,
     };
   } catch (error) {
@@ -704,8 +680,8 @@ export async function submitPublicMassIntention(
     // Close bookings 30 minutes before Mass starts
     if (mass.date && mass.time) {
       const [h, m] = mass.time.split(":").map(Number);
-      const massStart = new Date(mass.date);
-      massStart.setHours(h, m, 0, 0);
+      const d = new Date(mass.date);
+      const massStart = new Date(d.getFullYear(), d.getMonth(), d.getDate(), h, m, 0, 0);
       const cutoff = new Date(massStart.getTime() - 30 * 60 * 1000);
       if (new Date() >= cutoff) {
         return {

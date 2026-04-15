@@ -86,7 +86,9 @@ export default function NewParishFinancialEntryPage() {
           </Link>
         </Button>
         <div>
-          <h1 className="text-3xl font-bold">Record Financial Entry</h1>
+          <h1 className="text-xl md:text-3xl font-bold">
+            Record Financial Entry
+          </h1>
           <p className="text-muted-foreground">
             Record a parish collection or financial entry. Backdating is
             supported.

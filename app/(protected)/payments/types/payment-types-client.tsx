@@ -67,8 +67,10 @@ function getCategoryBadgeVariant(category: string) {
 
 export function PaymentTypesClient({
   initialPaymentTypes,
+  canDelete = false,
 }: {
   initialPaymentTypes: PaymentTypeItem[];
+  canDelete?: boolean;
 }) {
   const [paymentTypes, setPaymentTypes] =
     useState<PaymentTypeItem[]>(initialPaymentTypes);
@@ -312,18 +314,20 @@ export function PaymentTypesClient({
                       onClick={() => handleToggleActive(item)}>
                       {item.isActive ? "Deactivate" : "Activate"}
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-destructive hover:text-destructive"
-                      onClick={() => handleDelete(item.id)}
-                      disabled={deletingId === item.id}>
-                      {deletingId === item.id ? (
-                        <Spinner className="h-3 w-3" />
-                      ) : (
-                        <Trash2 className="h-3 w-3" />
-                      )}
-                    </Button>
+                    {canDelete && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => handleDelete(item.id)}
+                        disabled={deletingId === item.id}>
+                        {deletingId === item.id ? (
+                          <Spinner className="h-3 w-3" />
+                        ) : (
+                          <Trash2 className="h-3 w-3" />
+                        )}
+                      </Button>
+                    )}
                   </div>
                 </div>
               ))}

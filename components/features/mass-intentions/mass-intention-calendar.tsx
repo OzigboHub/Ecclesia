@@ -19,6 +19,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
+import { formatTime12h } from "@/lib/format-time";
 import type { Prisma } from "@prisma/client";
 import { Modal } from "@/components/ui/modal";
 import { MassIntentionForm } from "@/components/forms/mass-intention-form";
@@ -404,8 +405,15 @@ export function MassIntentionCalendar({
                     let massClosed = false;
                     if (isToday && mass.time) {
                       const [h, m] = mass.time.split(":").map(Number);
-                      const massStart = new Date(massDate);
-                      massStart.setHours(h, m, 0, 0);
+                      const massStart = new Date(
+                        massDate.getFullYear(),
+                        massDate.getMonth(),
+                        massDate.getDate(),
+                        h,
+                        m,
+                        0,
+                        0,
+                      );
                       const cutoff = new Date(
                         massStart.getTime() - 30 * 60 * 1000,
                       );
@@ -433,7 +441,7 @@ export function MassIntentionCalendar({
                             <div className="flex items-center gap-2">
                               <Clock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                               <span className="font-semibold text-sm">
-                                {mass.time}
+                                {formatTime12h(mass.time)}
                               </span>
                               {isSelected && (
                                 <CheckCircle2 className="h-4 w-4 text-primary" />
@@ -496,7 +504,8 @@ export function MassIntentionCalendar({
                       <div>
                         <p className="text-sm font-medium">Ready to book?</p>
                         <p className="text-xs text-muted-foreground mt-0.5">
-                          {format(selectedDate, "d MMM")} · {selectedMass.time}
+                          {format(selectedDate, "d MMM")} ·{" "}
+                          {formatTime12h(selectedMass.time)}
                         </p>
                       </div>
                       <Button size="sm" onClick={() => setIsBookingOpen(true)}>
@@ -589,7 +598,7 @@ export function MassIntentionCalendar({
                                 )}
                               </span>
                               <span>·</span>
-                              <span>{intention.mass.time}</span>
+                              <span>{formatTime12h(intention.mass.time)}</span>
                             </>
                           )}
                         </div>
@@ -615,7 +624,7 @@ export function MassIntentionCalendar({
       <Modal
         isOpen={isBookingOpen && !!selectedDate && !!selectedMass}
         onClose={() => setIsBookingOpen(false)}
-        title={`Book Mass Intention — ${selectedDate ? format(selectedDate, "d MMM yyyy") : ""} at ${selectedMass?.time ?? ""}`}>
+        title={`Book Mass Intention — ${selectedDate ? format(selectedDate, "d MMM yyyy") : ""} at ${selectedMass ? formatTime12h(selectedMass.time) : ""}`}>
         {selectedDate && selectedMass && (
           <MassIntentionForm
             organizationId={selectedOrganizationId}
