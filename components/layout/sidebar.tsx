@@ -141,7 +141,7 @@ export default function Sidebar({ session }: { session: Session | null }) {
 	if (!session?.user) return null;
 
 	return (
-		<aside className="sidebar-scroll hidden w-[280px] bg-secondary h-screen shrink-0 py-5 px-3 items-center lg:flex flex-col gap-6 overflow-x-hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-40">
+		<aside className="sidebar-scroll hidden w-[280px] bg-secondary h-screen shrink-0 py-5 px-3 items-center lg:flex flex-col gap-6 overflow-x-hidden">
 			<Link href="/dashboard">
 				<Image
 					src={"/standalone-golden-yellow-logo-typography.png"}
