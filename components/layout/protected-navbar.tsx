@@ -12,6 +12,7 @@ import {
 import {
 	canBookAppointments,
 	canBookMassIntentions,
+	canEditOrganizationProfile,
 	canManageFinancials,
 	canManageMassIntentions,
 	canManageOrganizations,
@@ -49,6 +50,7 @@ export default function ProtectedNavbar({
 	const contextId = user?.organizationId;
 	const isParishioner = userRole === "PARISHIONER";
 	const isSocietyPresident = userRole === "SOCIETY_PRESIDENT";
+	const isOutstationAdmin = userRole === "OUTSTATION_ADMIN";
 
 	const [organizations, setOrganizations] = useState<
 		{ id: string; name: string }[]
@@ -94,11 +96,28 @@ export default function ProtectedNavbar({
 		"Live Streams",
 	];
 
+	const OUTSTATION_ADMIN_LINKS = [
+		"Dashboard",
+		"Parishioners",
+		"Mass Calendar",
+		"Mass Intentions",
+		"Appointments",
+		"Announcements",
+		"Societies",
+		"Organization",
+		"Payments",
+		"Parish Finances",
+		"Live Streams",
+	];
+
 	const mainNav = SIDEBAR.filter((item) => {
 		if (!userRole) return false;
 		if (isSuperAdmin && !contextId) return false;
 
 		if (isParishioner) return PARISHIONER_LINKS.includes(item.name);
+
+		if (isOutstationAdmin)
+			return OUTSTATION_ADMIN_LINKS.includes(item.name);
 
 		if (item.name === "Parishioners")
 			return canManageParishioners(userRole);
@@ -114,6 +133,8 @@ export default function ProtectedNavbar({
 		if (item.name === "Live Streams") return canViewLiveStreams(userRole);
 		if (item.name === "Parish Finances")
 			return canManageFinancials(userRole);
+		if (item.name === "Organization")
+			return canEditOrganizationProfile(userRole);
 		if (item.name === "Settings") return isSuperAdmin;
 		return true;
 	});

@@ -12,6 +12,7 @@ import {
 import {
 	canBookAppointments,
 	canBookMassIntentions,
+	canEditOrganizationProfile,
 	canMakePayments,
 	canManageFinancials,
 	canManageMassIntentions,
@@ -87,6 +88,7 @@ export default function Sidebar({ session }: { session: Session | null }) {
 	}, [userRole]);
 
 	const isParishioner = userRole === "PARISHIONER";
+	const isOutstationAdmin = userRole === "OUTSTATION_ADMIN";
 
 	// Parishioners get a curated set of links
 	const PARISHIONER_LINKS = [
@@ -100,6 +102,20 @@ export default function Sidebar({ session }: { session: Session | null }) {
 		"Live Streams",
 	];
 
+	const OUTSTATION_ADMIN_LINKS = [
+		"Dashboard",
+		"Parishioners",
+		"Mass Calendar",
+		"Mass Intentions",
+		"Appointments",
+		"Announcements",
+		"Societies",
+		"Organization",
+		"Payments",
+		"Parish Finances",
+		"Live Streams",
+	];
+
 	// Filter sidebar items based on role or active context
 	const mainNav = SIDEBAR.filter((item) => {
 		if (!userRole) return false;
@@ -108,6 +124,9 @@ export default function Sidebar({ session }: { session: Session | null }) {
 
 		// Parishioners only see their curated links
 		if (isParishioner) return PARISHIONER_LINKS.includes(item.name);
+
+		if (isOutstationAdmin)
+			return OUTSTATION_ADMIN_LINKS.includes(item.name);
 
 		if (item.name === "Parishioners")
 			return canManageParishioners(userRole);
@@ -124,6 +143,8 @@ export default function Sidebar({ session }: { session: Session | null }) {
 		if (item.name === "Live Streams") return canViewLiveStreams(userRole);
 		if (item.name === "Parish Finances")
 			return canManageFinancials(userRole);
+		if (item.name === "Organization")
+			return canEditOrganizationProfile(userRole);
 		if (item.name === "Settings") return isSuperAdmin;
 		return true;
 	});
@@ -132,8 +153,12 @@ export default function Sidebar({ session }: { session: Session | null }) {
 	const filteredAdmin = ADMIN_EXTENDED.filter((item) => {
 		if (!userRole) return false;
 		if (isSuperAdmin) return false;
-		if (item.name === "Manage Organizations")
+		if (
+			item.name === "Manage Organizations" ||
+			item.name === "Manage Parish"
+		)
 			return canManageOrganizations(userRole);
+		if (item.name === "Outstations") return userRole === "PARISH_ADMIN";
 		if (item.name === "Manage Users") return canManageUsers(userRole);
 		return false;
 	});

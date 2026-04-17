@@ -3,7 +3,10 @@
 import { auth } from "@/auth";
 import db from "@/lib/db";
 import { isFeatureEnabled } from "@/lib/features.server";
-import { canManageSocieties } from "@/lib/permissions";
+import {
+	canManageSocieties,
+	canReviewSocietyJoinRequests,
+} from "@/lib/permissions";
 import {
 	addMemberSchema,
 	createMeetingSchema,
@@ -836,13 +839,6 @@ export type JoinRequestWithParishioner = Prisma.SocietyJoinRequestGetPayload<{
 	};
 }>;
 
-const JOIN_REQUEST_REVIEWER_ROLES = [
-	"SUPER_ADMIN",
-	"PARISH_ADMIN",
-	"PARISH_SECRETARY",
-	"PARISH_STAFF",
-];
-
 export async function requestToJoinSociety(
 	societyId: string,
 	message?: string,
@@ -1057,7 +1053,7 @@ export async function getJoinRequestsForSociety(
 			return { success: false, message: "Unauthorized" };
 		}
 
-		const isStaff = JOIN_REQUEST_REVIEWER_ROLES.includes(session.user.role);
+		const canReview = canReviewSocietyJoinRequests(session.user.role);
 
 		const society = await db.society.findFirst({
 			where: {
@@ -1074,7 +1070,7 @@ export async function getJoinRequestsForSociety(
 			society.presidentId === session.user.id ||
 			society.secretaryId === session.user.id;
 
-		if (!isStaff && !isSocietyLeader) {
+		if (!canReview && !isSocietyLeader) {
 			return { success: false, message: "Permission denied" };
 		}
 
@@ -1114,7 +1110,7 @@ export async function approveJoinRequest(
 			return { success: false, message: "Unauthorized" };
 		}
 
-		const isStaff = JOIN_REQUEST_REVIEWER_ROLES.includes(session.user.role);
+		const canReview = canReviewSocietyJoinRequests(session.user.role);
 
 		const request = await db.societyJoinRequest.findFirst({
 			where: {
@@ -1135,7 +1131,7 @@ export async function approveJoinRequest(
 			request.society.presidentId === session.user.id ||
 			request.society.secretaryId === session.user.id;
 
-		if (!isStaff && !isSocietyLeader) {
+		if (!canReview && !isSocietyLeader) {
 			return { success: false, message: "Permission denied" };
 		}
 
@@ -1195,7 +1191,7 @@ export async function rejectJoinRequest(
 			return { success: false, message: "Unauthorized" };
 		}
 
-		const isStaff = JOIN_REQUEST_REVIEWER_ROLES.includes(session.user.role);
+		const canReview = canReviewSocietyJoinRequests(session.user.role);
 
 		const request = await db.societyJoinRequest.findFirst({
 			where: {
@@ -1216,7 +1212,7 @@ export async function rejectJoinRequest(
 			request.society.presidentId === session.user.id ||
 			request.society.secretaryId === session.user.id;
 
-		if (!isStaff && !isSocietyLeader) {
+		if (!canReview && !isSocietyLeader) {
 			return { success: false, message: "Permission denied" };
 		}
 
