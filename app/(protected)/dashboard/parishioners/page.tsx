@@ -33,6 +33,11 @@ export default async function ParishionersPage({
 	}
 
 	const parishioners = result.data || [];
+	const canImport = [
+		"SUPER_ADMIN",
+		"PARISH_ADMIN",
+		"PARISH_SECRETARY",
+	].includes(session.user.role);
 
 	return (
 		<div className="space-y-6">
@@ -47,7 +52,7 @@ export default async function ParishionersPage({
 					</p>
 				</div>
 				<div className="flex gap-2">
-					<CsvImportDialog />
+					{canImport && <CsvImportDialog />}
 					<Link href="/dashboard/parishioners/new">
 						<Button>
 							<Plus className="mr-2 h-4 w-4" />
@@ -58,7 +63,10 @@ export default async function ParishionersPage({
 			</div>
 
 			{/* Parishioners List */}
-			<ParishionersList parishioners={parishioners} canDelete={isAdminRole(session.user.role)} />
+			<ParishionersList
+				parishioners={parishioners}
+				canDelete={isAdminRole(session.user.role)}
+			/>
 		</div>
 	);
 }

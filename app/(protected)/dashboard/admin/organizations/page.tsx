@@ -1,26 +1,26 @@
-import { auth } from '@/auth';
-import { redirect } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { getAllOrganizationsWithMetrics } from "@/app/actions/super-admin.actions";
+import { auth } from "@/auth";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
-import { getAllOrganizationsWithMetrics } from '@/app/actions/super-admin.actions';
-import { Search, Eye, Settings, Building2, Users } from 'lucide-react';
-import Link from 'next/link';
+	Table,
+	TableBody,
+	TableCell,
+	TableHead,
+	TableHeader,
+	TableRow,
+} from "@/components/ui/table";
+import { Building2, Eye, Search, Settings, Users } from "lucide-react";
+import Link from "next/link";
+import { redirect } from "next/navigation";
 
 interface OrganizationsPageProps {
 	searchParams: Promise<{
 		page?: string;
 		search?: string;
-		level?: 'PARISH' | 'OUTSTATION';
+		level?: "PARISH" | "OUTSTATION";
 	}>;
 }
 
@@ -29,12 +29,22 @@ export default async function OrganizationsPage({
 }: OrganizationsPageProps) {
 	const session = await auth();
 
-	if (!session?.user || session.user.role !== 'SUPER_ADMIN') {
-		redirect('/dashboard');
+	if (!session?.user) {
+		redirect("/dashboard");
+	}
+
+	if (session.user.role === "PARISH_ADMIN") {
+		redirect(
+			`/dashboard/admin/organizations/${session.user.organizationId}`,
+		);
+	}
+
+	if (session.user.role !== "SUPER_ADMIN") {
+		redirect("/dashboard");
 	}
 
 	const params = await searchParams;
-	const page = parseInt(params.page || '1');
+	const page = parseInt(params.page || "1");
 	const searchQuery = params.search;
 	const level = params.level;
 
@@ -42,7 +52,7 @@ export default async function OrganizationsPage({
 		page,
 		20,
 		searchQuery,
-		level
+		level,
 	);
 
 	const organizations = result.data?.data || [];
@@ -50,20 +60,20 @@ export default async function OrganizationsPage({
 	const totalPages = result.data?.totalPages || 1;
 
 	return (
-		<div className='space-y-6'>
+		<div className="space-y-6">
 			{/* Header */}
-			<div className='flex items-center justify-between'>
+			<div className="flex items-center justify-between">
 				<div>
-					<h1 className='text-3xl font-bold tracking-tight'>
+					<h1 className="text-3xl font-bold tracking-tight">
 						Organizations
 					</h1>
-					<p className='text-muted-foreground mt-2'>
+					<p className="text-muted-foreground mt-2">
 						Manage all parishes and outstations
 					</p>
 				</div>
-				<Link href='/dashboard/admin/organizations/new'>
+				<Link href="/dashboard/admin/organizations/new">
 					<Button>
-						<Building2 className='h-4 w-4 mr-2' />
+						<Building2 className="h-4 w-4 mr-2" />
 						Create Parish
 					</Button>
 				</Link>
@@ -71,49 +81,45 @@ export default async function OrganizationsPage({
 
 			{/* Filters */}
 			<Card>
-				<CardContent className='pt-6'>
-					<div className='flex gap-4'>
-						<div className='flex-1 relative'>
-							<Search className='absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground' />
+				<CardContent className="pt-6">
+					<div className="flex gap-4">
+						<div className="flex-1 relative">
+							<Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
 							<Input
-								placeholder='Search organizations...'
-								className='pl-10'
+								placeholder="Search organizations..."
+								className="pl-10"
 								defaultValue={searchQuery}
 							/>
 						</div>
-						<div className='flex gap-2'>
-							<Link
-								href='/dashboard/admin/organizations'
-							>
+						<div className="flex gap-2">
+							<Link href="/dashboard/admin/organizations">
 								<Button
-									variant={!level ? 'default' : 'outline'}
-									size='sm'
+									variant={!level ? "default" : "outline"}
+									size="sm"
 								>
 									All
 								</Button>
 							</Link>
-							<Link
-								href='/dashboard/admin/organizations?level=PARISH'
-							>
+							<Link href="/dashboard/admin/organizations?level=PARISH">
 								<Button
 									variant={
-										level === 'PARISH' ? 'default' : 'outline'
+										level === "PARISH" ? "default" : (
+											"outline"
+										)
 									}
-									size='sm'
+									size="sm"
 								>
 									Parishes
 								</Button>
 							</Link>
-							<Link
-								href='/dashboard/admin/organizations?level=OUTSTATION'
-							>
+							<Link href="/dashboard/admin/organizations?level=OUTSTATION">
 								<Button
 									variant={
-										level === 'OUTSTATION'
-											? 'default'
-											: 'outline'
+										level === "OUTSTATION" ? "default" : (
+											"outline"
+										)
 									}
-									size='sm'
+									size="sm"
 								>
 									Outstations
 								</Button>
@@ -127,7 +133,7 @@ export default async function OrganizationsPage({
 			<Card>
 				<CardHeader>
 					<CardTitle>
-						{total} Organization{total !== 1 ? 's' : ''}
+						{total} Organization{total !== 1 ? "s" : ""}
 					</CardTitle>
 				</CardHeader>
 				<CardContent>
@@ -140,115 +146,117 @@ export default async function OrganizationsPage({
 								<TableHead>Users</TableHead>
 								<TableHead>Parishioners</TableHead>
 								<TableHead>Societies</TableHead>
-								<TableHead className='text-right'>
+								<TableHead className="text-right">
 									Actions
 								</TableHead>
 							</TableRow>
 						</TableHeader>
 						<TableBody>
-							{organizations.length === 0 ? (
+							{organizations.length === 0 ?
 								<TableRow>
 									<TableCell
 										colSpan={7}
-										className='text-center py-6 text-muted-foreground'
+										className="text-center py-6 text-muted-foreground"
 									>
 										No organizations found
 									</TableCell>
 								</TableRow>
-							) : (
-								organizations.map((org) => (
+							:	organizations.map((org) => (
 									<TableRow key={org.id}>
-										<TableCell className='font-medium'>
+										<TableCell className="font-medium">
 											{org.name}
 										</TableCell>
 										<TableCell>
 											<Badge
 												variant={
-													org.level === 'PARISH'
-														? 'default'
-														: 'secondary'
+													org.level === "PARISH" ?
+														"default"
+													:	"secondary"
 												}
 											>
-												{org.level === 'PARISH'
-													? '⛪ Parish'
-													: '🏛️ Outstation'}
+												{org.level === "PARISH" ?
+													"⛪ Parish"
+												:	"🏛️ Outstation"}
 											</Badge>
 										</TableCell>
 										<TableCell>
-											{org.parent ? (
+											{org.parent ?
 												<Link
 													href={`/dashboard/admin/organizations/${org.parent.id}`}
-													className='text-sm text-muted-foreground hover:underline'
+													className="text-sm text-muted-foreground hover:underline"
 												>
 													{org.parent.name}
 												</Link>
-											) : (
-												<span className='text-sm text-muted-foreground'>
+											:	<span className="text-sm text-muted-foreground">
 													-
 												</span>
-											)}
+											}
 										</TableCell>
 										<TableCell>
-											<div className='flex items-center gap-1'>
-												<Users className='h-3 w-3 text-muted-foreground' />
+											<div className="flex items-center gap-1">
+												<Users className="h-3 w-3 text-muted-foreground" />
 												<span>{org._count.users}</span>
 											</div>
 										</TableCell>
-										<TableCell>{org._count.parishioners}</TableCell>
-										<TableCell>{org._count.societies}</TableCell>
-										<TableCell className='text-right'>
-											<div className='flex justify-end gap-2'>
+										<TableCell>
+											{org._count.parishioners}
+										</TableCell>
+										<TableCell>
+											{org._count.societies}
+										</TableCell>
+										<TableCell className="text-right">
+											<div className="flex justify-end gap-2">
 												<Link
 													href={`/dashboard/admin/organizations/${org.id}`}
 												>
 													<Button
-														variant='ghost'
-														size='sm'
+														variant="ghost"
+														size="sm"
 													>
-														<Eye className='h-4 w-4' />
+														<Eye className="h-4 w-4" />
 													</Button>
 												</Link>
 												<Link
 													href={`/dashboard/admin/organizations/${org.id}/settings`}
 												>
 													<Button
-														variant='ghost'
-														size='sm'
+														variant="ghost"
+														size="sm"
 													>
-														<Settings className='h-4 w-4' />
+														<Settings className="h-4 w-4" />
 													</Button>
 												</Link>
 											</div>
 										</TableCell>
 									</TableRow>
 								))
-							)}
+							}
 						</TableBody>
 					</Table>
 
 					{/* Pagination */}
 					{totalPages > 1 && (
-						<div className='flex items-center justify-center gap-2 mt-4'>
+						<div className="flex items-center justify-center gap-2 mt-4">
 							<Link
-								href={`/dashboard/admin/organizations?page=${Math.max(1, page - 1)}${searchQuery ? `&search=${searchQuery}` : ''}${level ? `&level=${level}` : ''}`}
+								href={`/dashboard/admin/organizations?page=${Math.max(1, page - 1)}${searchQuery ? `&search=${searchQuery}` : ""}${level ? `&level=${level}` : ""}`}
 							>
 								<Button
-									variant='outline'
-									size='sm'
+									variant="outline"
+									size="sm"
 									disabled={page === 1}
 								>
 									Previous
 								</Button>
 							</Link>
-							<span className='text-sm text-muted-foreground'>
+							<span className="text-sm text-muted-foreground">
 								Page {page} of {totalPages}
 							</span>
 							<Link
-								href={`/dashboard/admin/organizations?page=${Math.min(totalPages, page + 1)}${searchQuery ? `&search=${searchQuery}` : ''}${level ? `&level=${level}` : ''}`}
+								href={`/dashboard/admin/organizations?page=${Math.min(totalPages, page + 1)}${searchQuery ? `&search=${searchQuery}` : ""}${level ? `&level=${level}` : ""}`}
 							>
 								<Button
-									variant='outline'
-									size='sm'
+									variant="outline"
+									size="sm"
 									disabled={page === totalPages}
 								>
 									Next

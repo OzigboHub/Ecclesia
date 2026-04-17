@@ -12,9 +12,13 @@ export async function GET(request: NextRequest) {
 		"SUPER_ADMIN",
 		"PARISH_ADMIN",
 		"PARISH_SECRETARY",
+		"OUTSTATION_ADMIN",
 	].includes(session.user.role);
 	if (!canExport) {
-		return NextResponse.json({ error: "Permission denied" }, { status: 403 });
+		return NextResponse.json(
+			{ error: "Permission denied" },
+			{ status: 403 },
+		);
 	}
 
 	const { searchParams } = request.nextUrl;
@@ -74,11 +78,11 @@ export async function GET(request: NextRequest) {
 			p.paymentMethod.replace(/_/g, " "),
 			p.paymentStatus,
 			p.transactionRef || "",
-			p.parishioner
-				? escapeCsv(
-						`${p.parishioner.firstName} ${p.parishioner.lastName}`,
-					)
-				: "",
+			p.parishioner ?
+				escapeCsv(
+					`${p.parishioner.firstName} ${p.parishioner.lastName}`,
+				)
+			:	"",
 			p.massIntention ? escapeCsv(p.massIntention.intention) : "",
 			p.donationCampaign ? escapeCsv(p.donationCampaign.name) : "",
 			escapeCsv(p.notes || ""),

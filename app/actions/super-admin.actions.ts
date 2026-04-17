@@ -69,6 +69,20 @@ async function requireSuperAdmin() {
 	return session;
 }
 
+async function requireParishOrSuperAdmin() {
+	const session = await auth();
+	if (!session?.user) {
+		throw new Error("Unauthorized: Admin access required");
+	}
+	if (
+		session.user.role !== "SUPER_ADMIN" &&
+		session.user.role !== "PARISH_ADMIN"
+	) {
+		throw new Error("Unauthorized: Admin access required");
+	}
+	return session;
+}
+
 // ============================================
 // SYSTEM METRICS
 // ============================================
@@ -237,7 +251,14 @@ export async function getOrganizationDetailedView(
 	}>
 > {
 	try {
-		await requireSuperAdmin();
+		const session = await requireParishOrSuperAdmin();
+		const isParishAdmin = session.user.role === "PARISH_ADMIN";
+		if (isParishAdmin && session.user.organizationId !== organizationId) {
+			return {
+				success: false,
+				message: "Unauthorized: organization scope mismatch",
+			};
+		}
 
 		const organization = await db.organization.findUnique({
 			where: { id: organizationId },
