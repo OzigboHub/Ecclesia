@@ -19,8 +19,8 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Check, Eye, EyeOff, Upload, X } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useRef, useState, useTransition } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 
@@ -31,7 +31,17 @@ interface Organization {
 }
 
 export default function RegisterPage() {
+	return (
+		<Suspense fallback={<div className="min-h-screen flex items-center justify-center"><p>Loading...</p></div>}>
+			<RegisterPageContent />
+		</Suspense>
+	);
+}
+
+function RegisterPageContent() {
 	const router = useRouter();
+	const searchParams = useSearchParams();
+	const preselectedOrgId = searchParams.get("organizationId") || "";
 	const [isPending, startTransition] = useTransition();
 	const [showPassword, setShowPassword] = useState(false);
 	const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -110,7 +120,7 @@ export default function RegisterPage() {
 		fetchOrganizations();
 	}, []);
 
-	const [selectedOrgId, setSelectedOrgId] = useState<string>("");
+	const [selectedOrgId, setSelectedOrgId] = useState<string>(preselectedOrgId);
 
 	const onSubmit = (data: RegisterInput) => {
 		if (!selectedOrgId) {
