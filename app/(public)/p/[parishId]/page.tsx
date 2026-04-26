@@ -13,6 +13,7 @@ import {
   MapPin,
   Phone,
   Radio,
+  UserPlus,
 } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -201,6 +202,12 @@ export default async function ParishPage({
             </Button>
             <Button asChild variant="outline" className="w-full sm:w-auto">
               <Link href={`/p/${parishId}/campaigns`}>Support parish</Link>
+            </Button>
+            <Button asChild variant="secondary" className="w-full sm:w-auto">
+              <Link href={`/auth/register?organizationId=${parishId}`}>
+                <UserPlus className="mr-2 h-4 w-4" />
+                Join this Parish
+              </Link>
             </Button>
           </div>
           <div className="grid gap-3 md:grid-cols-3">
