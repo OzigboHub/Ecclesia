@@ -57,6 +57,7 @@ model Organization {
   paymentTypes                   PaymentType[]
   sacraments                     Sacrament[]
   societies                      Society[]
+  userAccountRequests            UserAccountRequest[]
   users                          User[]
   withdrawals                    WithdrawalRequest[]
 
@@ -128,6 +129,8 @@ model User {
   paymentsRecorded         Payment[]                 @relation("PaymentRecorder")
   paymentTypesCreated      PaymentType[]             @relation("PaymentTypeCreator")
   PaymentType              PaymentType[]
+  userAccountRequests      UserAccountRequest[]      @relation("UserAccountRequestRequestedBy")
+  reviewedUserRequests     UserAccountRequest[]      @relation("UserAccountRequestReviewedBy")
   societyLed               Society?                  @relation("SocietyPresident")
   societyAssisted          Society?                  @relation("SocietySecretary")
   reviewedJoinRequests     SocietyJoinRequest[]      @relation("JoinRequestReviewer")
@@ -332,6 +335,29 @@ model SocietyJoinRequest {
   @@index([societyId])
   @@index([parishionerId])
   @@index([status])
+}
+
+model UserAccountRequest {
+  id             String                   @id @default(uuid())
+  organizationId String
+  requestedById  String
+  reviewedById   String?
+  firstName      String
+  lastName       String
+  email          String
+  role           UserRole
+  status         UserAccountRequestStatus @default(PENDING)
+  message        String?
+  reviewedAt     DateTime?
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
+  organization   Organization             @relation(fields: [organizationId], references: [id])
+  requestedBy    User                     @relation("UserAccountRequestRequestedBy", fields: [requestedById], references: [id])
+  reviewedBy     User?                    @relation("UserAccountRequestReviewedBy", fields: [reviewedById], references: [id])
+
+  @@index([organizationId])
+  @@index([status])
+  @@index([requestedById])
 }
 
 model SocietyMembership {
@@ -892,6 +918,12 @@ enum MaritalStatus {
 }
 
 enum JoinRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum UserAccountRequestStatus {
   PENDING
   APPROVED
   REJECTED

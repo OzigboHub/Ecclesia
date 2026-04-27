@@ -10,59 +10,45 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 import db from "@/lib/db";
-import { ArrowLeft, Building2, Plus } from "lucide-react";
+import { Building2, Plus } from "lucide-react";
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { redirect } from "next/navigation";
 
-interface OrganizationOutstationsPageProps {
-	params: Promise<{ id: string }>;
+interface ParishOutstationsPageProps {
 	searchParams: Promise<{ page?: string }>;
 }
 
-export default async function OrganizationOutstationsPage({
-	params,
+export default async function ParishOutstationsPage({
 	searchParams,
-}: OrganizationOutstationsPageProps) {
+}: ParishOutstationsPageProps) {
 	const session = await auth();
 
-	if (!session?.user) {
+	if (!session?.user || session.user.role !== "PARISH_ADMIN") {
 		redirect("/dashboard");
 	}
 
-	const isSuperAdmin = session.user.role === "SUPER_ADMIN";
-	const isParishAdmin = session.user.role === "PARISH_ADMIN";
-	if (!isSuperAdmin && !isParishAdmin) {
-		redirect("/dashboard");
-	}
-
-	const { id } = await params;
-	const targetParishId = isParishAdmin ? session.user.organizationId : id;
 	const sParams = await searchParams;
 	const page = parseInt(sParams.page || "1");
 	const limit = 20;
 	const skip = (page - 1) * limit;
 
-	const organization = await db.organization.findUnique({
-		where: { id: targetParishId },
-		select: { name: true, level: true },
+	const parish = await db.organization.findUnique({
+		where: { id: session.user.organizationId },
+		select: { id: true, name: true, level: true },
 	});
 
-	if (!organization || organization.level !== "PARISH") {
-		notFound();
-	}
-
-	if (isParishAdmin && targetParishId !== session.user.organizationId) {
+	if (!parish || parish.level !== "PARISH") {
 		redirect("/dashboard");
 	}
 
 	const [outstations, total] = await Promise.all([
 		db.organization.findMany({
-			where: { parentId: targetParishId },
+			where: { parentId: parish.id },
 			orderBy: { name: "asc" },
 			skip,
 			take: limit,
 		}),
-		db.organization.count({ where: { parentId: targetParishId } }),
+		db.organization.count({ where: { parentId: parish.id } }),
 	]);
 
 	const totalPages = Math.ceil(total / limit);
@@ -71,28 +57,14 @@ export default async function OrganizationOutstationsPage({
 		<div className="space-y-6">
 			<div className="space-y-2 flex justify-between items-start">
 				<div>
-					<Link
-						href={
-							isParishAdmin ?
-								"/dashboard/outstations"
-							:	`/dashboard/admin/organizations/${targetParishId}`
-						}
-					>
-						<Button variant="ghost" size="sm" className="mb-2">
-							<ArrowLeft className="h-4 w-4 mr-2" />
-							Back to {organization.name}
-						</Button>
-					</Link>
 					<h1 className="text-3xl font-bold tracking-tight">
 						Outstations
 					</h1>
 					<p className="text-muted-foreground">
-						All outstations belonging to {organization.name}
+						All outstations belonging to {parish.name}
 					</p>
 				</div>
-				<Link
-					href={`/dashboard/admin/organizations/${targetParishId}/new-outstation`}
-				>
+				<Link href="/dashboard/outstations/new">
 					<Button>
 						<Plus className="h-4 w-4 mr-2" />
 						Add Outstation
@@ -114,9 +86,6 @@ export default async function OrganizationOutstationsPage({
 								<TableHead>Name</TableHead>
 								<TableHead>Address</TableHead>
 								<TableHead>Contact Phone</TableHead>
-								<TableHead className="text-right">
-									Actions
-								</TableHead>
 							</TableRow>
 						</TableHeader>
 						<TableBody>
@@ -129,23 +98,6 @@ export default async function OrganizationOutstationsPage({
 									<TableCell>
 										{org.contactPhone || "-"}
 									</TableCell>
-									<TableCell className="text-right">
-										{isSuperAdmin ?
-											<Link
-												href={`/dashboard/admin/organizations/${org.id}`}
-											>
-												<Button
-													variant="ghost"
-													size="sm"
-												>
-													View
-												</Button>
-											</Link>
-										:	<span className="text-xs text-muted-foreground">
-												-
-											</span>
-										}
-									</TableCell>
 								</TableRow>
 							))}
 						</TableBody>
@@ -154,7 +106,7 @@ export default async function OrganizationOutstationsPage({
 					{totalPages > 1 && (
 						<div className="flex items-center justify-center gap-2 mt-4">
 							<Link
-								href={`/dashboard/admin/organizations/${targetParishId}/outstations?page=${Math.max(1, page - 1)}`}
+								href={`/dashboard/outstations?page=${Math.max(1, page - 1)}`}
 							>
 								<Button
 									variant="outline"
@@ -168,7 +120,7 @@ export default async function OrganizationOutstationsPage({
 								Page {page} of {totalPages}
 							</span>
 							<Link
-								href={`/dashboard/admin/organizations/${targetParishId}/outstations?page=${Math.min(totalPages, page + 1)}`}
+								href={`/dashboard/outstations?page=${Math.min(totalPages, page + 1)}`}
 							>
 								<Button
 									variant="outline"

@@ -1,35 +1,32 @@
-'use client';
+"use client";
 
-import { useTransition } from 'react';
-import { useRouter } from 'next/navigation';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
 import {
-    createParishSchema,
-    createOutstationSchema,
-    type CreateParishInput,
-    type CreateOutstationInput,
-} from '@/lib/validators/organization.schema';
+	createOutstation,
+	createParish,
+} from "@/app/actions/organization.actions";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
-    createParish,
-    createOutstation,
-} from '@/app/actions/organization.actions';
-import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
-import type { FieldError } from 'react-hook-form';
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
+import { CreateOutstationInput, createOutstationSchema, CreateParishInput, createParishSchema } from "@/lib/validators/organization.schema";
+
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useRouter } from "next/navigation";
+import { useTransition } from "react";
+import type { FieldError } from "react-hook-form";
+import { useForm } from "react-hook-form";
+import { toast } from "sonner";
+import { Checkbox } from "../ui/checkbox";
 
 interface AdminOrganizationFormProps {
-	type: 'parish' | 'outstation';
+	type: "parish" | "outstation";
 	parishes?: Array<{ id: string; name: string }>;
 	defaultParentId?: string;
 	onSuccess?: () => void;
@@ -47,6 +44,23 @@ interface FormErrors {
 		email?: FieldError;
 		password?: FieldError;
 	};
+	outstationAdmin?: {
+		firstName?: FieldError;
+		lastName?: FieldError;
+		email?: FieldError;
+		password?: FieldError;
+	};
+	paystackProfile?: {
+		accountNumber?: FieldError;
+		bankCode?: FieldError;
+		bankName?: FieldError;
+		businessName?: FieldError;
+		contactEmail?: FieldError;
+		contactPhone?: FieldError;
+		settlementSchedule?: FieldError;
+		createDedicatedAccount?: FieldError;
+		dedicatedProviderSlug?: FieldError;
+	};
 }
 
 export function AdminOrganizationForm({
@@ -58,25 +72,44 @@ export function AdminOrganizationForm({
 	const [isPending, startTransition] = useTransition();
 	const router = useRouter();
 
-	const isParish = type === 'parish';
+	const isParish = type === "parish";
 	const schema = isParish ? createParishSchema : createOutstationSchema;
 
 	const form = useForm<any>({
 		resolver: zodResolver(schema),
 		defaultValues: {
-			name: '',
-			address: '',
-			contactEmail: '',
-			contactPhone: '',
-			...(type === 'parish' && {
+			name: "",
+			address: "",
+			contactEmail: "",
+			contactPhone: "",
+			...(type === "parish" && {
 				parishAdmin: {
-					firstName: '',
-					lastName: '',
-					email: '',
-					password: '',
+					firstName: "",
+					lastName: "",
+					email: "",
+					password: "",
 				},
 			}),
-			...(type === 'outstation' && { parentId: defaultParentId || '' }),
+			...(type === "outstation" && {
+				outstationAdmin: {
+					firstName: "",
+					lastName: "",
+					email: "",
+					password: "",
+				},
+				paystackProfile: {
+					accountNumber: "",
+					bankCode: "",
+					bankName: "",
+					businessName: "",
+					contactEmail: "",
+					contactPhone: "",
+					settlementSchedule: "manual",
+					createDedicatedAccount: true,
+					dedicatedProviderSlug: "",
+				},
+			}),
+			...(type === "outstation" && { parentId: defaultParentId || "" }),
 		},
 	});
 
@@ -91,27 +124,31 @@ export function AdminOrganizationForm({
 
 	const onSubmit = (data: any) => {
 		startTransition(async () => {
-			const result = isParish
-				? await createParish(data as CreateParishInput)
-				: await createOutstation(data as CreateOutstationInput);
+			const result =
+				isParish ?
+					await createParish(data as CreateParishInput)
+				:	await createOutstation(data as CreateOutstationInput);
 
 			if (result.success) {
 				toast.success(result.message);
 				form.reset();
 				router.refresh();
-				router.push('/dashboard/admin/organizations');
+				router.push("/dashboard/admin/organizations");
 				onSuccess?.();
 			} else {
 				toast.error(result.message);
 				if (result.errors) {
 					Object.entries(result.errors).forEach(
 						([field, messages]) => {
-							const msg = Array.isArray(messages) ? messages[0] : String(messages);
+							const msg =
+								Array.isArray(messages) ?
+									messages[0]
+								:	String(messages);
 							setError(field as any, {
-								type: 'server',
+								type: "server",
 								message: msg,
 							});
-						}
+						},
 					);
 				}
 			}
@@ -119,38 +156,35 @@ export function AdminOrganizationForm({
 	};
 
 	return (
-		<Card className='w-full max-w-2xl'>
+		<Card className="w-full max-w-2xl">
 			<CardHeader>
 				<CardTitle>
-					Create New {isParish ? 'Parish' : 'Outstation'}
+					Create New {isParish ? "Parish" : "Outstation"}
 				</CardTitle>
 			</CardHeader>
 			<CardContent>
-				<form
-					onSubmit={handleSubmit(onSubmit)}
-					className='space-y-4'
-				>
+				<form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
 					{/* Name */}
-					<div className='space-y-2'>
-						<Label htmlFor='name'>
-							{isParish ? 'Parish' : 'Outstation'} Name *
+					<div className="space-y-2">
+						<Label htmlFor="name">
+							{isParish ? "Parish" : "Outstation"} Name *
 						</Label>
 						<Input
-							id='name'
-							{...register('name')}
+							id="name"
+							{...register("name")}
 							placeholder={`Enter ${
-								isParish ? 'parish' : 'outstation'
+								isParish ? "parish" : "outstation"
 							} name`}
 							disabled={isPending}
 							aria-invalid={!!errors.name}
 							aria-describedby={
-								errors.name ? 'name-error' : undefined
+								errors.name ? "name-error" : undefined
 							}
 						/>
 						{formErrors.name && (
 							<p
-								id='name-error'
-								className='text-sm text-destructive'
+								id="name-error"
+								className="text-sm text-destructive"
 							>
 								{formErrors.name.message}
 							</p>
@@ -158,177 +192,587 @@ export function AdminOrganizationForm({
 					</div>
 
 					{/* Parent Parish (for outstations) */}
-				{type === 'outstation' && (
-					<div className='space-y-2'>
-						<Label htmlFor='parentId'>Parent Parish *</Label>
-						{defaultParentId ? (
-							<div className='flex items-center justify-between rounded-md border px-3 py-2 bg-muted'>
-								<span className='text-sm'>
-									{parishes.find((p) => p.id === defaultParentId)?.name || 'Selected Parish'}
-								</span>
-								<span className='text-xs text-muted-foreground'>(Pre-selected)</span>
-							</div>
-						) : (
-							<Select
-								value={form.watch('parentId')}
-								onValueChange={(value) =>
-									form.setValue('parentId', value)
-								}
-								disabled={isPending}
-							>
-								<SelectTrigger
-									aria-invalid={!!formErrors.parentId}
-									aria-describedby={
-										formErrors.parentId
-											? 'parentId-error'
-											: undefined
+					{type === "outstation" && (
+						<div className="space-y-2">
+							<Label htmlFor="parentId">Parent Parish *</Label>
+							{defaultParentId ?
+								<div className="flex items-center justify-between rounded-md border px-3 py-2 bg-muted">
+									<span className="text-sm">
+										{parishes.find(
+											(p) => p.id === defaultParentId,
+										)?.name || "Selected Parish"}
+									</span>
+									<span className="text-xs text-muted-foreground">
+										(Pre-selected)
+									</span>
+								</div>
+							:	<Select
+									value={form.watch("parentId")}
+									onValueChange={(value) =>
+										form.setValue("parentId", value)
 									}
+									disabled={isPending}
 								>
-									<SelectValue placeholder='Select a parish' />
-								</SelectTrigger>
-								<SelectContent>
-									{parishes.map((parish) => (
-										<SelectItem
-											key={parish.id}
-											value={parish.id}
-										>
-											{parish.name}
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
-						)}
-						{formErrors.parentId && (
-							<p
-								id='parentId-error'
-								className='text-sm text-destructive'
-							>
-								{formErrors.parentId.message}
-							</p>
-						)}
-					</div>
-				)}
+									<SelectTrigger
+										aria-invalid={!!formErrors.parentId}
+										aria-describedby={
+											formErrors.parentId ?
+												"parentId-error"
+											:	undefined
+										}
+									>
+										<SelectValue placeholder="Select a parish" />
+									</SelectTrigger>
+									<SelectContent>
+										{parishes.map((parish) => (
+											<SelectItem
+												key={parish.id}
+												value={parish.id}
+											>
+												{parish.name}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+							}
+							{formErrors.parentId && (
+								<p
+									id="parentId-error"
+									className="text-sm text-destructive"
+								>
+									{formErrors.parentId.message}
+								</p>
+							)}
+						</div>
+					)}
 
 					{/* Address */}
-					<div className='space-y-2'>
-						<Label htmlFor='address'>Address</Label>
+					<div className="space-y-2">
+						<Label htmlFor="address">Address</Label>
 						<Input
-							id='address'
-							{...register('address')}
-							placeholder='Enter physical address'
+							id="address"
+							{...register("address")}
+							placeholder="Enter physical address"
 							disabled={isPending}
 						/>
 						{formErrors.address && (
-							<p className='text-sm text-destructive'>
+							<p className="text-sm text-destructive">
 								{formErrors.address.message}
 							</p>
 						)}
 					</div>
 
 					{/* Contact Email */}
-					<div className='space-y-2'>
-						<Label htmlFor='contactEmail'>Contact Email</Label>
+					<div className="space-y-2">
+						<Label htmlFor="contactEmail">Contact Email</Label>
 						<Input
-							id='contactEmail'
-							type='email'
-							{...register('contactEmail')}
-							placeholder='Enter contact email'
+							id="contactEmail"
+							type="email"
+							{...register("contactEmail")}
+							placeholder="Enter contact email"
 							disabled={isPending}
 						/>
 						{formErrors.contactEmail && (
-							<p className='text-sm text-destructive'>
+							<p className="text-sm text-destructive">
 								{formErrors.contactEmail.message}
 							</p>
 						)}
 					</div>
 
 					{/* Contact Phone */}
-					<div className='space-y-2'>
-						<Label htmlFor='contactPhone'>Contact Phone</Label>
+					<div className="space-y-2">
+						<Label htmlFor="contactPhone">Contact Phone</Label>
 						<Input
-							id='contactPhone'
-							type='tel'
-							{...register('contactPhone')}
-							placeholder='e.g., 08012345678'
+							id="contactPhone"
+							type="tel"
+							{...register("contactPhone")}
+							placeholder="e.g., 08012345678"
 							disabled={isPending}
 						/>
 						{formErrors.contactPhone && (
-							<p className='text-sm text-destructive'>
+							<p className="text-sm text-destructive">
 								{formErrors.contactPhone.message}
 							</p>
 						)}
 					</div>
 
 					{/* Parish Admin (parish only) */}
-					{type === 'parish' && (
+					{type === "parish" && (
 						<>
-							<div className='border-t pt-4 mt-4'>
-								<h3 className='text-sm font-medium mb-3'>Parish Admin (default administrator)</h3>
-								<p className='text-xs text-muted-foreground mb-3'>
-									This user will have full access to manage the parish and its outstations.
+							<div className="border-t pt-4 mt-4">
+								<h3 className="text-sm font-medium mb-3">
+									Parish Admin (default administrator)
+								</h3>
+								<p className="text-xs text-muted-foreground mb-3">
+									This user will have full access to manage
+									the parish and its outstations.
 								</p>
 							</div>
-							<div className='grid gap-4 sm:grid-cols-2'>
-								<div className='space-y-2'>
-									<Label htmlFor='parishAdmin.firstName'>First Name *</Label>
+							<div className="grid gap-4 sm:grid-cols-2">
+								<div className="space-y-2">
+									<Label htmlFor="parishAdmin.firstName">
+										First Name *
+									</Label>
 									<Input
-										id='parishAdmin.firstName'
-										{...register('parishAdmin.firstName')}
-										placeholder='Admin first name'
+										id="parishAdmin.firstName"
+										{...register("parishAdmin.firstName")}
+										placeholder="Admin first name"
 										disabled={isPending}
-										aria-invalid={!!formErrors.parishAdmin?.firstName}
+										aria-invalid={
+											!!formErrors.parishAdmin?.firstName
+										}
 									/>
 									{formErrors.parishAdmin?.firstName && (
-										<p className='text-sm text-destructive'>
-											{formErrors.parishAdmin.firstName.message}
+										<p className="text-sm text-destructive">
+											{
+												formErrors.parishAdmin.firstName
+													.message
+											}
 										</p>
 									)}
 								</div>
-								<div className='space-y-2'>
-									<Label htmlFor='parishAdmin.lastName'>Last Name *</Label>
+								<div className="space-y-2">
+									<Label htmlFor="parishAdmin.lastName">
+										Last Name *
+									</Label>
 									<Input
-										id='parishAdmin.lastName'
-										{...register('parishAdmin.lastName')}
-										placeholder='Admin last name'
+										id="parishAdmin.lastName"
+										{...register("parishAdmin.lastName")}
+										placeholder="Admin last name"
 										disabled={isPending}
-										aria-invalid={!!formErrors.parishAdmin?.lastName}
+										aria-invalid={
+											!!formErrors.parishAdmin?.lastName
+										}
 									/>
 									{formErrors.parishAdmin?.lastName && (
-										<p className='text-sm text-destructive'>
-											{formErrors.parishAdmin.lastName.message}
+										<p className="text-sm text-destructive">
+											{
+												formErrors.parishAdmin.lastName
+													.message
+											}
 										</p>
 									)}
 								</div>
 							</div>
-							<div className='space-y-2'>
-								<Label htmlFor='parishAdmin.email'>Parish Admin Email *</Label>
+							<div className="space-y-2">
+								<Label htmlFor="parishAdmin.email">
+									Parish Admin Email *
+								</Label>
 								<Input
-									id='parishAdmin.email'
-									type='email'
-									{...register('parishAdmin.email')}
-									placeholder='admin@parish.example.com'
+									id="parishAdmin.email"
+									type="email"
+									{...register("parishAdmin.email")}
+									placeholder="admin@parish.example.com"
 									disabled={isPending}
-									aria-invalid={!!formErrors.parishAdmin?.email}
+									aria-invalid={
+										!!formErrors.parishAdmin?.email
+									}
 								/>
 								{formErrors.parishAdmin?.email && (
-									<p className='text-sm text-destructive'>
+									<p className="text-sm text-destructive">
 										{formErrors.parishAdmin.email.message}
 									</p>
 								)}
 							</div>
-							<div className='space-y-2'>
-								<Label htmlFor='parishAdmin.password'>Parish Admin Password *</Label>
+							<div className="space-y-2">
+								<Label htmlFor="parishAdmin.password">
+									Parish Admin Password *
+								</Label>
 								<Input
-									id='parishAdmin.password'
-									type='password'
-									{...register('parishAdmin.password')}
-									placeholder='Min 8 chars, uppercase, number, special character'
+									id="parishAdmin.password"
+									type="password"
+									{...register("parishAdmin.password")}
+									placeholder="Min 8 chars, uppercase, number, special character"
 									disabled={isPending}
-									aria-invalid={!!formErrors.parishAdmin?.password}
+									aria-invalid={
+										!!formErrors.parishAdmin?.password
+									}
 								/>
 								{formErrors.parishAdmin?.password && (
-									<p className='text-sm text-destructive'>
-										{formErrors.parishAdmin.password.message}
+									<p className="text-sm text-destructive">
+										{
+											formErrors.parishAdmin.password
+												.message
+										}
+									</p>
+								)}
+							</div>
+						</>
+					)}
+
+					{/* Outstation Admin (outstation only) */}
+					{type === "outstation" && (
+						<>
+							<div className="border-t pt-4 mt-4">
+								<h3 className="text-sm font-medium mb-3">
+									Outstation Admin (required)
+								</h3>
+								<p className="text-xs text-muted-foreground mb-3">
+									This user will manage the outstation after
+									creation.
+								</p>
+							</div>
+							<div className="grid gap-4 sm:grid-cols-2">
+								<div className="space-y-2">
+									<Label htmlFor="outstationAdmin.firstName">
+										First Name *
+									</Label>
+									<Input
+										id="outstationAdmin.firstName"
+										{...register(
+											"outstationAdmin.firstName",
+										)}
+										placeholder="Admin first name"
+										disabled={isPending}
+										aria-invalid={
+											!!formErrors.outstationAdmin
+												?.firstName
+										}
+									/>
+									{formErrors.outstationAdmin?.firstName && (
+										<p className="text-sm text-destructive">
+											{
+												formErrors.outstationAdmin
+													.firstName.message
+											}
+										</p>
+									)}
+								</div>
+								<div className="space-y-2">
+									<Label htmlFor="outstationAdmin.lastName">
+										Last Name *
+									</Label>
+									<Input
+										id="outstationAdmin.lastName"
+										{...register(
+											"outstationAdmin.lastName",
+										)}
+										placeholder="Admin last name"
+										disabled={isPending}
+										aria-invalid={
+											!!formErrors.outstationAdmin
+												?.lastName
+										}
+									/>
+									{formErrors.outstationAdmin?.lastName && (
+										<p className="text-sm text-destructive">
+											{
+												formErrors.outstationAdmin
+													.lastName.message
+											}
+										</p>
+									)}
+								</div>
+							</div>
+							<div className="space-y-2">
+								<Label htmlFor="outstationAdmin.email">
+									Outstation Admin Email *
+								</Label>
+								<Input
+									id="outstationAdmin.email"
+									type="email"
+									{...register("outstationAdmin.email")}
+									placeholder="admin@outstation.example.com"
+									disabled={isPending}
+									aria-invalid={
+										!!formErrors.outstationAdmin?.email
+									}
+								/>
+								{formErrors.outstationAdmin?.email && (
+									<p className="text-sm text-destructive">
+										{
+											formErrors.outstationAdmin.email
+												.message
+										}
+									</p>
+								)}
+							</div>
+							<div className="space-y-2">
+								<Label htmlFor="outstationAdmin.password">
+									Outstation Admin Password *
+								</Label>
+								<Input
+									id="outstationAdmin.password"
+									type="password"
+									{...register("outstationAdmin.password")}
+									placeholder="Enter a strong password"
+									disabled={isPending}
+									aria-invalid={
+										!!formErrors.outstationAdmin?.password
+									}
+								/>
+								{formErrors.outstationAdmin?.password && (
+									<p className="text-sm text-destructive">
+										{
+											formErrors.outstationAdmin.password
+												.message
+										}
+									</p>
+								)}
+							</div>
+						</>
+					)}
+
+					{/* Paystack Subaccount (outstation only) */}
+					{type === "outstation" && (
+						<>
+							<div className="border-t pt-4 mt-4">
+								<h3 className="text-sm font-medium mb-3">
+									Paystack Subaccount (required)
+								</h3>
+								<p className="text-xs text-muted-foreground mb-3">
+									Bank details used to create the outstation
+									subaccount.
+								</p>
+							</div>
+							<div className="grid gap-4 sm:grid-cols-2">
+								<div className="space-y-2">
+									<Label htmlFor="paystackProfile.accountNumber">
+										Account Number *
+									</Label>
+									<Input
+										id="paystackProfile.accountNumber"
+										{...register(
+											"paystackProfile.accountNumber",
+										)}
+										placeholder="10-digit account number"
+										disabled={isPending}
+										aria-invalid={
+											!!formErrors.paystackProfile
+												?.accountNumber
+										}
+									/>
+									{formErrors.paystackProfile
+										?.accountNumber && (
+										<p className="text-sm text-destructive">
+											{
+												formErrors.paystackProfile
+													.accountNumber.message
+											}
+										</p>
+									)}
+								</div>
+								<div className="space-y-2">
+									<Label htmlFor="paystackProfile.bankCode">
+										Bank Code *
+									</Label>
+									<Input
+										id="paystackProfile.bankCode"
+										{...register(
+											"paystackProfile.bankCode",
+										)}
+										placeholder="e.g., 058"
+										disabled={isPending}
+										aria-invalid={
+											!!formErrors.paystackProfile
+												?.bankCode
+										}
+									/>
+									{formErrors.paystackProfile?.bankCode && (
+										<p className="text-sm text-destructive">
+											{
+												formErrors.paystackProfile
+													.bankCode.message
+											}
+										</p>
+									)}
+								</div>
+							</div>
+							<div className="space-y-2">
+								<Label htmlFor="paystackProfile.bankName">
+									Bank Name *
+								</Label>
+								<Input
+									id="paystackProfile.bankName"
+									{...register("paystackProfile.bankName")}
+									placeholder="e.g., GTBank"
+									disabled={isPending}
+									aria-invalid={
+										!!formErrors.paystackProfile?.bankName
+									}
+								/>
+								{formErrors.paystackProfile?.bankName && (
+									<p className="text-sm text-destructive">
+										{
+											formErrors.paystackProfile.bankName
+												.message
+										}
+									</p>
+								)}
+							</div>
+							<div className="space-y-2">
+								<Label htmlFor="paystackProfile.businessName">
+									Business Name
+								</Label>
+								<Input
+									id="paystackProfile.businessName"
+									{...register(
+										"paystackProfile.businessName",
+									)}
+									placeholder="Outstation business name"
+									disabled={isPending}
+									aria-invalid={
+										!!formErrors.paystackProfile
+											?.businessName
+									}
+								/>
+								{formErrors.paystackProfile?.businessName && (
+									<p className="text-sm text-destructive">
+										{
+											formErrors.paystackProfile
+												.businessName.message
+										}
+									</p>
+								)}
+							</div>
+							<div className="grid gap-4 sm:grid-cols-2">
+								<div className="space-y-2">
+									<Label htmlFor="paystackProfile.contactEmail">
+										Contact Email
+									</Label>
+									<Input
+										id="paystackProfile.contactEmail"
+										type="email"
+										{...register(
+											"paystackProfile.contactEmail",
+										)}
+										placeholder="payments@outstation.example.com"
+										disabled={isPending}
+										aria-invalid={
+											!!formErrors.paystackProfile
+												?.contactEmail
+										}
+									/>
+									{formErrors.paystackProfile
+										?.contactEmail && (
+										<p className="text-sm text-destructive">
+											{
+												formErrors.paystackProfile
+													.contactEmail.message
+											}
+										</p>
+									)}
+								</div>
+								<div className="space-y-2">
+									<Label htmlFor="paystackProfile.contactPhone">
+										Contact Phone
+									</Label>
+									<Input
+										id="paystackProfile.contactPhone"
+										type="tel"
+										{...register(
+											"paystackProfile.contactPhone",
+										)}
+										placeholder="e.g., 08012345678"
+										disabled={isPending}
+										aria-invalid={
+											!!formErrors.paystackProfile
+												?.contactPhone
+										}
+									/>
+									{formErrors.paystackProfile
+										?.contactPhone && (
+										<p className="text-sm text-destructive">
+											{
+												formErrors.paystackProfile
+													.contactPhone.message
+											}
+										</p>
+									)}
+								</div>
+							</div>
+							<div className="space-y-2">
+								<Label htmlFor="paystackProfile.settlementSchedule">
+									Settlement Schedule
+								</Label>
+								<Select
+									value={form.watch(
+										"paystackProfile.settlementSchedule",
+									)}
+									onValueChange={(value) =>
+										form.setValue(
+											"paystackProfile.settlementSchedule",
+											value,
+										)
+									}
+									disabled={isPending}
+								>
+									<SelectTrigger
+										aria-invalid={
+											!!formErrors.paystackProfile
+												?.settlementSchedule
+										}
+									>
+										<SelectValue placeholder="Select schedule" />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value="auto">
+											Auto
+										</SelectItem>
+										<SelectItem value="weekly">
+											Weekly
+										</SelectItem>
+										<SelectItem value="monthly">
+											Monthly
+										</SelectItem>
+										<SelectItem value="manual">
+											Manual
+										</SelectItem>
+									</SelectContent>
+								</Select>
+								{formErrors.paystackProfile
+									?.settlementSchedule && (
+									<p className="text-sm text-destructive">
+										{
+											formErrors.paystackProfile
+												.settlementSchedule.message
+										}
+									</p>
+								)}
+							</div>
+							<div className="flex items-center gap-2">
+								<Checkbox
+									id="paystackProfile.createDedicatedAccount"
+									checked={
+										!!form.watch(
+											"paystackProfile.createDedicatedAccount",
+										)
+									}
+									onCheckedChange={(checked) =>
+										form.setValue(
+											"paystackProfile.createDedicatedAccount",
+											Boolean(checked),
+										)
+									}
+									disabled={isPending}
+								/>
+								<Label htmlFor="paystackProfile.createDedicatedAccount">
+									Create dedicated virtual account
+								</Label>
+							</div>
+							<div className="space-y-2">
+								<Label htmlFor="paystackProfile.dedicatedProviderSlug">
+									Dedicated Provider (optional)
+								</Label>
+								<Input
+									id="paystackProfile.dedicatedProviderSlug"
+									{...register(
+										"paystackProfile.dedicatedProviderSlug",
+									)}
+									placeholder="e.g., wema-bank"
+									disabled={isPending}
+									aria-invalid={
+										!!formErrors.paystackProfile
+											?.dedicatedProviderSlug
+									}
+								/>
+								{formErrors.paystackProfile
+									?.dedicatedProviderSlug && (
+									<p className="text-sm text-destructive">
+										{
+											formErrors.paystackProfile
+												.dedicatedProviderSlug.message
+										}
 									</p>
 								)}
 							</div>
@@ -336,26 +780,21 @@ export function AdminOrganizationForm({
 					)}
 
 					{/* Buttons */}
-					<div className='flex justify-end gap-3 pt-4'>
+					<div className="flex justify-end gap-3 pt-4">
 						<Button
-							type='button'
-							variant='outline'
+							type="button"
+							variant="outline"
 							onClick={() => router.back()}
 							disabled={isPending}
 						>
 							Cancel
 						</Button>
-						<Button
-							type='submit'
-							disabled={isPending}
-						>
-							{isPending
-								? `Creating ${
-										isParish ? 'Parish' : 'Outstation'
-								  }...`
-								: `Create ${
-										isParish ? 'Parish' : 'Outstation'
-								  }`}
+						<Button type="submit" disabled={isPending}>
+							{isPending ?
+								`Creating ${
+									isParish ? "Parish" : "Outstation"
+								}...`
+							:	`Create ${isParish ? "Parish" : "Outstation"}`}
 						</Button>
 					</div>
 				</form>

@@ -1,61 +1,68 @@
-import { auth } from '@/auth';
-import { redirect } from 'next/navigation';
-import { UserForm } from '@/components/forms/user-form';
+import { getOutstationsForCurrentParish } from "@/app/actions/organization.actions";
+import { getPaystackBankList } from "@/app/actions/paystack.actions";
+import { auth } from "@/auth";
+import { UserForm } from "@/components/forms/user-form";
+import { Button } from "@/components/ui/button";
 import {
 	Card,
 	CardContent,
 	CardDescription,
 	CardHeader,
 	CardTitle,
-} from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { ArrowLeft } from 'lucide-react';
-import Link from 'next/link';
+} from "@/components/ui/card";
+import { ArrowLeft } from "lucide-react";
+import Link from "next/link";
+import { redirect } from "next/navigation";
 
 export const metadata = {
-	title: 'Add User | Ecclesia',
-	description: 'Create a new user account',
+	title: "Add User | Ecclesia",
+	description: "Create a new user account",
 };
 
 export default async function NewUserPage() {
 	const session = await auth();
 
 	if (!session?.user) {
-		redirect('/auth/login');
+		redirect("/auth/login");
 	}
 
 	// Only admins can create users
-	const allowedRoles = ['SUPER_ADMIN', 'PARISH_ADMIN'];
+	const allowedRoles = ["SUPER_ADMIN", "PARISH_ADMIN"];
 	if (!allowedRoles.includes(session.user.role)) {
-		redirect('/dashboard?error=unauthorized');
+		redirect("/dashboard?error=unauthorized");
 	}
 
+	const [outstationsResult, bankListResult] = await Promise.all([
+		getOutstationsForCurrentParish(),
+		getPaystackBankList(),
+	]);
+
+	const outstations =
+		outstationsResult.success ? (outstationsResult.data ?? []) : [];
+	const banks = bankListResult.success ? (bankListResult.data ?? []) : [];
+
 	return (
-		<div className='space-y-6'>
+		<div className="space-y-6">
 			{/* Header */}
-			<div className='flex items-center gap-4'>
-				<Button
-					variant='ghost'
-					size='icon'
-					asChild
-				>
-					<Link href='/users'>
-						<ArrowLeft className='h-4 w-4' />
-						<span className='sr-only'>Back to users</span>
+			<div className="flex items-center gap-4">
+				<Button variant="ghost" size="icon" asChild>
+					<Link href="/users">
+						<ArrowLeft className="h-4 w-4" />
+						<span className="sr-only">Back to users</span>
 					</Link>
 				</Button>
 				<div>
-					<h1 className='text-2xl font-bold tracking-tight'>
+					<h1 className="text-2xl font-bold tracking-tight">
 						Add User
 					</h1>
-					<p className='text-muted-foreground'>
+					<p className="text-muted-foreground">
 						Create a new user account for your organization
 					</p>
 				</div>
 			</div>
 
 			{/* Form */}
-			<div className='max-w-2xl'>
+			<div className="max-w-2xl">
 				<Card>
 					<CardHeader>
 						<CardTitle>User Information</CardTitle>
@@ -65,7 +72,11 @@ export default async function NewUserPage() {
 						</CardDescription>
 					</CardHeader>
 					<CardContent>
-						<UserForm currentUserRole={session.user.role} />
+						<UserForm
+							currentUserRole={session.user.role}
+							outstations={outstations}
+							banks={banks}
+						/>
 					</CardContent>
 				</Card>
 			</div>
