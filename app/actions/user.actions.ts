@@ -1,14 +1,16 @@
 "use server";
 
+import { configureOutstationPaystackProfile } from "@/app/actions/paystack.actions";
 import { auth } from "@/auth";
 import db from "@/lib/db";
+import { organizationPaystackProfileSchema } from "@/lib/validators/paystack.schema";
 import {
 	changePasswordSchema,
 	createUserSchema,
 	updateUserSchema,
 } from "@/lib/validators/user.schema";
 import type { ActionResponse } from "@/types";
-import type { User, UserRole } from "@prisma/client";
+import { Prisma, type User, type UserRole } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
 
@@ -40,6 +42,27 @@ function canAssignRole(actorRole: string, targetRole: string): boolean {
 	const actorLevel = ROLE_HIERARCHY[actorRole] ?? 0;
 	const targetLevel = ROLE_HIERARCHY[targetRole] ?? 0;
 	return actorLevel > targetLevel;
+}
+
+async function getManagedOrganizationIds(session: {
+	user: { role: string; organizationId: string };
+}): Promise<string[]> {
+	if (session.user.role !== "PARISH_ADMIN") {
+		return [session.user.organizationId];
+	}
+
+	const outstations = await db.organization.findMany({
+		where: {
+			parentId: session.user.organizationId,
+			level: "OUTSTATION",
+		},
+		select: { id: true },
+	});
+
+	return [
+		session.user.organizationId,
+		...outstations.map((outstation) => outstation.id),
+	];
 }
 
 // Helper to omit password from user object
@@ -80,11 +103,15 @@ export async function getUsers(
 		}
 
 		// Super admins see all users across all organizations
-		// Org admins see only their organization's users
+		// Parish admins see parish + outstations
 		const where =
 			session.user.role === "SUPER_ADMIN" ?
 				{}
-			:	{ organizationId: session.user.organizationId };
+			:	{
+					organizationId: {
+						in: await getManagedOrganizationIds(session),
+					},
+				};
 
 		const users = await db.user.findMany({
 			where,
@@ -180,11 +207,18 @@ export async function getUser(
 			};
 		}
 
+		const where =
+			session.user.role === "SUPER_ADMIN" ?
+				{ id }
+			:	{
+					id,
+					organizationId: {
+						in: await getManagedOrganizationIds(session),
+					},
+				};
+
 		const user = await db.user.findFirst({
-			where: {
-				id,
-				organizationId: session.user.organizationId,
-			},
+			where,
 			include: {
 				organization: {
 					select: { name: true },
@@ -228,20 +262,58 @@ export async function searchUsers(
 			};
 		}
 
-		const users = await db.user.findMany({
-			where: {
-				organizationId: session.user.organizationId,
-				OR: [
-					{
-						firstName: {
-							contains: searchTerm,
-							mode: "insensitive",
+		const where =
+			session.user.role === "SUPER_ADMIN" ?
+				{
+					OR: [
+						{
+							firstName: {
+								contains: searchTerm,
+								mode: Prisma.QueryMode.insensitive,
+							},
 						},
+						{
+							lastName: {
+								contains: searchTerm,
+								mode: Prisma.QueryMode.insensitive,
+							},
+						},
+						{
+							email: {
+								contains: searchTerm,
+								mode: Prisma.QueryMode.insensitive,
+							},
+						},
+					],
+				}
+			:	{
+					organizationId: {
+						in: await getManagedOrganizationIds(session),
 					},
-					{ lastName: { contains: searchTerm, mode: "insensitive" } },
-					{ email: { contains: searchTerm, mode: "insensitive" } },
-				],
-			},
+					OR: [
+						{
+							firstName: {
+								contains: searchTerm,
+								mode: Prisma.QueryMode.insensitive,
+							},
+						},
+						{
+							lastName: {
+								contains: searchTerm,
+								mode: Prisma.QueryMode.insensitive,
+							},
+						},
+						{
+							email: {
+								contains: searchTerm,
+								mode: Prisma.QueryMode.insensitive,
+							},
+						},
+					],
+				};
+
+		const users = await db.user.findMany({
+			where,
 			orderBy: { lastName: "asc" },
 			take: 50,
 		});
@@ -291,7 +363,15 @@ export async function createUser(
 			};
 		}
 
-		const { firstName, lastName, email, password, role } = parsed.data;
+		const {
+			firstName,
+			lastName,
+			email,
+			password,
+			role,
+			outstationId,
+			paystackProfile,
+		} = parsed.data;
 
 		// Check if actor can assign this role
 		if (!canAssignRole(session.user.role, role)) {
@@ -315,6 +395,70 @@ export async function createUser(
 			};
 		}
 
+		let targetOrganizationId = session.user.organizationId;
+
+		if (role === "OUTSTATION_ADMIN") {
+			if (!outstationId) {
+				return {
+					success: false,
+					message: "Outstation is required for outstation admins",
+					errors: { outstationId: ["Outstation is required"] },
+				};
+			}
+
+			const outstation = await db.organization.findFirst({
+				where: {
+					id: outstationId,
+					level: "OUTSTATION",
+					...(session.user.role === "PARISH_ADMIN" && {
+						parentId: session.user.organizationId,
+					}),
+				},
+				select: { id: true },
+			});
+
+			if (!outstation) {
+				return {
+					success: false,
+					message: "Invalid outstation selection",
+					errors: { outstationId: ["Invalid outstation selection"] },
+				};
+			}
+
+			const paystackParsed = organizationPaystackProfileSchema.safeParse(
+				paystackProfile ?? {},
+			);
+			if (!paystackParsed.success) {
+				const fieldErrors =
+					paystackParsed.error.flatten().fieldErrors || {};
+				const prefixedErrors: Record<string, string[]> = {};
+				Object.entries(fieldErrors).forEach(([field, messages]) => {
+					prefixedErrors[`paystackProfile.${field}`] = messages;
+				});
+				return {
+					success: false,
+					message: "Payment subaccount details are required",
+					errors: prefixedErrors,
+				};
+			}
+
+			const paystackResult = await configureOutstationPaystackProfile(
+				paystackParsed.data,
+				outstationId,
+			);
+			if (!paystackResult.success) {
+				return {
+					success: false,
+					message:
+						paystackResult.message ||
+						"Failed to create payment subaccount",
+					errors: paystackResult.errors,
+				};
+			}
+
+			targetOrganizationId = outstationId;
+		}
+
 		// Hash password
 		const hashedPassword = await bcrypt.hash(password, 12);
 
@@ -326,7 +470,7 @@ export async function createUser(
 				email,
 				password: hashedPassword,
 				role,
-				organizationId: session.user.organizationId,
+				organizationId: targetOrganizationId,
 				isActive: true,
 			},
 		});
@@ -343,6 +487,7 @@ export async function createUser(
 					role: user.role,
 					firstName: user.firstName,
 					lastName: user.lastName,
+					organizationId: targetOrganizationId,
 				},
 			},
 		});
@@ -397,10 +542,15 @@ export async function updateUser(
 
 		// Verify the user exists and belongs to same organization
 		const existingUser = await db.user.findFirst({
-			where: {
-				id,
-				organizationId: session.user.organizationId,
-			},
+			where:
+				session.user.role === "SUPER_ADMIN" ?
+					{ id }
+				:	{
+						id,
+						organizationId: {
+							in: await getManagedOrganizationIds(session),
+						},
+					},
 		});
 
 		if (!existingUser) {
@@ -523,10 +673,15 @@ export async function changeUserPassword(
 
 		// Verify the user exists and belongs to same organization
 		const existingUser = await db.user.findFirst({
-			where: {
-				id,
-				organizationId: session.user.organizationId,
-			},
+			where:
+				session.user.role === "SUPER_ADMIN" ?
+					{ id }
+				:	{
+						id,
+						organizationId: {
+							in: await getManagedOrganizationIds(session),
+						},
+					},
 		});
 
 		if (!existingUser) {
@@ -604,10 +759,15 @@ export async function toggleUserStatus(
 
 		// Verify the user exists and belongs to same organization
 		const existingUser = await db.user.findFirst({
-			where: {
-				id,
-				organizationId: session.user.organizationId,
-			},
+			where:
+				session.user.role === "SUPER_ADMIN" ?
+					{ id }
+				:	{
+						id,
+						organizationId: {
+							in: await getManagedOrganizationIds(session),
+						},
+					},
 		});
 
 		if (!existingUser) {
@@ -686,10 +846,15 @@ export async function activateUser(
 		}
 
 		const existingUser = await db.user.findFirst({
-			where: {
-				id,
-				organizationId: session.user.organizationId,
-			},
+			where:
+				session.user.role === "SUPER_ADMIN" ?
+					{ id }
+				:	{
+						id,
+						organizationId: {
+							in: await getManagedOrganizationIds(session),
+						},
+					},
 		});
 
 		if (!existingUser) {
@@ -748,10 +913,15 @@ export async function deactivateUser(
 		}
 
 		const existingUser = await db.user.findFirst({
-			where: {
-				id,
-				organizationId: session.user.organizationId,
-			},
+			where:
+				session.user.role === "SUPER_ADMIN" ?
+					{ id }
+				:	{
+						id,
+						organizationId: {
+							in: await getManagedOrganizationIds(session),
+						},
+					},
 		});
 
 		if (!existingUser) {
@@ -820,10 +990,15 @@ export async function deleteUser(id: string): Promise<ActionResponse> {
 		}
 
 		const existingUser = await db.user.findFirst({
-			where: {
-				id,
-				organizationId: session.user.organizationId,
-			},
+			where:
+				session.user.role === "SUPER_ADMIN" ?
+					{ id }
+				:	{
+						id,
+						organizationId: {
+							in: await getManagedOrganizationIds(session),
+						},
+					},
 		});
 
 		if (!existingUser) {
@@ -882,10 +1057,15 @@ export async function unlockUserAccount(
 		}
 
 		const existingUser = await db.user.findFirst({
-			where: {
-				id,
-				organizationId: session.user.organizationId,
-			},
+			where:
+				session.user.role === "SUPER_ADMIN" ?
+					{ id }
+				:	{
+						id,
+						organizationId: {
+							in: await getManagedOrganizationIds(session),
+						},
+					},
 		});
 
 		if (!existingUser) {
@@ -1033,19 +1213,33 @@ export async function getUserStats(): Promise<
 			};
 		}
 
+		const managedOrganizationIds =
+			session.user.role === "SUPER_ADMIN" ?
+				null
+			:	await getManagedOrganizationIds(session);
+
 		const [total, active, byRole] = await Promise.all([
 			db.user.count({
-				where: { organizationId: session.user.organizationId },
+				where:
+					managedOrganizationIds === null ?
+						{}
+					:	{ organizationId: { in: managedOrganizationIds } },
 			}),
 			db.user.count({
-				where: {
-					organizationId: session.user.organizationId,
-					isActive: true,
-				},
+				where:
+					managedOrganizationIds === null ?
+						{ isActive: true }
+					:	{
+							organizationId: { in: managedOrganizationIds },
+							isActive: true,
+						},
 			}),
 			db.user.groupBy({
 				by: ["role"],
-				where: { organizationId: session.user.organizationId },
+				where:
+					managedOrganizationIds === null ?
+						{}
+					:	{ organizationId: { in: managedOrganizationIds } },
 				_count: true,
 			}),
 		]);

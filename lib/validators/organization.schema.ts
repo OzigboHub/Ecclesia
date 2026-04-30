@@ -1,4 +1,5 @@
-import { z } from 'zod';
+import { organizationPaystackProfileSchema } from "@/lib/validators/paystack.schema";
+import { z } from "zod";
 
 // ============================================
 // COMMON FIELD SCHEMAS
@@ -6,59 +7,64 @@ import { z } from 'zod';
 
 const organizationNameSchema = z
 	.string()
-	.min(2, 'Organization name must be at least 2 characters')
-	.max(150, 'Organization name must not exceed 150 characters')
+	.min(2, "Organization name must be at least 2 characters")
+	.max(150, "Organization name must not exceed 150 characters")
 	.trim();
 
 const contactEmailSchema = z
 	.string()
-	.email('Please enter a valid email address')
+	.email("Please enter a valid email address")
 	.toLowerCase()
 	.trim()
 	.optional()
-	.or(z.literal(''));
+	.or(z.literal(""));
 
 const contactPhoneSchema = z
 	.string()
 	.regex(
 		/^(\+234|0)[789][01]\d{8}$/,
-		'Please enter a valid Nigerian phone number'
+		"Please enter a valid Nigerian phone number",
 	)
 	.optional()
-	.or(z.literal(''));
+	.or(z.literal(""));
 
 const addressSchema = z
 	.string()
-	.max(500, 'Address must not exceed 500 characters')
+	.max(500, "Address must not exceed 500 characters")
 	.optional()
-	.or(z.literal(''));
+	.or(z.literal(""));
 
 // Parish admin fields (reused from user validation rules)
 const parishAdminFirstNameSchema = z
 	.string()
-	.min(2, 'First name must be at least 2 characters')
-	.max(100, 'First name must not exceed 100 characters')
+	.min(2, "First name must be at least 2 characters")
+	.max(100, "First name must not exceed 100 characters")
 	.trim();
 const parishAdminLastNameSchema = z
 	.string()
-	.min(2, 'Last name must be at least 2 characters')
-	.max(100, 'Last name must not exceed 100 characters')
+	.min(2, "Last name must be at least 2 characters")
+	.max(100, "Last name must not exceed 100 characters")
 	.trim();
 const parishAdminEmailSchema = z
 	.string()
-	.min(1, 'Parish admin email is required')
-	.email('Please enter a valid email address')
+	.min(1, "Parish admin email is required")
+	.email("Please enter a valid email address")
 	.toLowerCase()
 	.trim();
 const parishAdminPasswordSchema = z
 	.string()
-	.min(8, 'Password must be at least 8 characters')
-	.regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
-	.regex(/[0-9]/, 'Password must contain at least one number')
+	.min(8, "Password must be at least 8 characters")
+	.regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+	.regex(/[0-9]/, "Password must contain at least one number")
 	.regex(
 		/[^A-Za-z0-9]/,
-		'Password must contain at least one special character'
+		"Password must contain at least one special character",
 	);
+
+const outstationAdminFirstNameSchema = parishAdminFirstNameSchema;
+const outstationAdminLastNameSchema = parishAdminLastNameSchema;
+const outstationAdminEmailSchema = parishAdminEmailSchema;
+const outstationAdminPasswordSchema = parishAdminPasswordSchema;
 
 // ============================================
 // CREATE PARISH SCHEMA
@@ -88,15 +94,22 @@ export const createOutstationSchema = z
 		name: organizationNameSchema,
 		parentId: z
 			.string()
-			.uuid('Invalid parish ID')
-			.min(1, 'Parish is required'),
+			.uuid("Invalid parish ID")
+			.min(1, "Parish is required"),
 		address: addressSchema,
 		contactEmail: contactEmailSchema,
 		contactPhone: contactPhoneSchema,
+		paystackProfile: organizationPaystackProfileSchema,
+		outstationAdmin: z.object({
+			firstName: outstationAdminFirstNameSchema,
+			lastName: outstationAdminLastNameSchema,
+			email: outstationAdminEmailSchema,
+			password: outstationAdminPasswordSchema,
+		}),
 	})
 	.refine((data) => data.parentId, {
-		message: 'Parent parish must be selected',
-		path: ['parentId'],
+		message: "Parent parish must be selected",
+		path: ["parentId"],
 	});
 
 export type CreateOutstationInput = z.infer<typeof createOutstationSchema>;
@@ -113,7 +126,7 @@ export const updateOrganizationSchema = z
 		contactPhone: contactPhoneSchema,
 	})
 	.refine((data) => Object.values(data).some((v) => v !== undefined), {
-		message: 'At least one field must be updated',
+		message: "At least one field must be updated",
 	});
 
 export type UpdateOrganizationInput = z.infer<typeof updateOrganizationSchema>;
@@ -126,16 +139,16 @@ export const transferOutstationSchema = z
 	.object({
 		outstationId: z
 			.string()
-			.uuid('Invalid outstation ID')
-			.min(1, 'Outstation ID is required'),
+			.uuid("Invalid outstation ID")
+			.min(1, "Outstation ID is required"),
 		newParentId: z
 			.string()
-			.uuid('Invalid parish ID')
-			.min(1, 'New parish is required'),
+			.uuid("Invalid parish ID")
+			.min(1, "New parish is required"),
 	})
 	.refine((data) => data.outstationId !== data.newParentId, {
-		message: 'Outstation cannot be moved to itself',
-		path: ['newParentId'],
+		message: "Outstation cannot be moved to itself",
+		path: ["newParentId"],
 	});
 
 export type TransferOutstationInput = z.infer<typeof transferOutstationSchema>;
@@ -147,10 +160,10 @@ export type TransferOutstationInput = z.infer<typeof transferOutstationSchema>;
 export const organizationQuerySchema = z.object({
 	page: z.coerce.number().int().positive().default(1),
 	limit: z.coerce.number().int().min(1).max(100).default(20),
-	level: z.enum(['PARISH', 'OUTSTATION']).optional(),
+	level: z.enum(["PARISH", "OUTSTATION"]).optional(),
 	search: z.string().optional(),
-	sortBy: z.enum(['name', 'createdAt', 'level']).default('createdAt'),
-	sortOrder: z.enum(['asc', 'desc']).default('desc'),
+	sortBy: z.enum(["name", "createdAt", "level"]).default("createdAt"),
+	sortOrder: z.enum(["asc", "desc"]).default("desc"),
 });
 
 export type OrganizationQuery = z.infer<typeof organizationQuerySchema>;
@@ -162,7 +175,7 @@ export type OrganizationQuery = z.infer<typeof organizationQuerySchema>;
 export const organizationDetailsSchema = z.object({
 	id: z.string().uuid(),
 	name: z.string(),
-	level: z.enum(['PARISH', 'OUTSTATION']),
+	level: z.enum(["PARISH", "OUTSTATION"]),
 	parentId: z.string().uuid().nullable(),
 	address: z.string().nullable(),
 	contactEmail: z.string().nullable(),

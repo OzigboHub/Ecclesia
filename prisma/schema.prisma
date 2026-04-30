@@ -57,6 +57,7 @@ model Organization {
   paymentTypes                   PaymentType[]
   sacraments                     Sacrament[]
   societies                      Society[]
+  userAccountRequests            UserAccountRequest[]
   users                          User[]
   withdrawals                    WithdrawalRequest[]
 
@@ -109,7 +110,6 @@ model User {
   address                  String?
   dateOfBirth              DateTime?
   phone                    String?
-  displayPicture           String?
   failedLoginAttempts      Int                       @default(0)
   lastFailedLoginAt        DateTime?
   lockedUntil              DateTime?
@@ -119,6 +119,7 @@ model User {
   twoFactorEnabled         Boolean                   @default(false)
   twoFactorMethod          TwoFactorMethod?
   twoFactorSecret          String?
+  displayPicture           String?
   appointmentsAssigned     Appointment[]             @relation("AppointmentAssignee")
   appointmentsMade         Appointment[]             @relation("AppointmentCreator")
   availabilitySlots        AppointmentAvailability[] @relation("AppointmentAvailabilityAssignee")
@@ -128,6 +129,8 @@ model User {
   paymentsRecorded         Payment[]                 @relation("PaymentRecorder")
   paymentTypesCreated      PaymentType[]             @relation("PaymentTypeCreator")
   PaymentType              PaymentType[]
+  userAccountRequests      UserAccountRequest[]      @relation("UserAccountRequestRequestedBy")
+  reviewedUserRequests     UserAccountRequest[]      @relation("UserAccountRequestReviewedBy")
   societyLed               Society?                  @relation("SocietyPresident")
   societyAssisted          Society?                  @relation("SocietySecretary")
   reviewedJoinRequests     SocietyJoinRequest[]      @relation("JoinRequestReviewer")
@@ -334,6 +337,29 @@ model SocietyJoinRequest {
   @@index([status])
 }
 
+model UserAccountRequest {
+  id             String                   @id @default(uuid())
+  organizationId String
+  requestedById  String
+  reviewedById   String?
+  firstName      String
+  lastName       String
+  email          String
+  role           UserRole
+  status         UserAccountRequestStatus @default(PENDING)
+  message        String?
+  reviewedAt     DateTime?
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
+  organization   Organization             @relation(fields: [organizationId], references: [id])
+  requestedBy    User                     @relation("UserAccountRequestRequestedBy", fields: [requestedById], references: [id])
+  reviewedBy     User?                    @relation("UserAccountRequestReviewedBy", fields: [reviewedById], references: [id])
+
+  @@index([organizationId])
+  @@index([status])
+  @@index([requestedById])
+}
+
 model SocietyMembership {
   parishionerId String
   societyId     String
@@ -523,9 +549,8 @@ model Payment {
   organization       Organization      @relation(fields: [organizationId], references: [id])
   parishioner        Parishioner?      @relation(fields: [parishionerId], references: [id])
   paymentType        PaymentType?      @relation(fields: [paymentTypeId], references: [id])
-
-  recordedBy User     @relation("PaymentRecorder", fields: [recordedById], references: [id])
-  society    Society? @relation(fields: [societyId], references: [id])
+  recordedBy         User              @relation("PaymentRecorder", fields: [recordedById], references: [id])
+  society            Society?          @relation(fields: [societyId], references: [id])
 
   @@index([parishionerId])
   @@index([organizationId])
@@ -796,12 +821,12 @@ model PaymentType {
   createdById    String
   createdAt      DateTime            @default(now())
   updatedAt      DateTime            @updatedAt
+  userId         String?
   masses         MassPaymentType[]
   payments       Payment[]
   createdBy      User                @relation("PaymentTypeCreator", fields: [createdById], references: [id])
   organization   Organization        @relation(fields: [organizationId], references: [id])
   user           User?               @relation(fields: [userId], references: [id])
-  userId         String?
 
   @@unique([name, organizationId])
   @@index([organizationId])
@@ -893,6 +918,12 @@ enum MaritalStatus {
 }
 
 enum JoinRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum UserAccountRequestStatus {
   PENDING
   APPROVED
   REJECTED
