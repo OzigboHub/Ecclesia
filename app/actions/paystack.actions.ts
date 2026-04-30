@@ -846,6 +846,8 @@ export async function initializePaystackPayment(
 		(parsed.data.amount + platformFee + processorFee).toFixed(2),
 	);
 	const gatewayReference = generatePaystackReference("pay");
+	const massIntentionId = parsed.data.massIntentionId;
+	let paymentId: string | undefined;
 
 	try {
 		const recordedById = await resolveRecordedById(
@@ -885,6 +887,8 @@ export async function initializePaystackPayment(
 				organizationId: targetOrganizationId,
 			},
 		});
+
+		paymentId = payment.id;
 
 		const callbackBaseUrl =
 			process.env.NEXTAUTH_URL || "http://localhost:3000";
@@ -943,6 +947,49 @@ export async function initializePaystackPayment(
 		};
 	} catch (error) {
 		console.error("Failed to initialize Paystack payment:", error);
+
+		if (paymentId) {
+			await db.payment.update({
+				where: { id: paymentId },
+				data: {
+					paymentStatus: "FAILED",
+					gatewayStatus: "init_failed",
+				},
+			});
+		}
+
+		if (paymentId && massIntentionId) {
+			const cancelled = await db.massIntention.updateMany({
+				where: { id: massIntentionId, status: "PENDING" },
+				data: {
+					status: "CANCELLED",
+					notes: "Cancelled due to failed payment initialization",
+				},
+			});
+
+			if (cancelled.count > 0) {
+				const payment = await db.payment.findUnique({
+					where: { id: paymentId },
+					select: { recordedById: true },
+				});
+
+				if (payment?.recordedById) {
+					await db.auditLog.create({
+						data: {
+							action: "UPDATE",
+							entityType: "MassIntention",
+							entityId: massIntentionId,
+							performedBy: payment.recordedById,
+							details: {
+								status: "CANCELLED",
+								reason: "payment_initialization_failed",
+							},
+						},
+					});
+				}
+			}
+		}
+
 		return {
 			success: false,
 			message:
@@ -1020,6 +1067,34 @@ export async function verifyPaystackPayment(
 				gatewayMeta: toPrismaJson(verification.data),
 			},
 		});
+
+		if (payment.massIntentionId) {
+			const cancelled = await db.massIntention.updateMany({
+				where: {
+					id: payment.massIntentionId,
+					status: "PENDING",
+				},
+				data: {
+					status: "CANCELLED",
+					notes: "Cancelled due to failed payment",
+				},
+			});
+
+			if (cancelled.count > 0) {
+				await db.auditLog.create({
+					data: {
+						action: "UPDATE",
+						entityType: "MassIntention",
+						entityId: payment.massIntentionId,
+						performedBy: payment.recordedById,
+						details: {
+							status: "CANCELLED",
+							reason: "payment_failed",
+						},
+					},
+				});
+			}
+		}
 
 		return {
 			success: false,

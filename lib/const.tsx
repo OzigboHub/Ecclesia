@@ -162,8 +162,8 @@ export const NAVLINKS = [
 		link: "/contact",
 	},
 	{
-		name: "Masses",
-		link: "/mass",
+		name: "Parish",
+		link: "/parish",
 	},
 ];
 
