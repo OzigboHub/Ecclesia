@@ -1,4 +1,5 @@
 import db from "@/lib/db";
+import { HIDDEN_ORGANIZATION_NAMES } from "@/lib/organization-visibility";
 import { Calendar, Church, MapPin } from "lucide-react";
 import Link from "next/link";
 
@@ -18,16 +19,23 @@ export default async function Masses({
 	const query = params?.q?.trim() ?? "";
 	const now = new Date();
 
-	const parishes = await db.organization.findMany({
-		where: {
-			...(query ?
+	const filters = [
+		{ name: { notIn: HIDDEN_ORGANIZATION_NAMES } },
+		...(query ?
+			[
 				{
 					OR: [
 						{ name: { contains: query, mode: "insensitive" } },
 						{ address: { contains: query, mode: "insensitive" } },
 					],
-				}
-			:	{}),
+				},
+			]
+		:	[]),
+	];
+
+	const parishes = await db.organization.findMany({
+		where: {
+			AND: filters,
 		},
 		select: {
 			id: true,
