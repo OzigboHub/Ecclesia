@@ -130,7 +130,12 @@ export function canManageEvents(role: string): boolean {
 }
 
 export function canManageSocieties(role: string): boolean {
-	return ["SUPER_ADMIN", "PARISH_ADMIN", "PARISH_STAFF"].includes(role);
+	return [
+		"SUPER_ADMIN",
+		"PARISH_ADMIN",
+		"PARISH_STAFF",
+		"SOCIETY_SECRETARY",
+	].includes(role);
 }
 
 export function canViewSocieties(role: string): boolean {
