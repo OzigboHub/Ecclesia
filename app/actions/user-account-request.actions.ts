@@ -288,6 +288,24 @@ export async function approveUserAccountRequest(
 				},
 			});
 
+			if (request.role === "PARISHIONER") {
+				const existingParishioner = await tx.parishioner.findUnique({
+					where: { email: request.email },
+					select: { id: true },
+				});
+
+				if (!existingParishioner) {
+					await tx.parishioner.create({
+						data: {
+							firstName: request.firstName,
+							lastName: request.lastName,
+							email: request.email,
+							organizationId: request.organizationId,
+						},
+					});
+				}
+			}
+
 			await tx.userAccountRequest.update({
 				where: { id: request.id },
 				data: {

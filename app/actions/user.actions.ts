@@ -3,6 +3,7 @@
 import { configureOutstationPaystackProfile } from "@/app/actions/paystack.actions";
 import { auth } from "@/auth";
 import db from "@/lib/db";
+import { canManageSocieties } from "@/lib/permissions";
 import { organizationPaystackProfileSchema } from "@/lib/validators/paystack.schema";
 import {
 	changePasswordSchema,
@@ -145,6 +146,54 @@ export async function getUsers(
 	} catch (error) {
 		console.error("Failed to get users:", error);
 		return { success: false, message: "Failed to retrieve users" };
+	}
+}
+
+/**
+ * Get users eligible to be selected as society leaders.
+ * Scoped to current organization and roles allowed to manage societies.
+ */
+export async function getSocietyLeaderCandidates(): Promise<
+	ActionResponse<Pick<User, "id" | "firstName" | "lastName" | "role">[]>
+> {
+	try {
+		const session = await auth();
+		if (!session?.user) {
+			return { success: false, message: "Unauthorized" };
+		}
+
+		if (!canManageSocieties(session.user.role)) {
+			return {
+				success: false,
+				message: "You do not have permission to view users",
+			};
+		}
+
+		const users = await db.user.findMany({
+			where: {
+				organizationId: session.user.organizationId,
+				isActive: true,
+			},
+			select: {
+				id: true,
+				firstName: true,
+				lastName: true,
+				role: true,
+			},
+			orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+		});
+
+		return {
+			success: true,
+			message: "Society leader candidates retrieved successfully",
+			data: users,
+		};
+	} catch (error) {
+		console.error("Failed to get society leader candidates:", error);
+		return {
+			success: false,
+			message: "Failed to retrieve society leader candidates",
+		};
 	}
 }
 
