@@ -10,7 +10,7 @@ import {
 	getSocieties,
 	updateSociety,
 } from "@/app/actions/society.actions";
-import { getUsers } from "@/app/actions/user.actions";
+import { getSocietyLeaderCandidates } from "@/app/actions/user.actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -212,7 +212,7 @@ export function SocietyForm({ initialData, onSuccess }: SocietyFormProps) {
 	useEffect(() => {
 		async function fetchUsers() {
 			const [usersResult, societiesResult] = await Promise.all([
-				getUsers(),
+				getSocietyLeaderCandidates(),
 				getSocieties(),
 			]);
 
