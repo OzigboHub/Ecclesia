@@ -1,14 +1,20 @@
 import { Button } from "@/components/ui/button";
 import db from "@/lib/db";
+import { HIDDEN_ORGANIZATION_NAMES } from "@/lib/organization-visibility";
 import { BookOpen, Church } from "lucide-react";
 import Link from "next/link";
 
 export default async function MassIntentionsParishesPage() {
 	const parishes = await db.organization.findMany({
 		where: {
-			featureSettings: {
-				enableMassIntentions: true,
-			},
+			AND: [
+				{ name: { notIn: HIDDEN_ORGANIZATION_NAMES } },
+				{
+					featureSettings: {
+						enableMassIntentions: true,
+					},
+				},
+			],
 		},
 		select: {
 			id: true,

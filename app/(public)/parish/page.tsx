@@ -1,4 +1,6 @@
 import db from "@/lib/db";
+import { HIDDEN_ORGANIZATION_NAMES } from "@/lib/organization-visibility";
+import type { Prisma } from "@prisma/client";
 import { Calendar, Church, MapPin } from "lucide-react";
 import Link from "next/link";
 
@@ -18,16 +20,33 @@ export default async function Masses({
 	const query = params?.q?.trim() ?? "";
 	const now = new Date();
 
-	const parishes = await db.organization.findMany({
-		where: {
-			...(query ?
+	const filters: Prisma.OrganizationWhereInput[] = [
+		{ name: { notIn: HIDDEN_ORGANIZATION_NAMES } },
+		...(query ?
+			[
 				{
 					OR: [
-						{ name: { contains: query, mode: "insensitive" } },
-						{ address: { contains: query, mode: "insensitive" } },
+						{
+							name: {
+								contains: query,
+								mode: "insensitive" as const,
+							},
+						},
+						{
+							address: {
+								contains: query,
+								mode: "insensitive" as const,
+							},
+						},
 					],
-				}
-			:	{}),
+				},
+			]
+		:	[]),
+	];
+
+	const parishes = await db.organization.findMany({
+		where: {
+			AND: filters,
 		},
 		select: {
 			id: true,
