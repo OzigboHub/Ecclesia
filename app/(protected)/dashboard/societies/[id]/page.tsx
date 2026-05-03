@@ -6,6 +6,7 @@ import {
 import { auth } from "@/auth";
 import { AddMemberDialog } from "@/components/societies/add-member-dialog";
 import { CreateMeetingDialog } from "@/components/societies/create-meeting-dialog";
+import { DeleteSocietyButton } from "@/components/societies/delete-society-button";
 import { JoinRequestButton } from "@/components/societies/join-request-button";
 import { JoinRequestsPanel } from "@/components/societies/join-requests-panel";
 import { MemberListItem } from "@/components/societies/member-list-item";
@@ -43,6 +44,7 @@ export default async function SocietyDetailPage({
 	const society = result.data;
 	const isParishioner = session.user.role === "PARISHIONER";
 	const isSecretary = session.user.role === "PARISH_SECRETARY";
+	const isSuperAdmin = session.user.role === "SUPER_ADMIN";
 	const canManage = canManageSocieties(session.user.role);
 	const isSocietyLeader =
 		society.presidentId === session.user.id ||
@@ -112,22 +114,33 @@ export default async function SocietyDetailPage({
 						</span>
 					</div>
 				</div>
-				{canEdit && (
+				{(canEdit || isSuperAdmin) && (
 					<div className="flex gap-2">
-						<Button variant="outline" asChild>
-							<Link
-								href={`/dashboard/societies/${society.id}/manage`}
-							>
-								<Settings className="mr-2 h-4 w-4" /> Manage
-							</Link>
-						</Button>
-						<Button variant="outline" asChild>
-							<Link
-								href={`/dashboard/societies/${society.id}/edit`}
-							>
-								<Edit2 className="mr-2 h-4 w-4" /> Edit
-							</Link>
-						</Button>
+						{canEdit && (
+							<>
+								<Button variant="outline" asChild>
+									<Link
+										href={`/dashboard/societies/${society.id}/manage`}
+									>
+										<Settings className="mr-2 h-4 w-4" />{" "}
+										Manage
+									</Link>
+								</Button>
+								<Button variant="outline" asChild>
+									<Link
+										href={`/dashboard/societies/${society.id}/edit`}
+									>
+										<Edit2 className="mr-2 h-4 w-4" /> Edit
+									</Link>
+								</Button>
+							</>
+						)}
+						{isSuperAdmin && (
+							<DeleteSocietyButton
+								societyId={society.id}
+								societyName={society.name}
+							/>
+						)}
 					</div>
 				)}
 				{isParishioner && (

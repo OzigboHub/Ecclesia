@@ -1,36 +1,35 @@
-'use client';
+"use client";
 
-import { useSession } from 'next-auth/react';
+import { useSession } from "next-auth/react";
 
 // Role types from Prisma schema
 export type UserRole =
-	| 'SUPER_ADMIN'
-	| 'PARISH_ADMIN'
-	| 'PARISH_SECRETARY'
-	| 'PARISH_STAFF'
-	| 'OUTSTATION_ADMIN'
-	| 'SOCIETY_PRESIDENT'
-	| 'SOCIETY_SECRETARY'
-	| 'PARISHIONER';
+	| "SUPER_ADMIN"
+	| "PARISH_ADMIN"
+	| "PARISH_SECRETARY"
+	| "PARISH_STAFF"
+	| "OUTSTATION_ADMIN"
+	| "SOCIETY_PRESIDENT"
+	| "SOCIETY_SECRETARY"
+	| "PARISHIONER";
 
 // Admin roles that can manage settings
-const ADMIN_ROLES: UserRole[] = ['SUPER_ADMIN', 'PARISH_ADMIN'];
+const ADMIN_ROLES: UserRole[] = ["SUPER_ADMIN", "PARISH_ADMIN"];
 
 // Staff roles that can record data
 const STAFF_ROLES: UserRole[] = [
-	'SUPER_ADMIN',
-	'PARISH_ADMIN',
-	'PARISH_SECRETARY',
-	'PARISH_STAFF',
-	'OUTSTATION_ADMIN',
+	"SUPER_ADMIN",
+	"PARISH_ADMIN",
+	"PARISH_SECRETARY",
+	"PARISH_STAFF",
+	"OUTSTATION_ADMIN",
 ];
 
 // Roles that can manage societies
 const SOCIETY_MANAGEMENT_ROLES: UserRole[] = [
-	'SUPER_ADMIN',
-	'PARISH_ADMIN',
-	'SOCIETY_PRESIDENT',
-	'SOCIETY_SECRETARY',
+	"SUPER_ADMIN",
+	"PARISH_ADMIN",
+	"PARISH_SECRETARY",
 ];
 
 /**
@@ -41,18 +40,17 @@ export function useRole() {
 	const { data: session, status } = useSession();
 	const role = session?.user?.role as UserRole | undefined;
 
-	const isLoading = status === 'loading';
-	const isAuthenticated = status === 'authenticated' && !!session?.user;
+	const isLoading = status === "loading";
+	const isAuthenticated = status === "authenticated" && !!session?.user;
 
 	// Role level checks
-	const isSuperAdmin = role === 'SUPER_ADMIN';
-	const isParishAdmin = role === 'PARISH_ADMIN';
+	const isSuperAdmin = role === "SUPER_ADMIN";
+	const isParishAdmin = role === "PARISH_ADMIN";
 	const isAdmin = role ? ADMIN_ROLES.includes(role) : false;
 	const isStaff = role ? STAFF_ROLES.includes(role) : false;
-	const canManageSocieties = role
-		? SOCIETY_MANAGEMENT_ROLES.includes(role)
-		: false;
-	const isParishioner = role === 'PARISHIONER';
+	const canManageSocieties =
+		role ? SOCIETY_MANAGEMENT_ROLES.includes(role) : false;
+	const isParishioner = role === "PARISHIONER";
 
 	/**
 	 * Check if user has one of the specified roles
@@ -114,10 +112,10 @@ export function useRole() {
 	 * Check if user can view reports
 	 */
 	const canViewReports = hasRole([
-		'SUPER_ADMIN',
-		'PARISH_ADMIN',
-		'PARISH_SECRETARY',
-		'OUTSTATION_ADMIN',
+		"SUPER_ADMIN",
+		"PARISH_ADMIN",
+		"PARISH_SECRETARY",
+		"OUTSTATION_ADMIN",
 	]);
 
 	return {
