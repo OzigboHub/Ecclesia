@@ -1,6 +1,7 @@
 "use server";
 
 import db from "@/lib/db";
+import { HIDDEN_ORGANIZATION_NAMES } from "@/lib/organization-visibility";
 import type { ActionResponse } from "@/types";
 
 /**
@@ -176,9 +177,24 @@ export async function searchPublicParishes(
 
 		const parishes = await db.organization.findMany({
 			where: {
-				OR: [
-					{ name: { contains: trimmed, mode: "insensitive" } },
-					{ address: { contains: trimmed, mode: "insensitive" } },
+				AND: [
+					{ name: { notIn: HIDDEN_ORGANIZATION_NAMES } },
+					{
+						OR: [
+							{
+								name: {
+									contains: trimmed,
+									mode: "insensitive",
+								},
+							},
+							{
+								address: {
+									contains: trimmed,
+									mode: "insensitive",
+								},
+							},
+						],
+					},
 				],
 			},
 			select: {
