@@ -153,8 +153,15 @@ export async function getUsers(
  * Get users eligible to be selected as society leaders.
  * Scoped to current organization and roles allowed to manage societies.
  */
-export async function getSocietyLeaderCandidates(): Promise<
-	ActionResponse<Pick<User, "id" | "firstName" | "lastName" | "role">[]>
+export async function getSocietyLeaderCandidates(
+	params?: { page?: number; limit?: number },
+): Promise<
+	ActionResponse<{
+		users: Pick<User, "id" | "firstName" | "lastName" | "role">[];
+		total: number;
+		page: number;
+		limit: number;
+	}>
 > {
 	try {
 		const session = await auth();
@@ -169,24 +176,32 @@ export async function getSocietyLeaderCandidates(): Promise<
 			};
 		}
 
-		const users = await db.user.findMany({
-			where: {
-				organizationId: session.user.organizationId,
-				isActive: true,
-			},
-			select: {
-				id: true,
-				firstName: true,
-				lastName: true,
-				role: true,
-			},
-			orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
-		});
+		const page = Math.max(1, params?.page ?? 1);
+		const limit = Math.min(Math.max(params?.limit ?? 50, 1), 100);
+		const where = {
+			organizationId: session.user.organizationId,
+			isActive: true,
+		};
+		const [users, total] = await Promise.all([
+			db.user.findMany({
+				where,
+				select: {
+					id: true,
+					firstName: true,
+					lastName: true,
+					role: true,
+				},
+				orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+				skip: (page - 1) * limit,
+				take: limit,
+			}),
+			db.user.count({ where }),
+		]);
 
 		return {
 			success: true,
 			message: "Society leader candidates retrieved successfully",
-			data: users,
+			data: { users, total, page, limit },
 		};
 	} catch (error) {
 		console.error("Failed to get society leader candidates:", error);
