@@ -177,6 +177,9 @@ export function SocietyForm({ initialData, onSuccess }: SocietyFormProps) {
 	const [candidatePage, setCandidatePage] = useState(1);
 	const [isLoadingCandidates, setIsLoadingCandidates] = useState(false);
 	const isLoadingCandidatesRef = useRef(false);
+	const [candidateSearch, setCandidateSearch] = useState("");
+	const [debouncedCandidateSearch, setDebouncedCandidateSearch] =
+		useState("");
 	const [assignedPresidentIds, setAssignedPresidentIds] = useState<string[]>(
 		[],
 	);
@@ -222,19 +225,23 @@ export function SocietyForm({ initialData, onSuccess }: SocietyFormProps) {
 	} = form;
 
 	const loadLeaderCandidates = useCallback(
-		async (page: number, append: boolean) => {
+		async (page: number, append: boolean, query?: string) => {
 			if (isLoadingCandidatesRef.current) return;
 			isLoadingCandidatesRef.current = true;
 			setIsLoadingCandidates(true);
 			try {
+				const normalizedQuery = query?.trim();
 				const result = await getSocietyLeaderCandidates({
 					page,
 					limit: LEADER_PAGE_SIZE,
+					query: normalizedQuery ? normalizedQuery : undefined,
 				});
 
 				if (result.success && result.data) {
 					setLeaderCandidates((prev) =>
-						append ? [...prev, ...result.data.users] : result.data.users,
+						append ?
+							[...prev, ...result.data!.users]
+						:	result.data!.users,
 					);
 					setCandidateTotal(result.data.total);
 					setCandidatePage(result.data.page);
@@ -264,22 +271,56 @@ export function SocietyForm({ initialData, onSuccess }: SocietyFormProps) {
 						.filter((id): id is string => Boolean(id)),
 				);
 			}
-
-			await loadLeaderCandidates(1, false);
 		}
 		fetchUsers();
-	}, [loadLeaderCandidates]);
+	}, []);
+
+	useEffect(() => {
+		const handle = setTimeout(() => {
+			setDebouncedCandidateSearch(candidateSearch.trim());
+		}, 300);
+
+		return () => clearTimeout(handle);
+	}, [candidateSearch]);
+
+	useEffect(() => {
+		setLeaderCandidates([]);
+		setCandidatePage(1);
+		setCandidateTotal(0);
+		void loadLeaderCandidates(
+			1,
+			false,
+			debouncedCandidateSearch || undefined,
+		);
+	}, [debouncedCandidateSearch, loadLeaderCandidates]);
+
+	useEffect(() => {
+		if (
+			debouncedCandidateSearch.length === 0 &&
+			leaderCandidates.length === 0 &&
+			!isLoadingCandidatesRef.current
+		) {
+			void loadLeaderCandidates(1, false, undefined);
+		}
+	}, [
+		debouncedCandidateSearch,
+		leaderCandidates.length,
+		loadLeaderCandidates,
+	]);
 
 	const hasMoreCandidates = leaderCandidates.length < candidateTotal;
 
 	const handleCandidateScroll = (event: UIEvent<HTMLDivElement>) => {
 		const target = event.currentTarget;
 		const isNearBottom =
-			target.scrollTop + target.clientHeight >=
-			target.scrollHeight - 24;
+			target.scrollTop + target.clientHeight >= target.scrollHeight - 24;
 
 		if (isNearBottom && hasMoreCandidates && !isLoadingCandidates) {
-			void loadLeaderCandidates(candidatePage + 1, true);
+			void loadLeaderCandidates(
+				candidatePage + 1,
+				true,
+				debouncedCandidateSearch || undefined,
+			);
 		}
 	};
 
@@ -431,6 +472,18 @@ export function SocietyForm({ initialData, onSuccess }: SocietyFormProps) {
 									<SelectValue placeholder="Select President" />
 								</SelectTrigger>
 								<SelectContent className="bg-primary">
+									<div className="px-3 pb-2">
+										<Input
+											placeholder="Search users..."
+											value={candidateSearch}
+											onChange={(event) =>
+												setCandidateSearch(
+													event.target.value,
+												)
+											}
+											disabled={isPending}
+										/>
+									</div>
 									<div
 										className="max-h-64 overflow-y-auto"
 										onScroll={handleCandidateScroll}
@@ -440,6 +493,12 @@ export function SocietyForm({ initialData, onSuccess }: SocietyFormProps) {
 												None
 											</SelectItem>
 										)}
+										{isLoadingCandidates &&
+											leaderCandidates.length === 0 && (
+												<div className="px-3 py-2 text-sm text-muted-foreground">
+													Loading members...
+												</div>
+											)}
 										{availablePresidents.length === 0 && (
 											<div className="px-3 py-2 text-sm text-muted-foreground">
 												No candidates available.
@@ -455,11 +514,12 @@ export function SocietyForm({ initialData, onSuccess }: SocietyFormProps) {
 												Loading more...
 											</div>
 										)}
-										{!isLoadingCandidates && hasMoreCandidates && (
-											<div className="px-3 py-2 text-xs text-muted-foreground">
-												Scroll to load more
-											</div>
-										)}
+										{!isLoadingCandidates &&
+											hasMoreCandidates && (
+												<div className="px-3 py-2 text-xs text-muted-foreground">
+													Scroll to load more
+												</div>
+											)}
 									</div>
 								</SelectContent>
 							</Select>
@@ -494,6 +554,18 @@ export function SocietyForm({ initialData, onSuccess }: SocietyFormProps) {
 									<SelectValue placeholder="Select Secretary" />
 								</SelectTrigger>
 								<SelectContent className="bg-primary">
+									<div className="px-3 pb-2">
+										<Input
+											placeholder="Search users..."
+											value={candidateSearch}
+											onChange={(event) =>
+												setCandidateSearch(
+													event.target.value,
+												)
+											}
+											disabled={isPending}
+										/>
+									</div>
 									<div
 										className="max-h-64 overflow-y-auto"
 										onScroll={handleCandidateScroll}
@@ -503,6 +575,12 @@ export function SocietyForm({ initialData, onSuccess }: SocietyFormProps) {
 												None
 											</SelectItem>
 										)}
+										{isLoadingCandidates &&
+											leaderCandidates.length === 0 && (
+												<div className="px-3 py-2 text-sm text-muted-foreground">
+													Loading members...
+												</div>
+											)}
 										{availableSecretaries.length === 0 && (
 											<div className="px-3 py-2 text-sm text-muted-foreground">
 												No candidates available.
@@ -518,11 +596,12 @@ export function SocietyForm({ initialData, onSuccess }: SocietyFormProps) {
 												Loading more...
 											</div>
 										)}
-										{!isLoadingCandidates && hasMoreCandidates && (
-											<div className="px-3 py-2 text-xs text-muted-foreground">
-												Scroll to load more
-											</div>
-										)}
+										{!isLoadingCandidates &&
+											hasMoreCandidates && (
+												<div className="px-3 py-2 text-xs text-muted-foreground">
+													Scroll to load more
+												</div>
+											)}
 									</div>
 								</SelectContent>
 							</Select>

@@ -153,9 +153,11 @@ export async function getUsers(
  * Get users eligible to be selected as society leaders.
  * Scoped to current organization and roles allowed to manage societies.
  */
-export async function getSocietyLeaderCandidates(
-	params?: { page?: number; limit?: number },
-): Promise<
+export async function getSocietyLeaderCandidates(params?: {
+	page?: number;
+	limit?: number;
+	query?: string;
+}): Promise<
 	ActionResponse<{
 		users: Pick<User, "id" | "firstName" | "lastName" | "role">[];
 		total: number;
@@ -178,9 +180,38 @@ export async function getSocietyLeaderCandidates(
 
 		const page = Math.max(1, params?.page ?? 1);
 		const limit = Math.min(Math.max(params?.limit ?? 50, 1), 100);
+		const query = params?.query?.trim();
 		const where = {
 			organizationId: session.user.organizationId,
 			isActive: true,
+			...(query && {
+				OR: [
+					{
+						firstName: {
+							contains: query,
+							mode: Prisma.QueryMode.insensitive,
+						},
+					},
+					{
+						lastName: {
+							contains: query,
+							mode: Prisma.QueryMode.insensitive,
+						},
+					},
+					{
+						email: {
+							contains: query,
+							mode: Prisma.QueryMode.insensitive,
+						},
+					},
+					{
+						phone: {
+							contains: query,
+							mode: Prisma.QueryMode.insensitive,
+						},
+					},
+				],
+			}),
 		};
 		const [users, total] = await Promise.all([
 			db.user.findMany({
