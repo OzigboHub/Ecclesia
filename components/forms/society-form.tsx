@@ -2,7 +2,14 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import {
+	useCallback,
+	useEffect,
+	useRef,
+	useState,
+	useTransition,
+	type UIEvent,
+} from "react";
 import { Controller, useForm, type Resolver } from "react-hook-form";
 
 import {
@@ -10,7 +17,7 @@ import {
 	getSocieties,
 	updateSociety,
 } from "@/app/actions/society.actions";
-import { getUsers } from "@/app/actions/user.actions";
+import { getSocietyLeaderCandidates } from "@/app/actions/user.actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -73,6 +80,8 @@ const WEEKDAY_OPTIONS: Array<{ value: MeetingWeekday; label: string }> = [
 	{ value: "FRIDAY", label: "Friday" },
 	{ value: "SATURDAY", label: "Saturday" },
 ];
+
+const LEADER_PAGE_SIZE = 50;
 
 function parseMeetingSchedule(value?: string | null): MeetingRule[] {
 	if (!value) return [];
@@ -161,9 +170,16 @@ interface SocietyFormProps {
 
 export function SocietyForm({ initialData, onSuccess }: SocietyFormProps) {
 	const [isPending, startTransition] = useTransition();
-	const [users, setUsers] = useState<
+	const [leaderCandidates, setLeaderCandidates] = useState<
 		Array<{ id: string; firstName: string; lastName: string; role: string }>
 	>([]);
+	const [candidateTotal, setCandidateTotal] = useState(0);
+	const [candidatePage, setCandidatePage] = useState(1);
+	const [isLoadingCandidates, setIsLoadingCandidates] = useState(false);
+	const isLoadingCandidatesRef = useRef(false);
+	const [candidateSearch, setCandidateSearch] = useState("");
+	const [debouncedCandidateSearch, setDebouncedCandidateSearch] =
+		useState("");
 	const [assignedPresidentIds, setAssignedPresidentIds] = useState<string[]>(
 		[],
 	);
@@ -208,24 +224,40 @@ export function SocietyForm({ initialData, onSuccess }: SocietyFormProps) {
 		reset,
 	} = form;
 
+	const loadLeaderCandidates = useCallback(
+		async (page: number, append: boolean, query?: string) => {
+			if (isLoadingCandidatesRef.current) return;
+			isLoadingCandidatesRef.current = true;
+			setIsLoadingCandidates(true);
+			try {
+				const normalizedQuery = query?.trim();
+				const result = await getSocietyLeaderCandidates({
+					page,
+					limit: LEADER_PAGE_SIZE,
+					query: normalizedQuery ? normalizedQuery : undefined,
+				});
+
+				if (result.success && result.data) {
+					setLeaderCandidates((prev) =>
+						append ?
+							[...prev, ...result.data!.users]
+						:	result.data!.users,
+					);
+					setCandidateTotal(result.data.total);
+					setCandidatePage(result.data.page);
+				}
+			} finally {
+				isLoadingCandidatesRef.current = false;
+				setIsLoadingCandidates(false);
+			}
+		},
+		[],
+	);
+
 	// Fetch users (staff) for president/secretary selection — Society president/secretary are Users
 	useEffect(() => {
 		async function fetchUsers() {
-			const [usersResult, societiesResult] = await Promise.all([
-				getUsers(),
-				getSocieties(),
-			]);
-
-			if (usersResult.success && usersResult.data) {
-				setUsers(
-					usersResult.data.map((u) => ({
-						id: u.id,
-						firstName: u.firstName,
-						lastName: u.lastName,
-						role: u.role,
-					})),
-				);
-			}
+			const societiesResult = await getSocieties();
 
 			if (societiesResult.success && societiesResult.data) {
 				setAssignedPresidentIds(
@@ -243,7 +275,56 @@ export function SocietyForm({ initialData, onSuccess }: SocietyFormProps) {
 		fetchUsers();
 	}, []);
 
-	const availablePresidents = users.filter((u) => {
+	useEffect(() => {
+		const handle = setTimeout(() => {
+			setDebouncedCandidateSearch(candidateSearch.trim());
+		}, 300);
+
+		return () => clearTimeout(handle);
+	}, [candidateSearch]);
+
+	useEffect(() => {
+		setLeaderCandidates([]);
+		setCandidatePage(1);
+		setCandidateTotal(0);
+		void loadLeaderCandidates(
+			1,
+			false,
+			debouncedCandidateSearch || undefined,
+		);
+	}, [debouncedCandidateSearch, loadLeaderCandidates]);
+
+	useEffect(() => {
+		if (
+			debouncedCandidateSearch.length === 0 &&
+			leaderCandidates.length === 0 &&
+			!isLoadingCandidatesRef.current
+		) {
+			void loadLeaderCandidates(1, false, undefined);
+		}
+	}, [
+		debouncedCandidateSearch,
+		leaderCandidates.length,
+		loadLeaderCandidates,
+	]);
+
+	const hasMoreCandidates = leaderCandidates.length < candidateTotal;
+
+	const handleCandidateScroll = (event: UIEvent<HTMLDivElement>) => {
+		const target = event.currentTarget;
+		const isNearBottom =
+			target.scrollTop + target.clientHeight >= target.scrollHeight - 24;
+
+		if (isNearBottom && hasMoreCandidates && !isLoadingCandidates) {
+			void loadLeaderCandidates(
+				candidatePage + 1,
+				true,
+				debouncedCandidateSearch || undefined,
+			);
+		}
+	};
+
+	const availablePresidents = leaderCandidates.filter((u) => {
 		if (u.role === "PARISH_ADMIN") return false;
 		// Preserve currently selected president when editing this society.
 		if (initialData?.presidentId && u.id === initialData.presidentId)
@@ -254,7 +335,7 @@ export function SocietyForm({ initialData, onSuccess }: SocietyFormProps) {
 		return true;
 	});
 
-	const availableSecretaries = users.filter((u) => {
+	const availableSecretaries = leaderCandidates.filter((u) => {
 		if (u.role === "PARISH_ADMIN") return false;
 		// Preserve currently selected secretary when editing this society.
 		if (initialData?.secretaryId && u.id === initialData.secretaryId)
@@ -391,16 +472,55 @@ export function SocietyForm({ initialData, onSuccess }: SocietyFormProps) {
 									<SelectValue placeholder="Select President" />
 								</SelectTrigger>
 								<SelectContent className="bg-primary">
-									{allowNone && (
-										<SelectItem value="__none__">
-											None
-										</SelectItem>
-									)}
-									{availablePresidents.map((u) => (
-										<SelectItem key={u.id} value={u.id}>
-											{u.firstName} {u.lastName}
-										</SelectItem>
-									))}
+									<div className="px-3 pb-2">
+										<Input
+											placeholder="Search users..."
+											value={candidateSearch}
+											onChange={(event) =>
+												setCandidateSearch(
+													event.target.value,
+												)
+											}
+											disabled={isPending}
+										/>
+									</div>
+									<div
+										className="max-h-64 overflow-y-auto"
+										onScroll={handleCandidateScroll}
+									>
+										{allowNone && (
+											<SelectItem value="__none__">
+												None
+											</SelectItem>
+										)}
+										{isLoadingCandidates &&
+											leaderCandidates.length === 0 && (
+												<div className="px-3 py-2 text-sm text-muted-foreground">
+													Loading members...
+												</div>
+											)}
+										{availablePresidents.length === 0 && (
+											<div className="px-3 py-2 text-sm text-muted-foreground">
+												No candidates available.
+											</div>
+										)}
+										{availablePresidents.map((u) => (
+											<SelectItem key={u.id} value={u.id}>
+												{u.firstName} {u.lastName}
+											</SelectItem>
+										))}
+										{isLoadingCandidates && (
+											<div className="px-3 py-2 text-xs text-muted-foreground">
+												Loading more...
+											</div>
+										)}
+										{!isLoadingCandidates &&
+											hasMoreCandidates && (
+												<div className="px-3 py-2 text-xs text-muted-foreground">
+													Scroll to load more
+												</div>
+											)}
+									</div>
 								</SelectContent>
 							</Select>
 						)}
@@ -434,16 +554,55 @@ export function SocietyForm({ initialData, onSuccess }: SocietyFormProps) {
 									<SelectValue placeholder="Select Secretary" />
 								</SelectTrigger>
 								<SelectContent className="bg-primary">
-									{allowNone && (
-										<SelectItem value="__none__">
-											None
-										</SelectItem>
-									)}
-									{availableSecretaries.map((u) => (
-										<SelectItem key={u.id} value={u.id}>
-											{u.firstName} {u.lastName}
-										</SelectItem>
-									))}
+									<div className="px-3 pb-2">
+										<Input
+											placeholder="Search users..."
+											value={candidateSearch}
+											onChange={(event) =>
+												setCandidateSearch(
+													event.target.value,
+												)
+											}
+											disabled={isPending}
+										/>
+									</div>
+									<div
+										className="max-h-64 overflow-y-auto"
+										onScroll={handleCandidateScroll}
+									>
+										{allowNone && (
+											<SelectItem value="__none__">
+												None
+											</SelectItem>
+										)}
+										{isLoadingCandidates &&
+											leaderCandidates.length === 0 && (
+												<div className="px-3 py-2 text-sm text-muted-foreground">
+													Loading members...
+												</div>
+											)}
+										{availableSecretaries.length === 0 && (
+											<div className="px-3 py-2 text-sm text-muted-foreground">
+												No candidates available.
+											</div>
+										)}
+										{availableSecretaries.map((u) => (
+											<SelectItem key={u.id} value={u.id}>
+												{u.firstName} {u.lastName}
+											</SelectItem>
+										))}
+										{isLoadingCandidates && (
+											<div className="px-3 py-2 text-xs text-muted-foreground">
+												Loading more...
+											</div>
+										)}
+										{!isLoadingCandidates &&
+											hasMoreCandidates && (
+												<div className="px-3 py-2 text-xs text-muted-foreground">
+													Scroll to load more
+												</div>
+											)}
+									</div>
 								</SelectContent>
 							</Select>
 						)}

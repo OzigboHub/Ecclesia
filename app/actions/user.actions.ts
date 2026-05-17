@@ -3,6 +3,7 @@
 import { configureOutstationPaystackProfile } from "@/app/actions/paystack.actions";
 import { auth } from "@/auth";
 import db from "@/lib/db";
+import { canManageSocieties } from "@/lib/permissions";
 import { organizationPaystackProfileSchema } from "@/lib/validators/paystack.schema";
 import {
   changePasswordSchema,
@@ -145,6 +146,100 @@ export async function getUsers(
     console.error("Failed to get users:", error);
     return { success: false, message: "Failed to retrieve users" };
   }
+}
+
+/**
+ * Get users eligible to be selected as society leaders.
+ * Scoped to current organization and roles allowed to manage societies.
+ */
+export async function getSocietyLeaderCandidates(params?: {
+	page?: number;
+	limit?: number;
+	query?: string;
+}): Promise<
+	ActionResponse<{
+		users: Pick<User, "id" | "firstName" | "lastName" | "role">[];
+		total: number;
+		page: number;
+		limit: number;
+	}>
+> {
+	try {
+		const session = await auth();
+		if (!session?.user) {
+			return { success: false, message: "Unauthorized" };
+		}
+
+		if (!canManageSocieties(session.user.role)) {
+			return {
+				success: false,
+				message: "You do not have permission to view users",
+			};
+		}
+
+		const page = Math.max(1, params?.page ?? 1);
+		const limit = Math.min(Math.max(params?.limit ?? 50, 1), 100);
+		const query = params?.query?.trim();
+		const where = {
+			organizationId: session.user.organizationId,
+			isActive: true,
+			...(query && {
+				OR: [
+					{
+						firstName: {
+							contains: query,
+							mode: Prisma.QueryMode.insensitive,
+						},
+					},
+					{
+						lastName: {
+							contains: query,
+							mode: Prisma.QueryMode.insensitive,
+						},
+					},
+					{
+						email: {
+							contains: query,
+							mode: Prisma.QueryMode.insensitive,
+						},
+					},
+					{
+						phone: {
+							contains: query,
+							mode: Prisma.QueryMode.insensitive,
+						},
+					},
+				],
+			}),
+		};
+		const [users, total] = await Promise.all([
+			db.user.findMany({
+				where,
+				select: {
+					id: true,
+					firstName: true,
+					lastName: true,
+					role: true,
+				},
+				orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+				skip: (page - 1) * limit,
+				take: limit,
+			}),
+			db.user.count({ where }),
+		]);
+
+		return {
+			success: true,
+			message: "Society leader candidates retrieved successfully",
+			data: { users, total, page, limit },
+		};
+	} catch (error) {
+		console.error("Failed to get society leader candidates:", error);
+		return {
+			success: false,
+			message: "Failed to retrieve society leader candidates",
+		};
+	}
 }
 
 /**
