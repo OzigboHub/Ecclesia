@@ -449,7 +449,7 @@ export async function createPayment(
       };
     }
 
-    const { purpose, paymentMethod, ...paymentData } = parsed.data;
+    const { purpose, paymentMethod, societyId, ...paymentData } = parsed.data;
 
     // 1. Determine Organization Scope
     const targetOrgId = organizationId || session?.user?.organizationId;
@@ -492,6 +492,48 @@ export async function createPayment(
     }
 
     // 3. Feature Enablement Check
+    if (purpose === "SOCIETY_DUES") {
+      if (!societyId) {
+        return {
+          success: false,
+          message: "Society is required for society dues",
+        };
+      }
+
+      const parishionerId =
+        paymentData.parishionerId || session?.user?.parishionerId;
+      if (!parishionerId) {
+        return {
+          success: false,
+          message: "Parishioner must be specified for society dues",
+        };
+      }
+
+      if (
+        session?.user?.role === "PARISHIONER" &&
+        paymentMethod !== "BANK_TRANSFER"
+      ) {
+        return {
+          success: false,
+          message: "Society dues payments must be made by bank transfer",
+        };
+      }
+
+      const membership = await db.societyMembership.findFirst({
+        where: {
+          parishionerId,
+          societyId,
+        },
+      });
+
+      if (!membership) {
+        return {
+          success: false,
+          message: "You must be a member of this society to pay dues",
+        };
+      }
+    }
+
     const featureCheck = await checkFeatureEnabled(
       targetOrgId,
       purpose,
@@ -541,17 +583,42 @@ export async function createPayment(
       ? new Date(formPaymentDate).getMonth() + 1
       : restPaymentData.month;
 
+    const finalParishionerId =
+      purpose === "SOCIETY_DUES"
+        ? paymentData.parishionerId || session?.user?.parishionerId
+        : paymentData.parishionerId;
+
+    let payerName = paymentData.payerName;
+    if (!payerName && purpose === "SOCIETY_DUES" && finalParishionerId) {
+      const parishioner = await db.parishioner.findUnique({
+        where: { id: finalParishionerId },
+        select: { firstName: true, lastName: true },
+      });
+      if (parishioner) {
+        payerName = `${parishioner.firstName ?? ""} ${parishioner.lastName ?? ""}`.trim();
+      }
+    }
+    if (!payerName) {
+      payerName = "Guest";
+    }
+
+    const finalPaymentData = {
+      ...restPaymentData,
+      parishionerId: finalParishionerId,
+      societyId,
+    };
+
     // Combine description into notes if provided
-    const combinedNotes = [_description, restPaymentData.notes]
+    const combinedNotes = [_description, finalPaymentData.notes]
       .filter(Boolean)
       .join(" — ");
 
     const payment = await db.payment.create({
       data: {
-        ...restPaymentData,
+        ...finalPaymentData,
         month: derivedMonth,
-        notes: combinedNotes || restPaymentData.notes || undefined,
-        payerName: paymentData.payerName ?? "Guest",
+        notes: combinedNotes || finalPaymentData.notes || undefined,
+        payerName,
         purpose: dbPurpose,
         paymentMethod,
         currency: "NGN",

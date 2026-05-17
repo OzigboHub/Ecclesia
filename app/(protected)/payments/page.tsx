@@ -26,17 +26,11 @@ export default async function PaymentsPage({
 		"SUPER_ADMIN",
 		"PARISH_ADMIN",
 		"PARISH_SECRETARY",
-		"PARISH_STAFF",
-		"OUTSTATION_ADMIN",
-		"SOCIETY_PRESIDENT",
-		"SOCIETY_SECRETARY",
 	].includes(session.user.role);
 	if (!canViewPayments) redirect("/dashboard");
 
-	// Await searchParams in Next.js 16
 	const searchParams = await searchParamsPromise;
 
-	// Fetch payments and stats
 	const [
 		paymentsResult,
 		statsResult,

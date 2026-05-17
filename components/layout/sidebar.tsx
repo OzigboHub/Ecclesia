@@ -23,6 +23,7 @@ import {
 	canViewLiveStreams,
 	canViewMassCalendar,
 	canViewSocieties,
+	canViewSessions,
 	isSocietyHead,
 } from "@/lib/permissions";
 import { Download, LogOut, Settings, User } from "lucide-react";
@@ -39,7 +40,7 @@ export default function Sidebar({ session }: { session: Session | null }) {
 	const { canInstall, install } = usePwaInstall();
 	const userRole = session?.user?.role;
 	const isSuperAdmin = userRole === "SUPER_ADMIN";
-	const isSocietyPresident = userRole === "SOCIETY_PRESIDENT";
+	const isSocietyHeadRole = isSocietyHead(userRole ?? "");
 	const linkBaseClass =
 		"items-center py-2.5 flex gap-4 rounded-[10px] px-4 mb-1 transition-all";
 	const getLinkClass = (href: string) =>
@@ -131,7 +132,7 @@ export default function Sidebar({ session }: { session: Session | null }) {
 		if (item.name === "Parishioners")
 			return canManageParishioners(userRole);
 		if (item.name === "Payments")
-			return canRecordPayments(userRole) && !isSocietyPresident;
+			return canRecordPayments(userRole) && !isSocietyHeadRole;
 		if (item.name === "Pay") return canMakePayments(userRole);
 		if (item.name === "Mass Intentions")
 			return canBookMassIntentions(userRole);
@@ -143,6 +144,7 @@ export default function Sidebar({ session }: { session: Session | null }) {
 		if (item.name === "Live Streams") return canViewLiveStreams(userRole);
 		if (item.name === "Parish Finances")
 			return canManageFinancials(userRole);
+		if (item.name === "Sessions") return canViewSessions(userRole);
 		if (item.name === "Organization")
 			return canEditOrganizationProfile(userRole);
 		if (item.name === "Settings") return isSuperAdmin;

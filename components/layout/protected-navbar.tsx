@@ -22,6 +22,7 @@ import {
 	canViewLiveStreams,
 	canViewMassCalendar,
 	canViewSocieties,
+	canViewSessions,
 	isSocietyHead,
 } from "@/lib/permissions";
 import { getInitials } from "@/lib/utils";
@@ -56,6 +57,7 @@ export default function ProtectedNavbar({
 		{ id: string; name: string }[]
 	>([]);
 	const [mySocietyId, setMySocietyId] = useState<string | null>(null);
+	const isSocietyHeadRole = isSocietyHead(userRole ?? "");
 
 	useEffect(() => {
 		if (isSuperAdmin) {
@@ -122,7 +124,7 @@ export default function ProtectedNavbar({
 		if (item.name === "Parishioners")
 			return canManageParishioners(userRole);
 		if (item.name === "Payments")
-			return canRecordPayments(userRole) && !isSocietyPresident;
+			return canRecordPayments(userRole) && !isSocietyHeadRole;
 		if (item.name === "Mass Intentions")
 			return canBookMassIntentions(userRole);
 		if (item.name === "Mass Calendar") return canViewMassCalendar(userRole);
@@ -133,6 +135,7 @@ export default function ProtectedNavbar({
 		if (item.name === "Live Streams") return canViewLiveStreams(userRole);
 		if (item.name === "Parish Finances")
 			return canManageFinancials(userRole);
+		if (item.name === "Sessions") return canViewSessions(userRole);
 		if (item.name === "Organization")
 			return canEditOrganizationProfile(userRole);
 		if (item.name === "Settings") return isSuperAdmin;

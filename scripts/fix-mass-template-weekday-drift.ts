@@ -1,0 +1,343 @@
+import { config } from "dotenv";
+config();
+
+import { PrismaClient, DayOfWeek } from "@prisma/client";
+import { PrismaNeon } from "@prisma/adapter-neon";
+import { neonConfig } from "@neondatabase/serverless";
+import WebSocket from "ws";
+
+type CliOptions = {
+  apply: boolean;
+  organizationId?: string;
+  from?: Date;
+  to?: Date;
+  maxShiftDays: number;
+};
+
+type ProposedFix = {
+  id: string;
+  organizationId: string;
+  templateId: string;
+  time: string;
+  oldDate: Date;
+  newDate: Date;
+  expectedDay: DayOfWeek;
+  currentDay: DayOfWeek;
+  shiftDays: number;
+};
+
+const DAY_ENUMS: DayOfWeek[] = [
+  "SUNDAY",
+  "MONDAY",
+  "TUESDAY",
+  "WEDNESDAY",
+  "THURSDAY",
+  "FRIDAY",
+  "SATURDAY",
+];
+
+function parseArgs(argv: string[]): CliOptions {
+  const options: CliOptions = {
+    apply: false,
+    maxShiftDays: 1,
+  };
+
+  for (const rawArg of argv) {
+    if (rawArg === "--apply") {
+      options.apply = true;
+      continue;
+    }
+
+    if (rawArg === "--help" || rawArg === "-h") {
+      printHelp();
+      process.exit(0);
+    }
+
+    if (rawArg.startsWith("--org=")) {
+      options.organizationId = rawArg.slice("--org=".length);
+      continue;
+    }
+
+    if (rawArg.startsWith("--from=")) {
+      const value = rawArg.slice("--from=".length);
+      options.from = parseIsoDateOnly(value, "--from");
+      continue;
+    }
+
+    if (rawArg.startsWith("--to=")) {
+      const value = rawArg.slice("--to=".length);
+      options.to = parseIsoDateOnly(value, "--to");
+      continue;
+    }
+
+    if (rawArg.startsWith("--max-shift-days=")) {
+      const value = Number(rawArg.slice("--max-shift-days=".length));
+      if (!Number.isInteger(value) || value < 1 || value > 6) {
+        throw new Error("--max-shift-days must be an integer between 1 and 6");
+      }
+      options.maxShiftDays = value;
+      continue;
+    }
+
+    throw new Error(`Unknown argument: ${rawArg}`);
+  }
+
+  return options;
+}
+
+function printHelp() {
+  console.log(
+    "Fix mass records whose date weekday drifts from their template weekday.",
+  );
+  console.log("");
+  console.log("Usage:");
+  console.log(
+    "  pnpm tsx scripts/fix-mass-template-weekday-drift.ts [options]",
+  );
+  console.log("");
+  console.log("Options:");
+  console.log("  --apply                Persist updates (default is dry-run)");
+  console.log("  --org=<id>             Restrict to one organization");
+  console.log("  --from=YYYY-MM-DD      Restrict to dates >= from (UTC day)");
+  console.log("  --to=YYYY-MM-DD        Restrict to dates <= to (UTC day)");
+  console.log(
+    "  --max-shift-days=<n>   Max day shift to attempt (1-6, default: 1)",
+  );
+  console.log("  --help, -h             Show this help");
+  console.log("");
+  console.log("Examples:");
+  console.log("  pnpm tsx scripts/fix-mass-template-weekday-drift.ts");
+  console.log(
+    "  pnpm tsx scripts/fix-mass-template-weekday-drift.ts --apply --org=<ORG_ID>",
+  );
+}
+
+function parseIsoDateOnly(input: string, flagName: string): Date {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(input)) {
+    throw new Error(`${flagName} must be in YYYY-MM-DD format`);
+  }
+  return new Date(`${input}T00:00:00.000Z`);
+}
+
+function toUtcDayStart(value: Date): Date {
+  return new Date(
+    Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate()),
+  );
+}
+
+function toUtcDayEnd(value: Date): Date {
+  return new Date(
+    Date.UTC(
+      value.getUTCFullYear(),
+      value.getUTCMonth(),
+      value.getUTCDate(),
+      23,
+      59,
+      59,
+      999,
+    ),
+  );
+}
+
+function addUtcDays(value: Date, days: number): Date {
+  return new Date(
+    Date.UTC(
+      value.getUTCFullYear(),
+      value.getUTCMonth(),
+      value.getUTCDate() + days,
+    ),
+  );
+}
+
+function getUtcDayEnum(value: Date): DayOfWeek {
+  return DAY_ENUMS[value.getUTCDay()];
+}
+
+function buildShiftCandidates(maxShiftDays: number): number[] {
+  const candidates: number[] = [];
+  for (let step = 1; step <= maxShiftDays; step++) {
+    candidates.push(-step, step);
+  }
+  return candidates;
+}
+
+async function main() {
+  const options = parseArgs(process.argv.slice(2));
+
+  const connectionString = process.env.DATABASE_URL;
+  if (!connectionString) {
+    throw new Error("DATABASE_URL is not set");
+  }
+
+  neonConfig.webSocketConstructor =
+    WebSocket as unknown as typeof globalThis.WebSocket;
+
+  const adapter = new PrismaNeon({ connectionString });
+  const db = new PrismaClient({ adapter } as any);
+
+  try {
+    const where: any = {
+      templateId: { not: null },
+    };
+
+    if (options.organizationId) {
+      where.organizationId = options.organizationId;
+    }
+
+    if (options.from || options.to) {
+      where.date = {};
+      if (options.from) where.date.gte = toUtcDayStart(options.from);
+      if (options.to) where.date.lte = toUtcDayEnd(options.to);
+    }
+
+    const masses = await db.mass.findMany({
+      where,
+      select: {
+        id: true,
+        organizationId: true,
+        templateId: true,
+        date: true,
+        time: true,
+        massType: true,
+        isAutoGenerated: true,
+      },
+      orderBy: [{ organizationId: "asc" }, { date: "asc" }, { time: "asc" }],
+    });
+
+    const templateIds = Array.from(
+      new Set(masses.map((m) => m.templateId).filter(Boolean) as string[]),
+    );
+
+    const templates = await db.massScheduleTemplate.findMany({
+      where: { id: { in: templateIds } },
+      select: { id: true, dayOfWeek: true },
+    });
+
+    const templateDayById = new Map(templates.map((t) => [t.id, t.dayOfWeek]));
+
+    const candidates = buildShiftCandidates(options.maxShiftDays);
+    const proposedFixes: ProposedFix[] = [];
+    let skippedNoTemplate = 0;
+    let skippedNoShift = 0;
+    let skippedConflict = 0;
+
+    for (const mass of masses) {
+      if (!mass.templateId) {
+        skippedNoTemplate++;
+        continue;
+      }
+
+      const expectedDay = templateDayById.get(mass.templateId);
+      if (!expectedDay) {
+        skippedNoTemplate++;
+        continue;
+      }
+
+      const currentDay = getUtcDayEnum(mass.date);
+      if (currentDay === expectedDay) {
+        continue;
+      }
+
+      let shiftDays: number | null = null;
+      let newDate: Date | null = null;
+
+      for (const shift of candidates) {
+        const shifted = addUtcDays(mass.date, shift);
+        if (getUtcDayEnum(shifted) === expectedDay) {
+          shiftDays = shift;
+          newDate = shifted;
+          break;
+        }
+      }
+
+      if (shiftDays === null || !newDate) {
+        skippedNoShift++;
+        continue;
+      }
+
+      const conflict = await db.mass.findFirst({
+        where: {
+          id: { not: mass.id },
+          organizationId: mass.organizationId,
+          time: mass.time,
+          date: {
+            gte: toUtcDayStart(newDate),
+            lte: toUtcDayEnd(newDate),
+          },
+        },
+        select: { id: true },
+      });
+
+      if (conflict) {
+        skippedConflict++;
+        continue;
+      }
+
+      proposedFixes.push({
+        id: mass.id,
+        organizationId: mass.organizationId,
+        templateId: mass.templateId,
+        time: mass.time,
+        oldDate: mass.date,
+        newDate,
+        expectedDay,
+        currentDay,
+        shiftDays,
+      });
+    }
+
+    console.log("\nMass Template Weekday Drift Repair");
+    console.log("----------------------------------");
+    console.log(`Mode: ${options.apply ? "APPLY" : "DRY-RUN"}`);
+    console.log(`Total template-linked masses scanned: ${masses.length}`);
+    console.log(`Proposed fixes: ${proposedFixes.length}`);
+    console.log(`Skipped (missing template): ${skippedNoTemplate}`);
+    console.log(`Skipped (no shift within max range): ${skippedNoShift}`);
+    console.log(
+      `Skipped (unique conflict on target date/time): ${skippedConflict}`,
+    );
+
+    if (proposedFixes.length > 0) {
+      console.log("\nPreview (first 30):");
+      for (const row of proposedFixes.slice(0, 30)) {
+        console.log(
+          [
+            `mass=${row.id}`,
+            `org=${row.organizationId}`,
+            `template=${row.templateId}`,
+            `time=${row.time}`,
+            `from=${row.oldDate.toISOString().slice(0, 10)}(${row.currentDay})`,
+            `to=${row.newDate.toISOString().slice(0, 10)}(${row.expectedDay})`,
+            `shift=${row.shiftDays}`,
+          ].join(" | "),
+        );
+      }
+    }
+
+    if (!options.apply || proposedFixes.length === 0) {
+      console.log(
+        "\nNo database writes were made. Re-run with --apply to persist fixes.",
+      );
+      return;
+    }
+
+    let updated = 0;
+    for (const row of proposedFixes) {
+      await db.mass.update({
+        where: { id: row.id },
+        data: { date: toUtcDayStart(row.newDate) },
+      });
+      updated++;
+    }
+
+    console.log(`\nApplied updates: ${updated}`);
+    console.log("Done.");
+  } finally {
+    await db.$disconnect();
+  }
+}
+
+main().catch((error) => {
+  console.error("Script failed:", error);
+  process.exit(1);
+});

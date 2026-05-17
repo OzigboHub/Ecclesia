@@ -9,8 +9,45 @@ import {
 import { assignDefaultPaymentTypesToSundayMasses } from "@/app/actions/payment-type.actions";
 import type { ActionResponse } from "@/types";
 import { MassType } from "@prisma/client";
-import { addDays, endOfDay, format, startOfDay } from "date-fns";
 import { revalidatePath } from "next/cache";
+
+function toUtcDayStart(value: Date | string): Date {
+  const d = new Date(value);
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+}
+
+function toUtcDayEnd(value: Date | string): Date {
+  const d = new Date(value);
+  return new Date(
+    Date.UTC(
+      d.getUTCFullYear(),
+      d.getUTCMonth(),
+      d.getUTCDate(),
+      23,
+      59,
+      59,
+      999,
+    ),
+  );
+}
+
+function addUtcDays(value: Date, days: number): Date {
+  return new Date(
+    Date.UTC(
+      value.getUTCFullYear(),
+      value.getUTCMonth(),
+      value.getUTCDate() + days,
+    ),
+  );
+}
+
+function parseMassDayInput(value: Date | string): Date {
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return new Date(`${value}T00:00:00.000Z`);
+  }
+
+  return toUtcDayStart(value);
+}
 
 export async function getMasses(
   date: Date | string,
@@ -38,13 +75,13 @@ export async function getMasses(
       }
     }
 
-    const searchDate = new Date(date);
+    const searchDate = parseMassDayInput(date);
     const masses = await db.mass.findMany({
       where: {
         organizationId: targetOrgId,
         date: {
-          gte: startOfDay(searchDate),
-          lte: endOfDay(searchDate),
+          gte: toUtcDayStart(searchDate),
+          lte: toUtcDayEnd(searchDate),
         },
       },
       orderBy: { time: "asc" },
@@ -96,15 +133,15 @@ export async function getMassesInRange(
       }
     }
 
-    const start = new Date(startDate);
-    const end = new Date(endDate);
+    const start = parseMassDayInput(startDate);
+    const end = parseMassDayInput(endDate);
 
     const masses = await db.mass.findMany({
       where: {
         organizationId: targetOrgId,
         date: {
-          gte: startOfDay(start),
-          lte: endOfDay(end),
+          gte: toUtcDayStart(start),
+          lte: toUtcDayEnd(end),
         },
       },
       orderBy: [{ date: "asc" }, { time: "asc" }],
@@ -136,7 +173,7 @@ export async function createMass(data: any): Promise<ActionResponse> {
       return { success: false, message: "Unauthorized" };
     }
 
-    const date = new Date(data.date);
+    const date = parseMassDayInput(data.date);
     const org = await db.organization.findUnique({
       where: { id: session.user.organizationId },
       select: { maxMassesPerDay: true },
@@ -150,8 +187,8 @@ export async function createMass(data: any): Promise<ActionResponse> {
       where: {
         organizationId: session.user.organizationId,
         date: {
-          gte: startOfDay(date),
-          lte: endOfDay(date),
+          gte: toUtcDayStart(date),
+          lte: toUtcDayEnd(date),
         },
         status: { not: "CANCELLED" },
       },
@@ -168,8 +205,8 @@ export async function createMass(data: any): Promise<ActionResponse> {
       where: {
         organizationId: session.user.organizationId,
         date: {
-          gte: startOfDay(date),
-          lte: endOfDay(date),
+          gte: toUtcDayStart(date),
+          lte: toUtcDayEnd(date),
         },
         time: data.time,
         status: { not: "CANCELLED" },
@@ -224,8 +261,8 @@ export async function runMassGeneration(
       return { success: false, message: "Unauthorized" };
     }
 
-    const start = startDate ? new Date(startDate) : new Date();
-    const end = endDate ? new Date(endDate) : addDays(start, 30);
+    const start = startDate ? parseMassDayInput(startDate) : toUtcDayStart(new Date());
+    const end = endDate ? parseMassDayInput(endDate) : addUtcDays(start, 30);
 
     const count = await generateMassesForPeriod(
       session.user.organizationId,
@@ -286,7 +323,7 @@ export async function updateMass(
       ...data,
     };
 
-    if (data.date) updateData.date = new Date(data.date);
+    if (data.date) updateData.date = parseMassDayInput(data.date);
 
     const targetDate = updateData.date ?? existingMass.date;
     const targetTime = updateData.time ?? existingMass.time;
@@ -296,8 +333,8 @@ export async function updateMass(
         id: { not: id },
         organizationId: session.user.organizationId,
         date: {
-          gte: startOfDay(new Date(targetDate)),
-          lte: endOfDay(new Date(targetDate)),
+          gte: toUtcDayStart(new Date(targetDate)),
+          lte: toUtcDayEnd(new Date(targetDate)),
         },
         time: targetTime,
         status: { not: "CANCELLED" },
@@ -385,8 +422,8 @@ export async function getMassDays(
 
     const targetOrgId = organizationId || session.user.organizationId;
 
-    const start = startOfDay(new Date(startDate));
-    const end = endOfDay(new Date(endDate));
+    const start = toUtcDayStart(parseMassDayInput(startDate));
+    const end = toUtcDayEnd(parseMassDayInput(endDate));
 
     const masses = await db.mass.findMany({
       where: {
@@ -401,9 +438,7 @@ export async function getMassDays(
     });
 
     // Extract unique dates as ISO strings (YYYY-MM-DD format)
-    const dates = Array.from(
-      new Set(masses.map((m) => format(m.date, "yyyy-MM-dd"))),
-    );
+    const dates = Array.from(new Set(masses.map((m) => m.date.toISOString().slice(0, 10))));
 
     return { success: true, message: "Mass days retrieved", data: dates };
   } catch (error) {

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { canViewSessions } from "@/lib/permissions";
 
 export const metadata = {
 	title: "Active Sessions | Ecclesia",
@@ -16,6 +17,10 @@ export default async function SessionsPage() {
 
 	if (!session?.user) {
 		redirect("/auth/login");
+	}
+
+	if (!canViewSessions(session.user.role)) {
+		redirect("/dashboard");
 	}
 
 	const result = await getMyActiveSessions();
