@@ -33,7 +33,10 @@ export function MassGenerateDialog() {
 
     setIsPending(true);
     try {
-      const res = await runMassGeneration(range.from, range.to);
+      const res = await runMassGeneration(
+        format(range.from, "yyyy-MM-dd"),
+        format(range.to, "yyyy-MM-dd"),
+      );
       if (res.success) {
         toast.success(res.message);
         setIsOpen(false);

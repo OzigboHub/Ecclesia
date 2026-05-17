@@ -416,6 +416,41 @@ export async function updateParishioner(
 			}
 		}
 
+		if (parsed.data.organizationId) {
+			if (parsed.data.organizationId !== existing.organizationId) {
+				const targetOrganization = await db.organization.findUnique({
+					where: { id: parsed.data.organizationId },
+				});
+
+				if (!targetOrganization) {
+					return {
+						success: false,
+						message: "Invalid organization selected",
+					};
+				}
+
+				if (session.user.role === "PARISH_ADMIN") {
+					const validOrganization = await db.organization.findFirst({
+						where: {
+							id: parsed.data.organizationId,
+							OR: [
+								{ id: session.user.organizationId },
+								{ parentId: session.user.organizationId },
+							],
+						},
+					});
+
+					if (!validOrganization) {
+						return {
+							success: false,
+							message:
+								"You do not have permission to move this parishioner to the selected organization",
+						};
+					}
+				}
+			}
+		}
+
 		// Update
 		const parishioner = await db.parishioner.update({
 			where: { id },

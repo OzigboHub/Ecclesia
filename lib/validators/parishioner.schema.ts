@@ -142,7 +142,11 @@ export type CsvImportResult = z.infer<typeof csvImportResultSchema>;
 // UPDATE PARISHIONER SCHEMA (All fields optional)
 // ============================================
 
-export const updateParishionerSchema = createParishionerSchema.partial();
+export const updateParishionerSchema = createParishionerSchema
+	.partial()
+	.extend({
+		organizationId: z.string().uuid().optional(),
+	});
 
 export type UpdateParishionerInput = z.infer<typeof updateParishionerSchema>;
 

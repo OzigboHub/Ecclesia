@@ -840,6 +840,32 @@ export async function initializePaystackPayment(
 		};
 	}
 
+	// For SOCIETY_DUES, validate membership
+	if (parsed.data.purpose === "SOCIETY_DUES" && parsed.data.societyId) {
+		const parishionerId =
+			parsed.data.parishionerId || session?.user?.parishionerId;
+		if (!parishionerId) {
+			return {
+				success: false,
+				message: "Parishioner must be specified for society dues",
+			};
+		}
+
+		const membership = await db.societyMembership.findFirst({
+			where: {
+				parishionerId,
+				societyId: parsed.data.societyId,
+			},
+		});
+
+		if (!membership) {
+			return {
+				success: false,
+				message: "You must be a member of this society to pay dues",
+			};
+		}
+	}
+
 	const platformFee = calculatePlatformFee(parsed.data.amount);
 	const processorFee = 0;
 	const grossAmount = Number(
@@ -882,6 +908,7 @@ export async function initializePaystackPayment(
 				donationCampaignId: parsed.data.donationCampaignId,
 				paymentTypeId: parsed.data.paymentTypeId,
 				month: parsed.data.month,
+				societyId: parsed.data.societyId,
 				recordedById,
 				receiptNumber,
 				organizationId: targetOrganizationId,
@@ -919,6 +946,8 @@ export async function initializePaystackPayment(
 							massIntentionId: parsed.data.massIntentionId,
 							donationCampaignId: parsed.data.donationCampaignId,
 							paymentTypeId: parsed.data.paymentTypeId,
+							societyId: parsed.data.societyId,
+							month: parsed.data.month,
 						},
 					}),
 				},

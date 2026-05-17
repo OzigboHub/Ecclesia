@@ -101,7 +101,10 @@ export function MassEditDialog({ mass, onSuccess }: MassEditDialogProps) {
   const onSubmit = async (data: MassEditInput) => {
     setIsPending(true);
     try {
-      const res = await updateMass(mass.id, data);
+      const res = await updateMass(mass.id, {
+        ...data,
+        date: format(data.date, "yyyy-MM-dd"),
+      });
       if (res.success) {
         toast.success("Mass updated successfully");
         setIsOpen(false);
