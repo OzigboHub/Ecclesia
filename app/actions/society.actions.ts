@@ -27,6 +27,18 @@ function canAccessSocietyFinancials(role: string, isSocietyLeader: boolean) {
 	return isSocietyLeader || SOCIETY_FINANCIAL_ROLES.includes(role);
 }
 
+function isSocietyLeaderForSession(
+	society: { presidentId: string | null; secretaryId: string | null },
+	session: { user: { parishionerId?: string | null } },
+) {
+	const parishionerId = session.user.parishionerId ?? null;
+	if (!parishionerId) return false;
+	return (
+		society.presidentId === parishionerId ||
+		society.secretaryId === parishionerId
+	);
+}
+
 // ============================================
 // TYPE DEFINITIONS
 // ============================================
@@ -34,18 +46,10 @@ function canAccessSocietyFinancials(role: string, isSocietyLeader: boolean) {
 export type SocietyWithRelations = Prisma.SocietyGetPayload<{
 	include: {
 		president: {
-			select: {
-				id: true;
-				firstName: true;
-				lastName: true;
-			};
+			select: { id: true; firstName: true; lastName: true };
 		};
 		secretary: {
-			select: {
-				id: true;
-				firstName: true;
-				lastName: true;
-			};
+			select: { id: true; firstName: true; lastName: true };
 		};
 		_count: {
 			select: { members: true };
@@ -62,7 +66,9 @@ export type SocietyWithDetails = Prisma.SocietyGetPayload<{
 				parishioner: true;
 			};
 		};
-		events: true;
+		events: {
+			orderBy: { startTime: "asc" };
+		};
 	};
 }>;
 
@@ -223,15 +229,19 @@ export async function createSociety(
 
 		const { presidentId, secretaryId, ...rest } = parsed.data;
 
-		// Validate role restrictions and leadership uniqueness before create.
+		// Validate leadership eligibility and uniqueness before create.
 		if (presidentId || secretaryId) {
 			const leaderIds = [presidentId, secretaryId].filter(
 				Boolean,
 			) as string[];
 			const [leaders, conflicts] = await Promise.all([
-				db.user.findMany({
-					where: { id: { in: leaderIds } },
-					select: { id: true, role: true },
+				db.parishioner.findMany({
+					where: {
+						id: { in: leaderIds },
+						organizationId: session.user.organizationId,
+						isActive: true,
+					},
+					select: { id: true },
 				}),
 				db.society.findMany({
 					where: {
@@ -254,53 +264,50 @@ export async function createSociety(
 			]);
 
 			const fieldErrors: Record<string, string[]> = {};
+			const leaderIdSet = new Set(leaders.map((leader) => leader.id));
 
 			if (presidentId) {
-				const leader = leaders.find((l) => l.id === presidentId);
-				if (leader?.role === "PARISH_ADMIN") {
+				if (!leaderIdSet.has(presidentId)) {
 					fieldErrors.presidentId = [
-						"Parish admins cannot be assigned as society leaders",
+						"Selected president must be an active parishioner in this organization",
 					];
-				} else {
-					const asPresident = conflicts.find(
-						(c) => c.presidentId === presidentId,
-					);
-					const asSecretary = conflicts.find(
-						(c) => c.secretaryId === presidentId,
-					);
-					if (asPresident)
-						fieldErrors.presidentId = [
-							`This person is already president of: ${asPresident.name}`,
-						];
-					else if (asSecretary)
-						fieldErrors.presidentId = [
-							`This person is already secretary of: ${asSecretary.name}`,
-						];
 				}
+				const asPresident = conflicts.find(
+					(c) => c.presidentId === presidentId,
+				);
+				const asSecretary = conflicts.find(
+					(c) => c.secretaryId === presidentId,
+				);
+				if (asPresident)
+					fieldErrors.presidentId = [
+						`This person is already president of: ${asPresident.name}`,
+					];
+				else if (asSecretary)
+					fieldErrors.presidentId = [
+						`This person is already secretary of: ${asSecretary.name}`,
+					];
 			}
 
 			if (secretaryId) {
-				const leader = leaders.find((l) => l.id === secretaryId);
-				if (leader?.role === "PARISH_ADMIN") {
+				if (!leaderIdSet.has(secretaryId)) {
 					fieldErrors.secretaryId = [
-						"Parish admins cannot be assigned as society leaders",
+						"Selected secretary must be an active parishioner in this organization",
 					];
-				} else {
-					const asSecretary = conflicts.find(
-						(c) => c.secretaryId === secretaryId,
-					);
-					const asPresident = conflicts.find(
-						(c) => c.presidentId === secretaryId,
-					);
-					if (asSecretary)
-						fieldErrors.secretaryId = [
-							`This person is already secretary of: ${asSecretary.name}`,
-						];
-					else if (asPresident)
-						fieldErrors.secretaryId = [
-							`This person is already president of: ${asPresident.name}`,
-						];
 				}
+				const asSecretary = conflicts.find(
+					(c) => c.secretaryId === secretaryId,
+				);
+				const asPresident = conflicts.find(
+					(c) => c.presidentId === secretaryId,
+				);
+				if (asSecretary)
+					fieldErrors.secretaryId = [
+						`This person is already secretary of: ${asSecretary.name}`,
+					];
+				else if (asPresident)
+					fieldErrors.secretaryId = [
+						`This person is already president of: ${asPresident.name}`,
+					];
 			}
 
 			if (Object.keys(fieldErrors).length > 0) {
@@ -1066,9 +1073,7 @@ export async function getJoinRequestsForSociety(
 			return { success: false, message: "Society not found" };
 		}
 
-		const isSocietyLeader =
-			society.presidentId === session.user.id ||
-			society.secretaryId === session.user.id;
+		const isSocietyLeader = isSocietyLeaderForSession(society, session);
 
 		if (!canReview && !isSocietyLeader) {
 			return { success: false, message: "Permission denied" };
@@ -1127,9 +1132,10 @@ export async function approveJoinRequest(
 			return { success: false, message: "Join request not found" };
 		}
 
-		const isSocietyLeader =
-			request.society.presidentId === session.user.id ||
-			request.society.secretaryId === session.user.id;
+		const isSocietyLeader = isSocietyLeaderForSession(
+			request.society,
+			session,
+		);
 
 		if (!canReview && !isSocietyLeader) {
 			return { success: false, message: "Permission denied" };
@@ -1208,9 +1214,10 @@ export async function rejectJoinRequest(
 			return { success: false, message: "Join request not found" };
 		}
 
-		const isSocietyLeader =
-			request.society.presidentId === session.user.id ||
-			request.society.secretaryId === session.user.id;
+		const isSocietyLeader = isSocietyLeaderForSession(
+			request.society,
+			session,
+		);
 
 		if (!canReview && !isSocietyLeader) {
 			return { success: false, message: "Permission denied" };
@@ -1278,12 +1285,20 @@ export async function getSocietyForCurrentUser(): Promise<
 			};
 		}
 
+		const parishionerId = session.user.parishionerId ?? null;
+		if (!parishionerId) {
+			return {
+				success: false,
+				message: "You are not a leader of any society",
+			};
+		}
+
 		const society = await db.society.findFirst({
 			where: {
 				organizationId: session.user.organizationId,
 				OR: [
-					{ presidentId: session.user.id },
-					{ secretaryId: session.user.id },
+					{ presidentId: parishionerId },
+					{ secretaryId: parishionerId },
 				],
 			},
 			include: {
@@ -1384,9 +1399,7 @@ export async function getSocietyDuesOverview(
 			return { success: false, message: "Society not found" };
 		}
 
-		const isSocietyLeader =
-			societyData.presidentId === session.user.id ||
-			societyData.secretaryId === session.user.id;
+		const isSocietyLeader = isSocietyLeaderForSession(societyData, session);
 
 		if (!canAccessSocietyFinancials(session.user.role, isSocietyLeader)) {
 			return { success: false, message: "Permission denied" };
@@ -1521,9 +1534,7 @@ export async function getSocietyPayments(
 			return { success: false, message: "Society not found" };
 		}
 
-		const isSocietyLeader =
-			society.presidentId === session.user.id ||
-			society.secretaryId === session.user.id;
+		const isSocietyLeader = isSocietyLeaderForSession(society, session);
 
 		if (!canAccessSocietyFinancials(session.user.role, isSocietyLeader)) {
 			return { success: false, message: "Permission denied" };
@@ -1612,9 +1623,7 @@ export async function recordSocietyDue(
 			return { success: false, message: "Society not found" };
 		}
 
-		const isSocietyLeader =
-			society.presidentId === session.user.id ||
-			society.secretaryId === session.user.id;
+		const isSocietyLeader = isSocietyLeaderForSession(society, session);
 
 		if (!canAccessSocietyFinancials(session.user.role, isSocietyLeader)) {
 			return { success: false, message: "Permission denied" };
@@ -1741,9 +1750,7 @@ export async function getSocietyMemberRecords(
 			return { success: false, message: "Society not found" };
 		}
 
-		const isSocietyLeader =
-			society.presidentId === session.user.id ||
-			society.secretaryId === session.user.id;
+		const isSocietyLeader = isSocietyLeaderForSession(society, session);
 
 		if (!canManageSocieties(session.user.role) && !isSocietyLeader) {
 			return { success: false, message: "Permission denied" };
@@ -1819,9 +1826,7 @@ export async function updateSocietyDueAmount(
 			return { success: false, message: "Society not found" };
 		}
 
-		const isSocietyLeader =
-			society.presidentId === session.user.id ||
-			society.secretaryId === session.user.id;
+		const isSocietyLeader = isSocietyLeaderForSession(society, session);
 
 		if (!canManageSocieties(session.user.role) && !isSocietyLeader) {
 			return { success: false, message: "Permission denied" };

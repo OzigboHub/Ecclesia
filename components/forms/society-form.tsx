@@ -2,14 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import {
-	useCallback,
-	useEffect,
-	useRef,
-	useState,
-	useTransition,
-	type UIEvent,
-} from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { Controller, useForm, type Resolver } from "react-hook-form";
 
 import {
@@ -81,7 +74,7 @@ const WEEKDAY_OPTIONS: Array<{ value: MeetingWeekday; label: string }> = [
 	{ value: "SATURDAY", label: "Saturday" },
 ];
 
-const LEADER_PAGE_SIZE = 50;
+const LEADER_PAGE_SIZE = 5;
 
 function parseMeetingSchedule(value?: string | null): MeetingRule[] {
 	if (!value) return [];
@@ -171,10 +164,8 @@ interface SocietyFormProps {
 export function SocietyForm({ initialData, onSuccess }: SocietyFormProps) {
 	const [isPending, startTransition] = useTransition();
 	const [leaderCandidates, setLeaderCandidates] = useState<
-		Array<{ id: string; firstName: string; lastName: string; role: string }>
+		Array<{ id: string; firstName: string; lastName: string }>
 	>([]);
-	const [candidateTotal, setCandidateTotal] = useState(0);
-	const [candidatePage, setCandidatePage] = useState(1);
 	const [isLoadingCandidates, setIsLoadingCandidates] = useState(false);
 	const isLoadingCandidatesRef = useRef(false);
 	const [candidateSearch, setCandidateSearch] = useState("");
@@ -238,13 +229,16 @@ export function SocietyForm({ initialData, onSuccess }: SocietyFormProps) {
 				});
 
 				if (result.success && result.data) {
-					setLeaderCandidates((prev) =>
-						append ?
-							[...prev, ...result.data!.users]
-						:	result.data!.users,
-					);
-					setCandidateTotal(result.data.total);
-					setCandidatePage(result.data.page);
+					setLeaderCandidates((prev) => {
+						const next =
+							append ?
+								[...prev, ...result.data!.users]
+							:	result.data!.users;
+						const unique = new Map(
+							next.map((item) => [item.id, item]),
+						);
+						return Array.from(unique.values());
+					});
 				}
 			} finally {
 				isLoadingCandidatesRef.current = false;
@@ -254,7 +248,7 @@ export function SocietyForm({ initialData, onSuccess }: SocietyFormProps) {
 		[],
 	);
 
-	// Fetch users (staff) for president/secretary selection — Society president/secretary are Users
+	// Fetch parishioners for president/secretary selection
 	useEffect(() => {
 		async function fetchUsers() {
 			const societiesResult = await getSocieties();
@@ -285,8 +279,6 @@ export function SocietyForm({ initialData, onSuccess }: SocietyFormProps) {
 
 	useEffect(() => {
 		setLeaderCandidates([]);
-		setCandidatePage(1);
-		setCandidateTotal(0);
 		void loadLeaderCandidates(
 			1,
 			false,
@@ -308,39 +300,21 @@ export function SocietyForm({ initialData, onSuccess }: SocietyFormProps) {
 		loadLeaderCandidates,
 	]);
 
-	const hasMoreCandidates = leaderCandidates.length < candidateTotal;
-
-	const handleCandidateScroll = (event: UIEvent<HTMLDivElement>) => {
-		const target = event.currentTarget;
-		const isNearBottom =
-			target.scrollTop + target.clientHeight >= target.scrollHeight - 24;
-
-		if (isNearBottom && hasMoreCandidates && !isLoadingCandidates) {
-			void loadLeaderCandidates(
-				candidatePage + 1,
-				true,
-				debouncedCandidateSearch || undefined,
-			);
-		}
-	};
-
 	const availablePresidents = leaderCandidates.filter((u) => {
-		if (u.role === "PARISH_ADMIN") return false;
 		// Preserve currently selected president when editing this society.
 		if (initialData?.presidentId && u.id === initialData.presidentId)
 			return true;
-		// Exclude users already serving as president or secretary in any society.
+		// Exclude parishioners already serving as president or secretary in any society.
 		if (assignedPresidentIds.includes(u.id)) return false;
 		if (assignedSecretaryIds.includes(u.id)) return false;
 		return true;
 	});
 
 	const availableSecretaries = leaderCandidates.filter((u) => {
-		if (u.role === "PARISH_ADMIN") return false;
 		// Preserve currently selected secretary when editing this society.
 		if (initialData?.secretaryId && u.id === initialData.secretaryId)
 			return true;
-		// Exclude users already serving as secretary or president in any society.
+		// Exclude parishioners already serving as secretary or president in any society.
 		if (assignedSecretaryIds.includes(u.id)) return false;
 		if (assignedPresidentIds.includes(u.id)) return false;
 		return true;
@@ -471,10 +445,13 @@ export function SocietyForm({ initialData, onSuccess }: SocietyFormProps) {
 								<SelectTrigger id="presidentId">
 									<SelectValue placeholder="Select President" />
 								</SelectTrigger>
-								<SelectContent className="bg-primary">
+								<SelectContent
+									className="bg-primary"
+									viewportClassName="max-h-64"
+								>
 									<div className="px-3 pb-2">
 										<Input
-											placeholder="Search users..."
+											placeholder="Search parishioners..."
 											value={candidateSearch}
 											onChange={(event) =>
 												setCandidateSearch(
@@ -484,10 +461,7 @@ export function SocietyForm({ initialData, onSuccess }: SocietyFormProps) {
 											disabled={isPending}
 										/>
 									</div>
-									<div
-										className="max-h-64 overflow-y-auto"
-										onScroll={handleCandidateScroll}
-									>
+									<div>
 										{allowNone && (
 											<SelectItem value="__none__">
 												None
@@ -496,7 +470,7 @@ export function SocietyForm({ initialData, onSuccess }: SocietyFormProps) {
 										{isLoadingCandidates &&
 											leaderCandidates.length === 0 && (
 												<div className="px-3 py-2 text-sm text-muted-foreground">
-													Loading members...
+													Loading parishioners...
 												</div>
 											)}
 										{availablePresidents.length === 0 && (
@@ -509,17 +483,6 @@ export function SocietyForm({ initialData, onSuccess }: SocietyFormProps) {
 												{u.firstName} {u.lastName}
 											</SelectItem>
 										))}
-										{isLoadingCandidates && (
-											<div className="px-3 py-2 text-xs text-muted-foreground">
-												Loading more...
-											</div>
-										)}
-										{!isLoadingCandidates &&
-											hasMoreCandidates && (
-												<div className="px-3 py-2 text-xs text-muted-foreground">
-													Scroll to load more
-												</div>
-											)}
 									</div>
 								</SelectContent>
 							</Select>
@@ -553,10 +516,13 @@ export function SocietyForm({ initialData, onSuccess }: SocietyFormProps) {
 								<SelectTrigger id="secretaryId">
 									<SelectValue placeholder="Select Secretary" />
 								</SelectTrigger>
-								<SelectContent className="bg-primary">
+								<SelectContent
+									className="bg-primary"
+									viewportClassName="max-h-64"
+								>
 									<div className="px-3 pb-2">
 										<Input
-											placeholder="Search users..."
+											placeholder="Search parishioners..."
 											value={candidateSearch}
 											onChange={(event) =>
 												setCandidateSearch(
@@ -566,10 +532,7 @@ export function SocietyForm({ initialData, onSuccess }: SocietyFormProps) {
 											disabled={isPending}
 										/>
 									</div>
-									<div
-										className="max-h-64 overflow-y-auto"
-										onScroll={handleCandidateScroll}
-									>
+									<div>
 										{allowNone && (
 											<SelectItem value="__none__">
 												None
@@ -578,7 +541,7 @@ export function SocietyForm({ initialData, onSuccess }: SocietyFormProps) {
 										{isLoadingCandidates &&
 											leaderCandidates.length === 0 && (
 												<div className="px-3 py-2 text-sm text-muted-foreground">
-													Loading members...
+													Loading parishioners...
 												</div>
 											)}
 										{availableSecretaries.length === 0 && (
@@ -591,17 +554,6 @@ export function SocietyForm({ initialData, onSuccess }: SocietyFormProps) {
 												{u.firstName} {u.lastName}
 											</SelectItem>
 										))}
-										{isLoadingCandidates && (
-											<div className="px-3 py-2 text-xs text-muted-foreground">
-												Loading more...
-											</div>
-										)}
-										{!isLoadingCandidates &&
-											hasMoreCandidates && (
-												<div className="px-3 py-2 text-xs text-muted-foreground">
-													Scroll to load more
-												</div>
-											)}
 									</div>
 								</SelectContent>
 							</Select>

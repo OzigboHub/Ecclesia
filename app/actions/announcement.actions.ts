@@ -492,14 +492,22 @@ export async function createSocietyAnnouncement(
 			};
 		}
 
+		const parishionerId = session.user.parishionerId ?? null;
+		if (!parishionerId) {
+			return {
+				success: false,
+				message: "You are not a leader of this society",
+			};
+		}
+
 		// Verify user is leader of this society
 		const society = await db.society.findFirst({
 			where: {
 				id: societyId,
 				organizationId: session.user.organizationId,
 				OR: [
-					{ presidentId: session.user.id },
-					{ secretaryId: session.user.id },
+					{ presidentId: parishionerId },
+					{ secretaryId: parishionerId },
 				],
 			},
 		});
@@ -573,9 +581,11 @@ export async function getSocietyAnnouncements(
 			return { success: false, message: "Society not found" };
 		}
 
+		const parishionerId = session.user.parishionerId ?? null;
 		const isSocietyLeader =
-			society.presidentId === session.user.id ||
-			society.secretaryId === session.user.id;
+			parishionerId !== null &&
+			(society.presidentId === parishionerId ||
+				society.secretaryId === parishionerId);
 
 		if (!canManageSocieties(session.user.role) && !isSocietyLeader) {
 			return { success: false, message: "Permission denied" };

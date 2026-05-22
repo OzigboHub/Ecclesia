@@ -46,9 +46,11 @@ export default async function SocietyDetailPage({
 	const isSecretary = session.user.role === "PARISH_SECRETARY";
 	const isSuperAdmin = session.user.role === "SUPER_ADMIN";
 	const canManage = canManageSocieties(session.user.role);
+	const parishionerId = session.user.parishionerId ?? null;
 	const isSocietyLeader =
-		society.presidentId === session.user.id ||
-		society.secretaryId === session.user.id;
+		parishionerId !== null &&
+		(society.presidentId === parishionerId ||
+			society.secretaryId === parishionerId);
 	const canReviewRequests =
 		canReviewSocietyJoinRequests(session.user.role) || isSocietyLeader;
 	const canEdit = canManage || isSocietyLeader;

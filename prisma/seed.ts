@@ -1,12 +1,12 @@
+import { neonConfig } from "@neondatabase/serverless";
+import { PrismaNeon } from "@prisma/adapter-neon";
 import {
+	Gender,
+	HierarchyLevel,
+	MaritalStatus,
 	PrismaClient,
 	UserRole,
-	HierarchyLevel,
-	Gender,
-	MaritalStatus,
 } from "@prisma/client";
-import { PrismaNeon } from "@prisma/adapter-neon";
-import { neonConfig } from "@neondatabase/serverless";
 import bcrypt from "bcryptjs";
 import WebSocket from "ws";
 
@@ -83,35 +83,73 @@ async function main() {
 
 	console.log(`Created admin user: ${admin.email}`);
 
-	// 4. Create some sample parishioners
-	const parishioners = [
-		{
-			firstName: "John",
-			lastName: "Doe",
-			email: "john.doe@example.com",
-			phone: "08012345678",
-			gender: "MALE",
-			maritalStatus: "MARRIED",
-		},
-		{
-			firstName: "Jane",
-			lastName: "Smith",
-			email: "jane.smith@example.com",
-			phone: "08087654321",
-			gender: "FEMALE",
-			maritalStatus: "SINGLE",
-		},
-		{
-			firstName: "Peter",
-			lastName: "Obi",
-			email: "peter.obi@example.com",
-			phone: "08011122233",
-			gender: "MALE",
-			maritalStatus: "MARRIED",
-		},
+	// 4. Create 100 parishioners
+	const seedParishioners: Array<{
+		firstName: string;
+		lastName: string;
+		email: string;
+		phone: string;
+		gender: "MALE" | "FEMALE";
+		maritalStatus: "SINGLE" | "MARRIED";
+	}> = [];
+	const firstNames = [
+		"Grace",
+		"Michael",
+		"Esther",
+		"Paul",
+		"Mary",
+		"Joseph",
+		"Agnes",
+		"Daniel",
+		"Ruth",
+		"Samuel",
 	];
+	const lastNames = [
+		"Okoro",
+		"Eze",
+		"Balogun",
+		"Nwosu",
+		"Adebayo",
+		"Ibrahim",
+		"Udo",
+		"Chukwu",
+		"Ojo",
+		"Kalu",
+	];
+	const genders: Array<"MALE" | "FEMALE"> = ["MALE", "FEMALE"];
+	const maritalStatuses: Array<"SINGLE" | "MARRIED"> = ["SINGLE", "MARRIED"];
+	const usedEmails = new Set<string>();
+	const usedPhones = new Set<string>();
 
-	for (const p of parishioners) {
+	const pickRandom = <T>(values: T[]): T =>
+		values[Math.floor(Math.random() * values.length)];
+
+	while (seedParishioners.length < 100) {
+		const firstName = pickRandom(firstNames);
+		const lastName = pickRandom(lastNames);
+		const suffix = Math.floor(Math.random() * 900000) + 100000;
+		const email = `${firstName.toLowerCase()}.${lastName.toLowerCase()}.${suffix}@example.com`;
+		const phone = `080${String(10000000 + (suffix % 900000)).padStart(8, "0")}`;
+		const gender = pickRandom(genders);
+		const maritalStatus = pickRandom(maritalStatuses);
+
+		if (usedEmails.has(email) || usedPhones.has(phone)) {
+			continue;
+		}
+
+		usedEmails.add(email);
+		usedPhones.add(phone);
+		seedParishioners.push({
+			firstName,
+			lastName,
+			email,
+			phone,
+			gender,
+			maritalStatus,
+		});
+	}
+
+	for (const p of seedParishioners) {
 		await prisma.parishioner.upsert({
 			where: { email: p.email },
 			update: {},
@@ -120,7 +158,7 @@ async function main() {
 				lastName: p.lastName,
 				email: p.email,
 				phone: p.phone,
-				gender: p.gender as unknown as Gender, // Type assertion to bypass enum type
+				gender: p.gender as unknown as Gender,
 				maritalStatus: p.maritalStatus as unknown as MaritalStatus,
 				organizationId: organization.id,
 			},
