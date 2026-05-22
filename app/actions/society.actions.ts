@@ -188,6 +188,133 @@ export async function getSociety(
 	}
 }
 
+export type SocietyMemberDues = {
+	societyId: string;
+	societyName: string;
+	monthlyDueAmount: number | null;
+	year: number;
+	monthsPaid: number[];
+	monthsOwing: number[];
+	totalPaid: number;
+	totalOwing: number;
+	nextDueMonth: number | null;
+};
+
+export async function getSocietyDuesForMember(
+	societyId: string,
+	year?: number,
+): Promise<ActionResponse<SocietyMemberDues>> {
+	try {
+		const session = await auth();
+		if (!session?.user) {
+			return { success: false, message: "Unauthorized" };
+		}
+
+		if (!session.user.parishionerId) {
+			return {
+				success: false,
+				message: "Parishioner context required",
+			};
+		}
+
+		const targetYear = year || new Date().getFullYear();
+		const startOfYear = new Date(targetYear, 0, 1);
+		const endOfYear = new Date(targetYear, 11, 31, 23, 59, 59);
+
+		const society = await db.society.findFirst({
+			where: {
+				id: societyId,
+				organizationId: session.user.organizationId,
+			},
+			select: {
+				id: true,
+				name: true,
+				monthlyDueAmount: true,
+				members: {
+					where: { parishionerId: session.user.parishionerId },
+					select: { parishionerId: true },
+				},
+			},
+		});
+
+		if (!society) {
+			return { success: false, message: "Society not found" };
+		}
+
+		if (!society.members.length) {
+			return {
+				success: false,
+				message: "You are not a member of this society",
+			};
+		}
+
+		const payments = await db.payment.findMany({
+			where: {
+				societyId,
+				purpose: "SOCIETY_DUES",
+				paymentStatus: "COMPLETED",
+				paymentDate: { gte: startOfYear, lte: endOfYear },
+				parishionerId: session.user.parishionerId,
+			},
+			select: {
+				month: true,
+				amount: true,
+			},
+		});
+
+		const paidMap = new Map<number, number>();
+		for (const payment of payments) {
+			if (payment.month) {
+				paidMap.set(
+					payment.month,
+					(paidMap.get(payment.month) || 0) + payment.amount,
+				);
+			}
+		}
+
+		const currentMonth =
+			targetYear === new Date().getFullYear()
+				? new Date().getMonth() + 1
+				: 12;
+		const dueAmount = society.monthlyDueAmount || 0;
+		const monthsPaid: number[] = [];
+		const monthsOwing: number[] = [];
+		let totalPaid = 0;
+
+		for (let month = 1; month <= currentMonth; month++) {
+			const paidAmount = paidMap.get(month) || 0;
+			if (paidAmount > 0) {
+				monthsPaid.push(month);
+				totalPaid += paidAmount;
+			} else {
+				monthsOwing.push(month);
+			}
+		}
+
+		const totalOwing = dueAmount * monthsOwing.length;
+		const nextDueMonth = monthsOwing.length > 0 ? monthsOwing[0] : null;
+
+		return {
+			success: true,
+			message: "Society dues retrieved",
+			data: {
+				societyId,
+				societyName: society.name,
+				monthlyDueAmount: society.monthlyDueAmount,
+				year: targetYear,
+				monthsPaid,
+				monthsOwing,
+				totalPaid,
+				totalOwing,
+				nextDueMonth,
+			},
+		};
+	} catch (error) {
+		console.error("Failed to get society dues for member:", error);
+		return { success: false, message: "Failed to retrieve society dues" };
+	}
+}
+
 // ============================================
 // CREATE OPERATIONS
 // ============================================

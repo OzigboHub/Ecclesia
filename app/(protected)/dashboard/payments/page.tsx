@@ -15,6 +15,13 @@ export default async function PaymentsPage({
 	const session = await auth();
 	if (!session?.user) redirect("/auth/login");
 
+	const canViewPayments = [
+		"SUPER_ADMIN",
+		"PARISH_ADMIN",
+		"PARISH_SECRETARY",
+	].includes(session.user.role);
+	if (!canViewPayments) redirect("/dashboard");
+
 	// Await searchParams in Next.js 16
 	const searchParams = await searchParamsPromise;
 

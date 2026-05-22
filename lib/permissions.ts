@@ -57,9 +57,11 @@ export function canManageFinancials(role: string): boolean {
 		"PARISH_ADMIN",
 		"PARISH_SECRETARY",
 		"OUTSTATION_ADMIN",
-		"SOCIETY_PRESIDENT",
-		"SOCIETY_SECRETARY",
 	].includes(role);
+}
+
+export function canViewSessions(role: string): boolean {
+	return !["SOCIETY_PRESIDENT", "SOCIETY_SECRETARY"].includes(role);
 }
 
 export function canViewFinancialDashboard(role: string): boolean {

@@ -57,9 +57,9 @@ model Organization {
   paymentTypes                   PaymentType[]
   sacraments                     Sacrament[]
   societies                      Society[]
-  userAccountRequests            UserAccountRequest[]
   users                          User[]
   withdrawals                    WithdrawalRequest[]
+  userAccountRequests            UserAccountRequest[]
 
   @@index([parentId])
 }
@@ -129,14 +129,21 @@ model User {
   paymentsRecorded         Payment[]                 @relation("PaymentRecorder")
   paymentTypesCreated      PaymentType[]             @relation("PaymentTypeCreator")
   PaymentType              PaymentType[]
+<<<<<<< HEAD
   userAccountRequests      UserAccountRequest[]      @relation("UserAccountRequestRequestedBy")
   reviewedUserRequests     UserAccountRequest[]      @relation("UserAccountRequestReviewedBy")
+=======
+  societyLed               Society?                  @relation("SocietyPresident")
+  societyAssisted          Society?                  @relation("SocietySecretary")
+>>>>>>> e75b404780097cc8a2751cc28c1a6e59329d196f
   reviewedJoinRequests     SocietyJoinRequest[]      @relation("JoinRequestReviewer")
   twoFactorChallenges      TwoFactorChallenge[]
   twoFactorSetupTokens     TwoFactorSetupToken[]
   organization             Organization              @relation(fields: [organizationId], references: [id])
   sessions                 UserSession[]
   withdrawalsRequested     WithdrawalRequest[]       @relation("WithdrawalRequester")
+  userAccountRequestsCreated UserAccountRequest[]     @relation("RequestedBy")
+  userAccountRequestsReviewed UserAccountRequest[]    @relation("ReviewedBy")
 
   @@index([organizationId])
   @@index([email])
@@ -199,6 +206,30 @@ model PasswordResetToken {
 
   @@index([token])
   @@index([userId])
+}
+
+model UserAccountRequest {
+  id           String                      @id @default(uuid())
+  organizationId String
+  requestedById String
+  reviewedById  String?
+  firstName    String
+  lastName     String
+  email        String
+  role         UserRole
+  message      String?
+  status       UserAccountRequestStatus    @default(PENDING)
+  createdAt    DateTime                    @default(now())
+  reviewedAt   DateTime?
+  organization Organization                @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  requestedBy  User                        @relation("RequestedBy", fields: [requestedById], references: [id], onDelete: Cascade)
+  reviewedBy   User?                       @relation("ReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([organizationId])
+  @@index([requestedById])
+  @@index([reviewedById])
+  @@index([status])
+  @@index([email])
 }
 
 model MassScheduleTemplate {
@@ -337,29 +368,6 @@ model SocietyJoinRequest {
   @@index([status])
 }
 
-model UserAccountRequest {
-  id             String                   @id @default(uuid())
-  organizationId String
-  requestedById  String
-  reviewedById   String?
-  firstName      String
-  lastName       String
-  email          String
-  role           UserRole
-  status         UserAccountRequestStatus @default(PENDING)
-  message        String?
-  reviewedAt     DateTime?
-  createdAt      DateTime                 @default(now())
-  updatedAt      DateTime                 @updatedAt
-  organization   Organization             @relation(fields: [organizationId], references: [id])
-  requestedBy    User                     @relation("UserAccountRequestRequestedBy", fields: [requestedById], references: [id])
-  reviewedBy     User?                    @relation("UserAccountRequestReviewedBy", fields: [reviewedById], references: [id])
-
-  @@index([organizationId])
-  @@index([status])
-  @@index([requestedById])
-}
-
 model SocietyMembership {
   parishionerId String
   societyId     String
@@ -448,6 +456,7 @@ model MassIntention {
   intention      String
   intentionType  IntentionType
   requestedBy    String
+  intendedFor    String?
   contactEmail   String?
   contactPhone   String?
   stipend        Float?
@@ -461,7 +470,6 @@ model MassIntention {
   massId         String
   status         IntentionStatus @default(PENDING)
   organizationId String
-  intendedFor    String?
   event          Event?          @relation(fields: [eventId], references: [id])
   mass           Mass            @relation(fields: [massId], references: [id])
   organization   Organization    @relation(fields: [organizationId], references: [id])

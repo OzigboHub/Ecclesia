@@ -1,5 +1,4 @@
 import db from "@/lib/db";
-import { addDays, startOfDay, endOfDay, getDay } from "date-fns";
 
 const DAYS_MAP = [
   "SUNDAY",
@@ -11,10 +10,48 @@ const DAYS_MAP = [
   "SATURDAY",
 ];
 
+function toUtcDayStart(value: Date | string): Date {
+  const d = new Date(value);
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+}
+
+function toUtcDayEnd(value: Date | string): Date {
+  const d = new Date(value);
+  return new Date(
+    Date.UTC(
+      d.getUTCFullYear(),
+      d.getUTCMonth(),
+      d.getUTCDate(),
+      23,
+      59,
+      59,
+      999,
+    ),
+  );
+}
+
+function addUtcDays(value: Date, days: number): Date {
+  return new Date(
+    Date.UTC(
+      value.getUTCFullYear(),
+      value.getUTCMonth(),
+      value.getUTCDate() + days,
+    ),
+  );
+}
+
+function parseDayInput(value: Date | string): Date {
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return new Date(`${value}T00:00:00.000Z`);
+  }
+
+  return toUtcDayStart(value);
+}
+
 export async function generateMassesForPeriod(
   organizationId: string,
-  startDate: Date = new Date(),
-  endDate: Date = addDays(new Date(), 30),
+  startDate: Date | string = new Date(),
+  endDate: Date | string = addUtcDays(toUtcDayStart(new Date()), 30),
   options?: { ignoreAutoGenerateSetting?: boolean },
 ): Promise<number> {
   const org = await db.organization.findUnique({
@@ -33,24 +70,25 @@ export async function generateMassesForPeriod(
   const dailyLimit = Math.min(org.maxMassesPerDay, 5);
 
   let createdCount = 0;
-  // Use differenceInDays to calculate loop count or just loop while current <= end
-  let currentDate = startOfDay(startDate);
-  const lastDate = startOfDay(endDate);
+  let currentDate = toUtcDayStart(parseDayInput(startDate));
+  const lastDate = toUtcDayStart(parseDayInput(endDate));
 
   while (currentDate <= lastDate) {
-    const dayName = DAYS_MAP[getDay(currentDate)];
+    const dayName = DAYS_MAP[currentDate.getUTCDay()];
 
     const dayTemplates = org.massScheduleTemplates.filter((t) => {
       if (t.dayOfWeek !== dayName || !t.isActive) return false;
       if (
         t.effectiveFrom &&
-        startOfDay(currentDate) < startOfDay(t.effectiveFrom)
+        toUtcDayStart(currentDate).getTime() <
+          toUtcDayStart(t.effectiveFrom).getTime()
       ) {
         return false;
       }
       if (
         t.effectiveUntil &&
-        startOfDay(currentDate) > startOfDay(t.effectiveUntil)
+        toUtcDayStart(currentDate).getTime() >
+          toUtcDayStart(t.effectiveUntil).getTime()
       ) {
         return false;
       }
@@ -62,8 +100,8 @@ export async function generateMassesForPeriod(
         where: {
           organizationId,
           date: {
-            gte: startOfDay(currentDate),
-            lte: endOfDay(currentDate),
+            gte: toUtcDayStart(currentDate),
+            lte: toUtcDayEnd(currentDate),
           },
         },
       });
@@ -99,7 +137,7 @@ export async function generateMassesForPeriod(
         existingTimes.add(template.time);
       }
     }
-    currentDate = addDays(currentDate, 1);
+    currentDate = addUtcDays(currentDate, 1);
   }
   return createdCount;
 }
@@ -116,8 +154,8 @@ type ManualMassPattern = {
 
 export async function generateMassesFromExistingMasses(
   organizationId: string,
-  startDate: Date = new Date(),
-  endDate: Date = addDays(new Date(), 30),
+  startDate: Date | string = new Date(),
+  endDate: Date | string = addUtcDays(toUtcDayStart(new Date()), 30),
 ): Promise<number> {
   const org = await db.organization.findUnique({
     where: { id: organizationId },
@@ -148,7 +186,7 @@ export async function generateMassesFromExistingMasses(
 
   const patternMap = new Map<string, ManualMassPattern>();
   for (const mass of sourceMasses) {
-    const dayOfWeek = DAYS_MAP[getDay(mass.date)];
+    const dayOfWeek = DAYS_MAP[new Date(mass.date).getUTCDay()];
     const key = [
       dayOfWeek,
       mass.time,
@@ -179,11 +217,11 @@ export async function generateMassesFromExistingMasses(
 
   const dailyLimit = Math.min(org.maxMassesPerDay, 5);
   let createdCount = 0;
-  let currentDate = startOfDay(startDate);
-  const lastDate = startOfDay(endDate);
+  let currentDate = toUtcDayStart(parseDayInput(startDate));
+  const lastDate = toUtcDayStart(parseDayInput(endDate));
 
   while (currentDate <= lastDate) {
-    const dayName = DAYS_MAP[getDay(currentDate)];
+    const dayName = DAYS_MAP[currentDate.getUTCDay()];
     const dayPatterns = patterns.filter(
       (pattern) => pattern.dayOfWeek === dayName,
     );
@@ -193,8 +231,8 @@ export async function generateMassesFromExistingMasses(
         where: {
           organizationId,
           date: {
-            gte: startOfDay(currentDate),
-            lte: endOfDay(currentDate),
+            gte: toUtcDayStart(currentDate),
+            lte: toUtcDayEnd(currentDate),
           },
         },
         select: { time: true },
@@ -233,7 +271,7 @@ export async function generateMassesFromExistingMasses(
       }
     }
 
-    currentDate = addDays(currentDate, 1);
+    currentDate = addUtcDays(currentDate, 1);
   }
 
   return createdCount;
