@@ -96,54 +96,47 @@ model OrganizationFeatureSettings {
 }
 
 model User {
-  id                       String                    @id @default(uuid())
-  email                    String                    @unique
-  password                 String
-  firstName                String
-  lastName                 String
-  role                     UserRole
-  isActive                 Boolean                   @default(true)
-  lastLogin                DateTime?
-  createdAt                DateTime                  @default(now())
-  updatedAt                DateTime                  @updatedAt
-  organizationId           String
-  address                  String?
-  dateOfBirth              DateTime?
-  phone                    String?
-  failedLoginAttempts      Int                       @default(0)
-  lastFailedLoginAt        DateTime?
-  lockedUntil              DateTime?
-  sessionVersion           Int                       @default(1)
-  activeSessionId          String?
-  twoFactorConfirmedAt     DateTime?
-  twoFactorEnabled         Boolean                   @default(false)
-  twoFactorMethod          TwoFactorMethod?
-  twoFactorSecret          String?
-  displayPicture           String?
-  appointmentsAssigned     Appointment[]             @relation("AppointmentAssignee")
-  appointmentsMade         Appointment[]             @relation("AppointmentCreator")
-  availabilitySlots        AppointmentAvailability[] @relation("AppointmentAvailabilityAssignee")
-  liveStreamsCreated       LiveStream[]              @relation("LiveStreamCreator")
-  financialEntriesRecorded ParishFinancialEntry[]    @relation("FinancialEntryRecorder")
-  passwordResetTokens      PasswordResetToken[]
-  paymentsRecorded         Payment[]                 @relation("PaymentRecorder")
-  paymentTypesCreated      PaymentType[]             @relation("PaymentTypeCreator")
-  PaymentType              PaymentType[]
-<<<<<<< HEAD
-  userAccountRequests      UserAccountRequest[]      @relation("UserAccountRequestRequestedBy")
-  reviewedUserRequests     UserAccountRequest[]      @relation("UserAccountRequestReviewedBy")
-=======
-  societyLed               Society?                  @relation("SocietyPresident")
-  societyAssisted          Society?                  @relation("SocietySecretary")
->>>>>>> e75b404780097cc8a2751cc28c1a6e59329d196f
-  reviewedJoinRequests     SocietyJoinRequest[]      @relation("JoinRequestReviewer")
-  twoFactorChallenges      TwoFactorChallenge[]
-  twoFactorSetupTokens     TwoFactorSetupToken[]
-  organization             Organization              @relation(fields: [organizationId], references: [id])
-  sessions                 UserSession[]
-  withdrawalsRequested     WithdrawalRequest[]       @relation("WithdrawalRequester")
-  userAccountRequestsCreated UserAccountRequest[]     @relation("RequestedBy")
-  userAccountRequestsReviewed UserAccountRequest[]    @relation("ReviewedBy")
+  id                          String                    @id @default(uuid())
+  email                       String                    @unique
+  password                    String
+  firstName                   String
+  lastName                    String
+  role                        UserRole
+  isActive                    Boolean                   @default(true)
+  lastLogin                   DateTime?
+  createdAt                   DateTime                  @default(now())
+  updatedAt                   DateTime                  @updatedAt
+  organizationId              String
+  address                     String?
+  dateOfBirth                 DateTime?
+  phone                       String?
+  failedLoginAttempts         Int                       @default(0)
+  lastFailedLoginAt           DateTime?
+  lockedUntil                 DateTime?
+  sessionVersion              Int                       @default(1)
+  activeSessionId             String?
+  twoFactorConfirmedAt        DateTime?
+  twoFactorEnabled            Boolean                   @default(false)
+  twoFactorMethod             TwoFactorMethod?
+  twoFactorSecret             String?
+  displayPicture              String?
+  appointmentsAssigned        Appointment[]             @relation("AppointmentAssignee")
+  appointmentsMade            Appointment[]             @relation("AppointmentCreator")
+  availabilitySlots           AppointmentAvailability[] @relation("AppointmentAvailabilityAssignee")
+  liveStreamsCreated          LiveStream[]              @relation("LiveStreamCreator")
+  financialEntriesRecorded    ParishFinancialEntry[]    @relation("FinancialEntryRecorder")
+  passwordResetTokens         PasswordResetToken[]
+  paymentsRecorded            Payment[]                 @relation("PaymentRecorder")
+  paymentTypesCreated         PaymentType[]             @relation("PaymentTypeCreator")
+  PaymentType                 PaymentType[]
+  reviewedJoinRequests        SocietyJoinRequest[]      @relation("JoinRequestReviewer")
+  twoFactorChallenges         TwoFactorChallenge[]
+  twoFactorSetupTokens        TwoFactorSetupToken[]
+  organization                Organization              @relation(fields: [organizationId], references: [id])
+  sessions                    UserSession[]
+  withdrawalsRequested        WithdrawalRequest[]       @relation("WithdrawalRequester")
+  userAccountRequestsCreated  UserAccountRequest[]      @relation("RequestedBy")
+  userAccountRequestsReviewed UserAccountRequest[]      @relation("ReviewedBy")
 
   @@index([organizationId])
   @@index([email])
@@ -209,21 +202,21 @@ model PasswordResetToken {
 }
 
 model UserAccountRequest {
-  id           String                      @id @default(uuid())
+  id             String                   @id @default(uuid())
   organizationId String
-  requestedById String
-  reviewedById  String?
-  firstName    String
-  lastName     String
-  email        String
-  role         UserRole
-  message      String?
-  status       UserAccountRequestStatus    @default(PENDING)
-  createdAt    DateTime                    @default(now())
-  reviewedAt   DateTime?
-  organization Organization                @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  requestedBy  User                        @relation("RequestedBy", fields: [requestedById], references: [id], onDelete: Cascade)
-  reviewedBy   User?                       @relation("ReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
+  requestedById  String
+  reviewedById   String?
+  firstName      String
+  lastName       String
+  email          String
+  role           UserRole
+  message        String?
+  status         UserAccountRequestStatus @default(PENDING)
+  createdAt      DateTime                 @default(now())
+  reviewedAt     DateTime?
+  organization   Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  requestedBy    User                     @relation("RequestedBy", fields: [requestedById], references: [id], onDelete: Cascade)
+  reviewedBy     User?                    @relation("ReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
 
   @@index([organizationId])
   @@index([requestedById])
