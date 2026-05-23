@@ -149,7 +149,7 @@ export async function getUsers(
 }
 
 /**
- * Get users eligible to be selected as society leaders.
+ * Get parishioners eligible to be selected as society leaders.
  * Scoped to current organization and roles allowed to manage societies.
  */
 export async function getSocietyLeaderCandidates(params?: {
@@ -158,7 +158,14 @@ export async function getSocietyLeaderCandidates(params?: {
 	query?: string;
 }): Promise<
 	ActionResponse<{
-		users: Pick<User, "id" | "firstName" | "lastName" | "role">[];
+		users: Array<
+			Pick<
+				Prisma.ParishionerGetPayload<{
+					select: { id: true; firstName: true; lastName: true };
+				}>,
+				"id" | "firstName" | "lastName"
+			>
+		>;
 		total: number;
 		page: number;
 		limit: number;
@@ -213,19 +220,18 @@ export async function getSocietyLeaderCandidates(params?: {
 			}),
 		};
 		const [users, total] = await Promise.all([
-			db.user.findMany({
+			db.parishioner.findMany({
 				where,
 				select: {
 					id: true,
 					firstName: true,
 					lastName: true,
-					role: true,
 				},
 				orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
 				skip: (page - 1) * limit,
 				take: limit,
 			}),
-			db.user.count({ where }),
+			db.parishioner.count({ where }),
 		]);
 
 		return {

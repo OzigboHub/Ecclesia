@@ -129,8 +129,13 @@ model User {
   paymentsRecorded         Payment[]                 @relation("PaymentRecorder")
   paymentTypesCreated      PaymentType[]             @relation("PaymentTypeCreator")
   PaymentType              PaymentType[]
+<<<<<<< HEAD
+  userAccountRequests      UserAccountRequest[]      @relation("UserAccountRequestRequestedBy")
+  reviewedUserRequests     UserAccountRequest[]      @relation("UserAccountRequestReviewedBy")
+=======
   societyLed               Society?                  @relation("SocietyPresident")
   societyAssisted          Society?                  @relation("SocietySecretary")
+>>>>>>> e75b404780097cc8a2751cc28c1a6e59329d196f
   reviewedJoinRequests     SocietyJoinRequest[]      @relation("JoinRequestReviewer")
   twoFactorChallenges      TwoFactorChallenge[]
   twoFactorSetupTokens     TwoFactorSetupToken[]
@@ -294,8 +299,8 @@ model Society {
   events           Event[]
   payments         Payment[]
   organization     Organization         @relation(fields: [organizationId], references: [id])
-  president        User?                @relation("SocietyPresident", fields: [presidentId], references: [id])
-  secretary        User?                @relation("SocietySecretary", fields: [secretaryId], references: [id])
+  president        Parishioner?         @relation("SocietyPresident", fields: [presidentId], references: [id])
+  secretary        Parishioner?         @relation("SocietySecretary", fields: [secretaryId], references: [id])
   joinRequests     SocietyJoinRequest[]
   members          SocietyMembership[]
 
@@ -335,6 +340,8 @@ model Parishioner {
   sacraments         Sacrament[]
   joinRequests       SocietyJoinRequest[]
   societyMemberships SocietyMembership[]
+  societyLed         Society?             @relation("SocietyPresident")
+  societyAssisted    Society?             @relation("SocietySecretary")
 
   @@index([organizationId])
   @@index([email])
