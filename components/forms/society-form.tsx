@@ -2,7 +2,16 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import {
+	useCallback,
+	useEffect,
+	useRef,
+	useState,
+	useTransition,
+	type Dispatch,
+	type MutableRefObject,
+	type SetStateAction,
+} from "react";
 import { Controller, useForm, type Resolver } from "react-hook-form";
 
 import {
@@ -163,13 +172,23 @@ interface SocietyFormProps {
 
 export function SocietyForm({ initialData, onSuccess }: SocietyFormProps) {
 	const [isPending, startTransition] = useTransition();
-	const [leaderCandidates, setLeaderCandidates] = useState<
+	const [presidentCandidates, setPresidentCandidates] = useState<
 		Array<{ id: string; firstName: string; lastName: string }>
 	>([]);
-	const [isLoadingCandidates, setIsLoadingCandidates] = useState(false);
-	const isLoadingCandidatesRef = useRef(false);
-	const [candidateSearch, setCandidateSearch] = useState("");
-	const [debouncedCandidateSearch, setDebouncedCandidateSearch] =
+	const [secretaryCandidates, setSecretaryCandidates] = useState<
+		Array<{ id: string; firstName: string; lastName: string }>
+	>([]);
+	const [isLoadingPresidentCandidates, setIsLoadingPresidentCandidates] =
+		useState(false);
+	const [isLoadingSecretaryCandidates, setIsLoadingSecretaryCandidates] =
+		useState(false);
+	const isLoadingPresidentRef = useRef(false);
+	const isLoadingSecretaryRef = useRef(false);
+	const [presidentSearch, setPresidentSearch] = useState("");
+	const [secretarySearch, setSecretarySearch] = useState("");
+	const [debouncedPresidentSearch, setDebouncedPresidentSearch] =
+		useState("");
+	const [debouncedSecretarySearch, setDebouncedSecretarySearch] =
 		useState("");
 	const [assignedPresidentIds, setAssignedPresidentIds] = useState<string[]>(
 		[],
@@ -216,22 +235,33 @@ export function SocietyForm({ initialData, onSuccess }: SocietyFormProps) {
 	} = form;
 
 	const loadLeaderCandidates = useCallback(
-		async (page: number, append: boolean, query?: string) => {
-			if (isLoadingCandidatesRef.current) return;
-			isLoadingCandidatesRef.current = true;
-			setIsLoadingCandidates(true);
+		async (options: {
+			page: number;
+			append: boolean;
+			query?: string;
+			setCandidates: Dispatch<
+				SetStateAction<
+					Array<{ id: string; firstName: string; lastName: string }>
+				>
+			>;
+			setLoading: Dispatch<SetStateAction<boolean>>;
+			loadingRef: MutableRefObject<boolean>;
+		}) => {
+			if (options.loadingRef.current) return;
+			options.loadingRef.current = true;
+			options.setLoading(true);
 			try {
-				const normalizedQuery = query?.trim();
+				const normalizedQuery = options.query?.trim();
 				const result = await getSocietyLeaderCandidates({
-					page,
+					page: options.page,
 					limit: LEADER_PAGE_SIZE,
 					query: normalizedQuery ? normalizedQuery : undefined,
 				});
 
 				if (result.success && result.data) {
-					setLeaderCandidates((prev) => {
+					options.setCandidates((prev) => {
 						const next =
-							append ?
+							options.append ?
 								[...prev, ...result.data!.users]
 							:	result.data!.users;
 						const unique = new Map(
@@ -241,8 +271,8 @@ export function SocietyForm({ initialData, onSuccess }: SocietyFormProps) {
 					});
 				}
 			} finally {
-				isLoadingCandidatesRef.current = false;
-				setIsLoadingCandidates(false);
+				options.loadingRef.current = false;
+				options.setLoading(false);
 			}
 		},
 		[],
@@ -271,36 +301,87 @@ export function SocietyForm({ initialData, onSuccess }: SocietyFormProps) {
 
 	useEffect(() => {
 		const handle = setTimeout(() => {
-			setDebouncedCandidateSearch(candidateSearch.trim());
+			setDebouncedPresidentSearch(presidentSearch.trim());
 		}, 300);
 
 		return () => clearTimeout(handle);
-	}, [candidateSearch]);
+	}, [presidentSearch]);
 
 	useEffect(() => {
-		setLeaderCandidates([]);
-		void loadLeaderCandidates(
-			1,
-			false,
-			debouncedCandidateSearch || undefined,
-		);
-	}, [debouncedCandidateSearch, loadLeaderCandidates]);
+		const handle = setTimeout(() => {
+			setDebouncedSecretarySearch(secretarySearch.trim());
+		}, 300);
+
+		return () => clearTimeout(handle);
+	}, [secretarySearch]);
+
+	useEffect(() => {
+		setPresidentCandidates([]);
+		void loadLeaderCandidates({
+			page: 1,
+			append: false,
+			query: debouncedPresidentSearch || undefined,
+			setCandidates: setPresidentCandidates,
+			setLoading: setIsLoadingPresidentCandidates,
+			loadingRef: isLoadingPresidentRef,
+		});
+	}, [debouncedPresidentSearch, loadLeaderCandidates]);
+
+	useEffect(() => {
+		setSecretaryCandidates([]);
+		void loadLeaderCandidates({
+			page: 1,
+			append: false,
+			query: debouncedSecretarySearch || undefined,
+			setCandidates: setSecretaryCandidates,
+			setLoading: setIsLoadingSecretaryCandidates,
+			loadingRef: isLoadingSecretaryRef,
+		});
+	}, [debouncedSecretarySearch, loadLeaderCandidates]);
 
 	useEffect(() => {
 		if (
-			debouncedCandidateSearch.length === 0 &&
-			leaderCandidates.length === 0 &&
-			!isLoadingCandidatesRef.current
+			debouncedPresidentSearch.length === 0 &&
+			presidentCandidates.length === 0 &&
+			!isLoadingPresidentRef.current
 		) {
-			void loadLeaderCandidates(1, false, undefined);
+			void loadLeaderCandidates({
+				page: 1,
+				append: false,
+				query: undefined,
+				setCandidates: setPresidentCandidates,
+				setLoading: setIsLoadingPresidentCandidates,
+				loadingRef: isLoadingPresidentRef,
+			});
 		}
 	}, [
-		debouncedCandidateSearch,
-		leaderCandidates.length,
+		debouncedPresidentSearch,
+		presidentCandidates.length,
 		loadLeaderCandidates,
 	]);
 
-	const availablePresidents = leaderCandidates.filter((u) => {
+	useEffect(() => {
+		if (
+			debouncedSecretarySearch.length === 0 &&
+			secretaryCandidates.length === 0 &&
+			!isLoadingSecretaryRef.current
+		) {
+			void loadLeaderCandidates({
+				page: 1,
+				append: false,
+				query: undefined,
+				setCandidates: setSecretaryCandidates,
+				setLoading: setIsLoadingSecretaryCandidates,
+				loadingRef: isLoadingSecretaryRef,
+			});
+		}
+	}, [
+		debouncedSecretarySearch,
+		secretaryCandidates.length,
+		loadLeaderCandidates,
+	]);
+
+	const availablePresidents = presidentCandidates.filter((u) => {
 		// Preserve currently selected president when editing this society.
 		if (initialData?.presidentId && u.id === initialData.presidentId)
 			return true;
@@ -310,7 +391,7 @@ export function SocietyForm({ initialData, onSuccess }: SocietyFormProps) {
 		return true;
 	});
 
-	const availableSecretaries = leaderCandidates.filter((u) => {
+	const availableSecretaries = secretaryCandidates.filter((u) => {
 		// Preserve currently selected secretary when editing this society.
 		if (initialData?.secretaryId && u.id === initialData.secretaryId)
 			return true;
@@ -452,9 +533,9 @@ export function SocietyForm({ initialData, onSuccess }: SocietyFormProps) {
 									<div className="px-3 pb-2">
 										<Input
 											placeholder="Search parishioners..."
-											value={candidateSearch}
+											value={presidentSearch}
 											onChange={(event) =>
-												setCandidateSearch(
+												setPresidentSearch(
 													event.target.value,
 												)
 											}
@@ -467,8 +548,9 @@ export function SocietyForm({ initialData, onSuccess }: SocietyFormProps) {
 												None
 											</SelectItem>
 										)}
-										{isLoadingCandidates &&
-											leaderCandidates.length === 0 && (
+										{isLoadingPresidentCandidates &&
+											presidentCandidates.length ===
+												0 && (
 												<div className="px-3 py-2 text-sm text-muted-foreground">
 													Loading parishioners...
 												</div>
@@ -523,9 +605,9 @@ export function SocietyForm({ initialData, onSuccess }: SocietyFormProps) {
 									<div className="px-3 pb-2">
 										<Input
 											placeholder="Search parishioners..."
-											value={candidateSearch}
+											value={secretarySearch}
 											onChange={(event) =>
-												setCandidateSearch(
+												setSecretarySearch(
 													event.target.value,
 												)
 											}
@@ -538,8 +620,9 @@ export function SocietyForm({ initialData, onSuccess }: SocietyFormProps) {
 												None
 											</SelectItem>
 										)}
-										{isLoadingCandidates &&
-											leaderCandidates.length === 0 && (
+										{isLoadingSecretaryCandidates &&
+											secretaryCandidates.length ===
+												0 && (
 												<div className="px-3 py-2 text-sm text-muted-foreground">
 													Loading parishioners...
 												</div>
