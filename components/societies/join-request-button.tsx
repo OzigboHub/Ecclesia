@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { useRole } from "@/hooks/use-role";
 import { CheckCircle2, Clock, UserPlus, XCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -34,6 +35,8 @@ export function JoinRequestButton({
 	initialStatus,
 }: JoinRequestButtonProps) {
 	const router = useRouter();
+	const { role } = useRole();
+	const canAutoJoin = role === "PARISH_ADMIN" || role === "PARISH_SECRETARY";
 	const [status, setStatus] = useState<JoinStatus>(initialStatus);
 	const [isOpen, setIsOpen] = useState(false);
 	const [message, setMessage] = useState("");
@@ -111,7 +114,7 @@ export function JoinRequestButton({
 				<DialogTrigger asChild>
 					<Button variant="outline" size="sm">
 						<XCircle className="h-4 w-4 mr-2 text-destructive" />
-						Request Again
+						{canAutoJoin ? "Join Society" : "Request Again"}
 					</Button>
 				</DialogTrigger>
 				<RequestDialogContent
@@ -119,6 +122,7 @@ export function JoinRequestButton({
 					setMessage={setMessage}
 					isPending={isPending}
 					onSubmit={handleRequest}
+					canAutoJoin={canAutoJoin}
 				/>
 			</Dialog>
 		);
@@ -129,7 +133,7 @@ export function JoinRequestButton({
 			<DialogTrigger asChild>
 				<Button variant="default" size="sm">
 					<UserPlus className="h-4 w-4 mr-2" />
-					Request to Join
+					{canAutoJoin ? "Join Society" : "Request to Join"}
 				</Button>
 			</DialogTrigger>
 			<RequestDialogContent
@@ -137,6 +141,7 @@ export function JoinRequestButton({
 				setMessage={setMessage}
 				isPending={isPending}
 				onSubmit={handleRequest}
+				canAutoJoin={canAutoJoin}
 			/>
 		</Dialog>
 	);
@@ -147,19 +152,25 @@ function RequestDialogContent({
 	setMessage,
 	isPending,
 	onSubmit,
+	canAutoJoin,
 }: {
 	message: string;
 	setMessage: (v: string) => void;
 	isPending: boolean;
 	onSubmit: () => void;
+	canAutoJoin: boolean;
 }) {
 	return (
 		<DialogContent className="sm:max-w-[425px]">
 			<DialogHeader>
-				<DialogTitle>Request to Join Society</DialogTitle>
+				<DialogTitle>
+					{canAutoJoin ? "Join Society" : "Request to Join Society"}
+				</DialogTitle>
 				<DialogDescription>
-					Your request will be reviewed by the society president or
-					secretary.
+					{canAutoJoin ?
+						"You will be added immediately. No approval needed."
+					:	"Your request will be reviewed by the society president or secretary."
+					}
 				</DialogDescription>
 			</DialogHeader>
 			<div className="space-y-3 py-2">
@@ -180,7 +191,11 @@ function RequestDialogContent({
 			</div>
 			<DialogFooter>
 				<Button onClick={onSubmit} disabled={isPending}>
-					{isPending ? "Submitting…" : "Submit Request"}
+					{isPending ?
+						"Submitting..."
+					: canAutoJoin ?
+						"Join Society"
+					:	"Submit Request"}
 				</Button>
 			</DialogFooter>
 		</DialogContent>
