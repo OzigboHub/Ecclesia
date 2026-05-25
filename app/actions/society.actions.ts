@@ -273,9 +273,9 @@ export async function getSocietyDuesForMember(
 		}
 
 		const currentMonth =
-			targetYear === new Date().getFullYear()
-				? new Date().getMonth() + 1
-				: 12;
+			targetYear === new Date().getFullYear() ?
+				new Date().getMonth() + 1
+			:	12;
 		const dueAmount = society.monthlyDueAmount || 0;
 		const monthsPaid: number[] = [];
 		const monthsOwing: number[] = [];
@@ -1064,6 +1064,34 @@ export async function requestToJoinSociety(
 			return {
 				success: false,
 				message: "You are already a member of this society",
+			};
+		}
+
+		const canAutoJoin = ["PARISH_ADMIN", "PARISH_SECRETARY"].includes(
+			session.user.role,
+		);
+		if (canAutoJoin) {
+			await db.$transaction([
+				db.societyMembership.create({
+					data: {
+						parishionerId,
+						societyId,
+						role: "MEMBER",
+					},
+				}),
+				db.societyJoinRequest.deleteMany({
+					where: { parishionerId, societyId },
+				}),
+			]);
+
+			revalidatePath("/dashboard/societies");
+			revalidatePath(`/dashboard/societies/${societyId}`);
+			revalidatePath("/societies");
+			revalidatePath(`/societies/${societyId}`);
+
+			return {
+				success: true,
+				message: "You have joined this society",
 			};
 		}
 
