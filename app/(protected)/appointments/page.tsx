@@ -1,4 +1,5 @@
 import {
+	bookAppointmentAsParishioner,
 	getAppointmentAvailabilities,
 	getAppointmentBookingWindow,
 	getAppointmentsFiltered,
@@ -107,6 +108,7 @@ export default async function AppointmentsPage({
 				<ParishionerAppointmentBooking
 					parishionerName={session.user.name ?? "Parishioner"}
 					availabilities={availableSlots}
+					bookAppointmentAction={bookAppointmentAsParishioner}
 				/>
 
 				{appointments.length > 0 ?

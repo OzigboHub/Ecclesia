@@ -9,6 +9,8 @@ import {
 	verifyTotpCode,
 } from "@/lib/auth/two-factor";
 import db from "@/lib/db";
+import { renderBrandedEmailTemplate } from "@/lib/notifications/email-template";
+import { sendParishEventNotification } from "@/lib/notifications/parish-events";
 import { HIDDEN_ORGANIZATION_NAMES } from "@/lib/organization-visibility";
 import {
 	loginSchema,
@@ -214,31 +216,12 @@ async function createTwoFactorChallenge(params: {
 		const emailResult = await sendTransactionalEmail({
 			to: params.email,
 			subject: "Your verification code",
-			html: `
-				<div style="background:#f6f6f6;padding:40px 0;font-family:Arial,Helvetica,sans-serif;">
-					<table width="100%" cellpadding="0" cellspacing="0" role="presentation">
-						<tr>
-							<td align="center">
-								<table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;padding:30px;">
-									<tr>
-										<td align="center" style="padding-bottom:20px;">
-											<img src="https://www.ecclesialight.com/standalone-golden-yellow-logo-typography.png" alt="Ecclesia" width="120" style="display:block;" />
-										</td>
-									</tr>
-									<tr>
-										<td>
-											<h2 style="margin:0 0 16px 0;color:#333;">Verify your sign-in</h2>
-											<p style="font-size:14px;color:#444;line-height:1.6;">Enter this code to finish signing in:</p>
-											<div style="font-size:28px;font-weight:bold;letter-spacing:6px;color:#c9a84c;margin:16px 0;">${code}</div>
-											<p style="font-size:13px;color:#888;">This code expires in ${TWO_FACTOR_OTP_TTL_MINUTES} minutes.</p>
-										</td>
-									</tr>
-								</table>
-							</td>
-						</tr>
-					</table>
-				</div>
-			`,
+			html: renderBrandedEmailTemplate({
+				title: "Verify your sign-in",
+				message: `Enter this code to finish signing in:\n\n${code}\n\nThis code expires in ${TWO_FACTOR_OTP_TTL_MINUTES} minutes.`,
+				footerNote:
+					"If you did not attempt to sign in, you can ignore this email.",
+			}),
 		});
 
 		if (!emailResult.success) {
@@ -1218,6 +1201,15 @@ export async function register(data: {
 			return newUser;
 		});
 
+		await sendParishEventNotification({
+			organizationId: parsed.data.organizationId,
+			organizationName: organization.name,
+			audience: "PARISH_ADMIN_AND_SECRETARY",
+			title: "New registration",
+			body: `${parsed.data.firstName} ${parsed.data.lastName} just registered as ${userRole.toLowerCase().replace(/_/g, " ")}.`,
+			url: "/dashboard",
+		});
+
 		return {
 			success: true,
 			message: "Account created successfully. Please log in.",
@@ -1266,10 +1258,41 @@ export async function requestPasswordReset(
 	email: string,
 ): Promise<ActionResponse> {
 	try {
+		const normalizedEmail = email.toLowerCase().trim();
+
 		// Find user by email
-		const user = await db.user.findUnique({
-			where: { email: email.toLowerCase().trim() },
+		let user = await db.user.findUnique({
+			where: { email: normalizedEmail },
 		});
+
+		// Backfill a login account for parishioners created from admin workflows.
+		if (!user) {
+			const parishioner = await db.parishioner.findUnique({
+				where: { email: normalizedEmail },
+			});
+
+			if (parishioner) {
+				const randomPassword = crypto.randomBytes(32).toString("hex");
+				const hashedPassword = await bcrypt.hash(randomPassword, 10);
+
+				user = await db.user.upsert({
+					where: { email: normalizedEmail },
+					update: {},
+					create: {
+						email: normalizedEmail,
+						password: hashedPassword,
+						firstName: parishioner.firstName,
+						lastName: parishioner.lastName,
+						role: "PARISHIONER",
+						organizationId: parishioner.organizationId,
+						phone: parishioner.phone,
+						address: parishioner.address,
+						dateOfBirth: parishioner.dateOfBirth,
+						isActive: true,
+					},
+				});
+			}
+		}
 
 		// Always return success for security (don't reveal if email exists)
 		if (!user) {
@@ -1304,41 +1327,15 @@ export async function requestPasswordReset(
 		const emailResult = await sendTransactionalEmail({
 			to: user.email,
 			subject: "Reset Your Password",
-			html: `
-				<div style="background:#f6f6f6;padding:40px 0;font-family:Arial,Helvetica,sans-serif;">
-					<table width="100%" cellpadding="0" cellspacing="0" role="presentation">
-						<tr>
-							<td align="center">
-								<table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;padding:30px;">
-									<tr>
-										<td align="center" style="padding-bottom:20px;">
-											<img src="https://www.ecclesialight.com/standalone-golden-yellow-logo-typography.png" alt="Ecclesia" width="120" style="display:block;" />
-										</td>
-									</tr>
-									<tr>
-										<td>
-											<h2 style="margin:0 0 16px 0;color:#333;">Password Reset Request</h2>
-											<p style="font-size:14px;color:#444;line-height:1.6;">We received a request to reset your password. Click the button below to set a new password:</p>
-										</td>
-									</tr>
-									<tr>
-										<td align="center" style="padding:24px 0;">
-											<a href="${resetUrl}" style="display:inline-block;background:#c9a84c;color:#ffffff;font-size:16px;font-weight:bold;padding:12px 32px;border-radius:6px;text-decoration:none;">Reset Password</a>
-										</td>
-									</tr>
-									<tr>
-										<td style="font-size:13px;color:#888;line-height:1.6;">
-											<p>This link will expire in 1 hour. If you did not request a password reset, you can safely ignore this email.</p>
-											<p style="margin-top:16px;">If the button doesn&rsquo;t work, copy and paste this URL into your browser:</p>
-											<p style="word-break:break-all;color:#c9a84c;">${resetUrl}</p>
-										</td>
-									</tr>
-								</table>
-							</td>
-						</tr>
-					</table>
-				</div>
-			`,
+			html: renderBrandedEmailTemplate({
+				title: "Password Reset Request",
+				message:
+					"We received a request to reset your password. Use the button below to set a new password.",
+				ctaLabel: "Reset Password",
+				ctaUrl: `/auth/reset-password?token=${token}`,
+				footerNote:
+					"This link expires in 1 hour. If you did not request a password reset, you can safely ignore this email.",
+			}),
 		});
 		if (!emailResult.success) {
 			console.warn(emailResult.message);
