@@ -1,13 +1,13 @@
 "use client";
 
 import {
-  recordSocietyDue,
   updateSocietyDueAmount,
   type MemberDuesStatus,
 } from "@/app/actions/society.actions";
+import { initializePaystackPayment } from "@/app/actions/paystack.actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -33,26 +33,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { CheckCircle2, Circle, DollarSign, Settings2 } from "lucide-react";
+import { CreditCard, Settings2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import * as React from "react";
 import { useTransition } from "react";
 import { toast } from "sonner";
-
-const MONTH_NAMES = [
-  "Jan",
-  "Feb",
-  "Mar",
-  "Apr",
-  "May",
-  "Jun",
-  "Jul",
-  "Aug",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dec",
-];
 
 interface DuesOverviewTabProps {
   societyId: string;
@@ -61,11 +46,13 @@ interface DuesOverviewTabProps {
     monthlyDueAmount: number | null;
     year: number;
   };
+  userEmail: string;
 }
 
 export function DuesOverviewTab({
   societyId,
   duesOverview,
+  userEmail,
 }: DuesOverviewTabProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -73,18 +60,11 @@ export function DuesOverviewTab({
   const [dueAmountDialogOpen, setDueAmountDialogOpen] = React.useState(false);
   const [selectedMember, setSelectedMember] =
     React.useState<MemberDuesStatus | null>(null);
-  const [selectedMonth, setSelectedMonth] = React.useState<number | null>(null);
   const [paymentAmount, setPaymentAmount] = React.useState("");
-  const [paymentMethod, setPaymentMethod] = React.useState("CASH");
   const [dueAmount, setDueAmount] = React.useState(
     duesOverview.monthlyDueAmount?.toString() || "",
   );
   const [filter, setFilter] = React.useState<"all" | "owing" | "paid">("all");
-
-  const currentMonth = new Date().getMonth() + 1;
-  const monthsToShow = duesOverview.year === new Date().getFullYear()
-    ? currentMonth
-    : 12;
 
   const filteredMembers = duesOverview.members.filter((m) => {
     if (filter === "owing") return m.monthsOwing.length > 0;
@@ -92,28 +72,33 @@ export function DuesOverviewTab({
     return true;
   });
 
-  const handleCellClick = (member: MemberDuesStatus, month: number) => {
-    if (member.monthsPaid.includes(month)) return; // Already paid
+  const handleOpenRecordDialog = (member: MemberDuesStatus) => {
     setSelectedMember(member);
-    setSelectedMonth(month);
     setPaymentAmount(duesOverview.monthlyDueAmount?.toString() || "");
     setRecordDialogOpen(true);
   };
 
   const handleRecordPayment = () => {
-    if (!selectedMember || !selectedMonth || !paymentAmount) return;
+    if (!selectedMember || !paymentAmount) return;
+    
+    const email = selectedMember.email || userEmail;
+    if (!email) {
+      toast.error("An email address is required to process Paystack payment.");
+      return;
+    }
+
     startTransition(async () => {
-      const result = await recordSocietyDue(societyId, {
-        parishionerId: selectedMember.parishionerId,
+      const result = await initializePaystackPayment({
         amount: parseFloat(paymentAmount),
-        month: selectedMonth,
-        year: duesOverview.year,
-        paymentMethod,
+        purpose: "SOCIETY_DUES",
+        societyId,
+        email,
+        parishionerId: selectedMember.parishionerId,
+        payerName: `${selectedMember.firstName} ${selectedMember.lastName}`,
       });
-      if (result.success) {
-        toast.success(result.message);
-        setRecordDialogOpen(false);
-        router.refresh();
+      if (result.success && result.data) {
+        toast.success("Redirecting to Paystack...");
+        window.location.href = result.data.authorizationUrl;
       } else {
         toast.error(result.message);
       }
@@ -191,30 +176,19 @@ export function DuesOverviewTab({
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="sticky left-0 bg-background z-10 min-w-40">
-                    Member
-                  </TableHead>
-                  {Array.from({ length: monthsToShow }, (_, i) => i + 1).map(
-                    (month) => (
-                      <TableHead
-                        key={month}
-                        className="text-center min-w-14"
-                      >
-                        {MONTH_NAMES[month - 1]}
-                      </TableHead>
-                    ),
-                  )}
-                  <TableHead className="text-right min-w-22.5">Paid</TableHead>
-                  <TableHead className="text-right min-w-22.5">
-                    Owing
-                  </TableHead>
+                  <TableHead>Member</TableHead>
+                  <TableHead className="text-center">Months Paid</TableHead>
+                  <TableHead className="text-center">Status</TableHead>
+                  <TableHead className="text-center">Next Payment Expected</TableHead>
+                  <TableHead className="text-right">Total Paid</TableHead>
+                  <TableHead className="text-right">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredMembers.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={monthsToShow + 3}
+                      colSpan={6}
                       className="text-center text-muted-foreground py-8"
                     >
                       No members to display.
@@ -223,7 +197,7 @@ export function DuesOverviewTab({
                 ) : (
                   filteredMembers.map((member) => (
                     <TableRow key={member.parishionerId}>
-                      <TableCell className="sticky left-0 bg-background z-10 font-medium">
+                      <TableCell className="font-medium">
                         <div>
                           {member.firstName} {member.lastName}
                         </div>
@@ -233,55 +207,46 @@ export function DuesOverviewTab({
                           </div>
                         )}
                       </TableCell>
-                      {Array.from(
-                        { length: monthsToShow },
-                        (_, i) => i + 1,
-                      ).map((month) => {
-                        const isPaid = member.monthsPaid.includes(month);
-                        return (
-                          <TableCell key={month} className="text-center p-1">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                !isPaid && handleCellClick(member, month)
-                              }
-                              className={`inline-flex items-center justify-center w-8 h-8 rounded-full transition-colors ${
-                                isPaid
-                                  ? "text-green-600 bg-green-50 dark:bg-green-900/20"
-                                  : "text-muted-foreground/40 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20 cursor-pointer"
-                              }`}
-                              title={
-                                isPaid
-                                  ? `${MONTH_NAMES[month - 1]} — Paid`
-                                  : `Record payment for ${MONTH_NAMES[month - 1]}`
-                              }
-                              disabled={isPaid}
-                            >
-                              {isPaid ? (
-                                <CheckCircle2 className="h-4 w-4" />
-                              ) : (
-                                <Circle className="h-4 w-4" />
-                              )}
-                            </button>
-                          </TableCell>
-                        );
-                      })}
-                      <TableCell className="text-right font-medium text-green-600">
-                        {formatCurrency(member.totalPaid)}
+                      <TableCell className="text-center">
+                        {member.monthsPaid.length} mo
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-center">
                         {member.monthsOwing.length > 0 ? (
                           <Badge variant="destructive" className="font-normal">
-                            {member.monthsOwing.length} mo
+                            {member.monthsOwing.length} mo owing
+                          </Badge>
+                        ) : member.futureMonthsPaid > 0 ? (
+                          <Badge
+                            variant="outline"
+                            className="font-normal text-blue-600 border-blue-200 bg-blue-50/50"
+                          >
+                            {member.futureMonthsPaid} mo ahead
                           </Badge>
                         ) : (
                           <Badge
                             variant="outline"
-                            className="font-normal text-green-600 border-green-200"
+                            className="font-normal text-green-600 border-green-200 bg-green-50/50"
                           >
                             Clear
                           </Badge>
                         )}
+                      </TableCell>
+                      <TableCell className="text-center text-xs text-muted-foreground">
+                        {member.nextPaymentDate || "—"}
+                      </TableCell>
+                      <TableCell className="text-right font-medium text-green-600">
+                        {formatCurrency(member.totalPaid)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleOpenRecordDialog(member)}
+                          className="h-8 text-xs"
+                        >
+                          <CreditCard className="mr-2 h-3.5 w-3.5 text-primary" />
+                          Collect
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))
@@ -296,15 +261,15 @@ export function DuesOverviewTab({
       <Dialog open={recordDialogOpen} onOpenChange={setRecordDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Record Due Payment</DialogTitle>
+            <DialogTitle>Collect Dues via Paystack</DialogTitle>
             <DialogDescription>
-              {selectedMember && selectedMonth && (
+              {selectedMember && (
                 <>
-                  Record payment for{" "}
+                  Initialize a Paystack payment for{" "}
                   <strong>
                     {selectedMember.firstName} {selectedMember.lastName}
                   </strong>{" "}
-                  — {MONTH_NAMES[selectedMonth - 1]} {duesOverview.year}
+                  for the year {duesOverview.year}. You will be redirected to complete the payment.
                 </>
               )}
             </DialogDescription>
@@ -318,21 +283,14 @@ export function DuesOverviewTab({
                 step="0.01"
                 value={paymentAmount}
                 onChange={(e) => setPaymentAmount(e.target.value)}
-                placeholder="Enter amount"
+                placeholder="Enter amount to pay"
               />
             </div>
-            <div className="space-y-2">
-              <Label>Payment Method</Label>
-              <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="CASH">Cash</SelectItem>
-                  <SelectItem value="BANK_TRANSFER">Bank Transfer</SelectItem>
-                  <SelectItem value="MOBILE_MONEY">Mobile Money</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="rounded-lg border border-border bg-muted p-3 text-sm">
+              <p className="font-medium text-xs text-muted-foreground uppercase tracking-wider">Payment Method</p>
+              <p className="mt-1 font-medium flex items-center gap-1.5">
+                <CreditCard className="h-4 w-4 text-primary" /> Online Payment (Paystack)
+              </p>
             </div>
           </div>
           <DialogFooter>
@@ -343,7 +301,7 @@ export function DuesOverviewTab({
               Cancel
             </Button>
             <Button onClick={handleRecordPayment} disabled={isPending}>
-              {isPending ? "Recording..." : "Record Payment"}
+              {isPending ? "Redirecting..." : "Proceed to Paystack"}
             </Button>
           </DialogFooter>
         </DialogContent>

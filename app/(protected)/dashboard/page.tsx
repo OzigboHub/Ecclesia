@@ -59,6 +59,7 @@ export default async function DashboardPage() {
 					pendingIntentions: 0,
 					upcomingEvents: 0,
 					societies: [],
+					pendingJoinRequests: [],
 				};
 
 		const userProfile = await db.user.findUnique({

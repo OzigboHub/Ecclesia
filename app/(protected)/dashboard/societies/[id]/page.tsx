@@ -48,8 +48,9 @@ export default async function SocietyDetailPage({
 		session.user.role === "PARISH_SECRETARY";
 	const canManage = canManageSocieties(session.user.role);
 	const isSocietyLeader =
-		society.presidentId === session.user.id ||
-		society.secretaryId === session.user.id;
+		!!session.user.parishionerId &&
+		(society.presidentId === session.user.parishionerId ||
+			society.secretaryId === session.user.parishionerId);
 	const canReviewRequests = canManage || isSocietyLeader;
 	const canEdit = canManage || isSocietyLeader;
 	const isViewOnly = isParishioner || isSecretary;
@@ -140,7 +141,7 @@ export default async function SocietyDetailPage({
 						</Button>
 					</div>
 				)}
-				{canJoinSociety && joinStatus !== "MEMBER" && (
+				{canJoinSociety && joinStatus !== "MEMBER" && !isSocietyLeader && (
 					<JoinRequestButton
 						societyId={society.id}
 						initialStatus={joinStatus}

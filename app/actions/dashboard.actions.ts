@@ -3,6 +3,7 @@
 import { auth } from "@/auth";
 import db from "@/lib/db";
 import type { ActionResponse } from "@/types";
+import type { JoinRequestWithParishionerAndSociety } from "@/app/actions/society.actions";
 
 export interface SystemMetrics {
   totalOrganizations: number;
@@ -278,6 +279,7 @@ export interface ParishionerDashboardMetrics {
   pendingIntentions: number;
   upcomingEvents: number;
   societies: Array<{ id: string; name: string }>;
+  pendingJoinRequests: JoinRequestWithParishionerAndSociety[];
 }
 
 /**
@@ -314,6 +316,7 @@ export async function getParishionerDashboardMetrics(): Promise<
           pendingIntentions: 0,
           upcomingEvents: 0,
           societies: [],
+          pendingJoinRequests: [],
         },
       };
     }
@@ -321,30 +324,64 @@ export async function getParishionerDashboardMetrics(): Promise<
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    const [paymentAgg, societyMemberships, pendingIntentions, upcomingEvents] =
-      await Promise.all([
-        db.payment.aggregate({
-          where: {
-            parishionerId,
-            paymentStatus: "COMPLETED",
-            paymentDate: { gte: startOfMonth },
+    const [
+      paymentAgg,
+      societyMemberships,
+      pendingIntentions,
+      upcomingEvents,
+      pendingJoinRequests,
+    ] = await Promise.all([
+      db.payment.aggregate({
+        where: {
+          parishionerId,
+          paymentStatus: "COMPLETED",
+          paymentDate: { gte: startOfMonth },
+        },
+        _sum: { amount: true },
+      }),
+      db.societyMembership.findMany({
+        where: { parishionerId },
+        include: { society: { select: { id: true, name: true } } },
+      }),
+      db.massIntention.count({
+        where: { parishionerId, status: "PENDING" },
+      }),
+      db.event.count({
+        where: {
+          organizationId,
+          startTime: { gte: now },
+        },
+      }),
+      db.societyJoinRequest.findMany({
+        where: {
+          status: "PENDING",
+          society: {
+            OR: [
+              { presidentId: parishionerId },
+              { secretaryId: parishionerId },
+            ],
           },
-          _sum: { amount: true },
-        }),
-        db.societyMembership.findMany({
-          where: { parishionerId },
-          include: { society: { select: { id: true, name: true } } },
-        }),
-        db.massIntention.count({
-          where: { parishionerId, status: "PENDING" },
-        }),
-        db.event.count({
-          where: {
-            organizationId,
-            startTime: { gte: now },
+        },
+        include: {
+          parishioner: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              phone: true,
+              email: true,
+            },
           },
-        }),
-      ]);
+          society: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+        orderBy: { createdAt: "desc" },
+      }),
+    ]);
 
     return {
       success: true,
@@ -358,6 +395,7 @@ export async function getParishionerDashboardMetrics(): Promise<
           id: m.society.id,
           name: m.society.name,
         })),
+        pendingJoinRequests,
       },
     };
   } catch (error) {
