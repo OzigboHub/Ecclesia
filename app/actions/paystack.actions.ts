@@ -800,11 +800,7 @@ export async function initializePaystackPayment(
 		return { success: false, message: "Organization context required" };
 	}
 
-	const onlinePaymentsEnabled =
-		await ensureOnlinePaymentsEnabled(targetOrganizationId);
-	if (!onlinePaymentsEnabled) {
-		return { success: false, message: "Online payments are not enabled" };
-	}
+	// We bypass ensureOnlinePaymentsEnabled check for now as requested.
 
 	const organization = await db.organization.findUnique({
 		where: { id: targetOrganizationId },
@@ -820,15 +816,6 @@ export async function initializePaystackPayment(
 		return { success: false, message: "Organization not found" };
 	}
 
-	if (
-		!organization.paystackSubaccountCode ||
-		organization.paystackSubaccountStatus !== "ACTIVE"
-	) {
-		return {
-			success: false,
-			message: "Organization Paystack profile is not configured",
-		};
-	}
 
 	if (parsed.data.purpose === "MASS_INTENTION" && parsed.data.amount < 500) {
 		return {
@@ -840,11 +827,22 @@ export async function initializePaystackPayment(
 		};
 	}
 
+	// Resolve parishionerId with email/session fallback
+	let resolvedParishionerId = parsed.data.parishionerId;
+	if (!resolvedParishionerId && session?.user?.email) {
+		const parishioner = await db.parishioner.findUnique({
+			where: { email: session.user.email },
+			select: { id: true },
+		});
+		resolvedParishionerId = parishioner?.id ?? undefined;
+	}
+	if (!resolvedParishionerId && session?.user?.parishionerId) {
+		resolvedParishionerId = session.user.parishionerId;
+	}
+
 	// For SOCIETY_DUES, validate membership
 	if (parsed.data.purpose === "SOCIETY_DUES" && parsed.data.societyId) {
-		const parishionerId =
-			parsed.data.parishionerId || session?.user?.parishionerId;
-		if (!parishionerId) {
+		if (!resolvedParishionerId) {
 			return {
 				success: false,
 				message: "Parishioner must be specified for society dues",
@@ -853,7 +851,7 @@ export async function initializePaystackPayment(
 
 		const membership = await db.societyMembership.findFirst({
 			where: {
-				parishionerId,
+				parishionerId: resolvedParishionerId,
 				societyId: parsed.data.societyId,
 			},
 		});
@@ -886,37 +884,6 @@ export async function initializePaystackPayment(
 				"OTHER"
 			:	parsed.data.purpose;
 
-		const payment = await db.payment.create({
-			data: {
-				amount: parsed.data.amount,
-				intendedAmount: parsed.data.amount,
-				grossAmount,
-				platformFee,
-				processorFee,
-				currency: "NGN",
-				purpose: dbPurpose,
-				paymentMethod: "CARD",
-				paymentStatus: "PENDING",
-				transactionRef: gatewayReference,
-				gateway: "PAYSTACK",
-				gatewayReference,
-				gatewayStatus: "initialized",
-				parishionerId: parsed.data.parishionerId,
-				payerName: parsed.data.payerName,
-				payerEmail: parsed.data.email,
-				massIntentionId: parsed.data.massIntentionId,
-				donationCampaignId: parsed.data.donationCampaignId,
-				paymentTypeId: parsed.data.paymentTypeId,
-				month: parsed.data.month,
-				societyId: parsed.data.societyId,
-				recordedById,
-				receiptNumber,
-				organizationId: targetOrganizationId,
-			},
-		});
-
-		paymentId = payment.id;
-
 		const callbackBaseUrl =
 			process.env.NEXTAUTH_URL || "http://localhost:3000";
 		const paystack =
@@ -930,41 +897,38 @@ export async function initializePaystackPayment(
 						reference: gatewayReference,
 						callback_url: `${callbackBaseUrl}/payments/callback`,
 						currency: "NGN",
-						subaccount: organization.paystackSubaccountCode,
+						...(organization.paystackSubaccountCode ? { subaccount: organization.paystackSubaccountCode } : {}),
 						transaction_charge: nairaToKobo(
 							platformFee + processorFee,
 						),
 						bearer: "account",
 						metadata: {
-							paymentId: payment.id,
 							organizationId: targetOrganizationId,
 							intendedAmount: parsed.data.amount,
 							grossAmount,
 							platformFee,
 							processorFee,
-							purpose: parsed.data.purpose,
+							purpose: dbPurpose,
 							massIntentionId: parsed.data.massIntentionId,
 							donationCampaignId: parsed.data.donationCampaignId,
 							paymentTypeId: parsed.data.paymentTypeId,
 							societyId: parsed.data.societyId,
 							month: parsed.data.month,
+							parishionerId: resolvedParishionerId || undefined,
+							payerName: parsed.data.payerName,
+							payerEmail: parsed.data.email,
+							recordedById,
+							receiptNumber,
 						},
 					}),
 				},
 			);
 
-		await db.payment.update({
-			where: { id: payment.id },
-			data: {
-				gatewayMeta: toPrismaJson(paystack.data),
-			},
-		});
-
 		return {
 			success: true,
 			message: "Payment initialized successfully",
 			data: {
-				paymentId: payment.id,
+				paymentId: "",
 				reference: gatewayReference,
 				authorizationUrl: paystack.data.authorization_url,
 				accessCode: paystack.data.access_code,
@@ -977,17 +941,7 @@ export async function initializePaystackPayment(
 	} catch (error) {
 		console.error("Failed to initialize Paystack payment:", error);
 
-		if (paymentId) {
-			await db.payment.update({
-				where: { id: paymentId },
-				data: {
-					paymentStatus: "FAILED",
-					gatewayStatus: "init_failed",
-				},
-			});
-		}
-
-		if (paymentId && massIntentionId) {
+		if (massIntentionId) {
 			const cancelled = await db.massIntention.updateMany({
 				where: { id: massIntentionId, status: "PENDING" },
 				data: {
@@ -997,18 +951,15 @@ export async function initializePaystackPayment(
 			});
 
 			if (cancelled.count > 0) {
-				const payment = await db.payment.findUnique({
-					where: { id: paymentId },
-					select: { recordedById: true },
-				});
+				const orgUser = await resolveRecordedById(targetOrganizationId, session?.user?.id);
 
-				if (payment?.recordedById) {
+				if (orgUser) {
 					await db.auditLog.create({
 						data: {
 							action: "UPDATE",
 							entityType: "MassIntention",
 							entityId: massIntentionId,
-							performedBy: payment.recordedById,
+							performedBy: orgUser,
 							details: {
 								status: "CANCELLED",
 								reason: "payment_initialization_failed",
@@ -1033,7 +984,7 @@ export async function verifyPaystackPayment(
 	reference: string,
 ): Promise<ActionResponse> {
 	try {
-		const payment = await db.payment.findFirst({
+		let payment = await db.payment.findFirst({
 			where: {
 				OR: [
 					{ gatewayReference: reference },
@@ -1042,11 +993,7 @@ export async function verifyPaystackPayment(
 			},
 		});
 
-		if (!payment) {
-			return { success: false, message: "Payment not found" };
-		}
-
-		if (payment.paymentStatus === "COMPLETED") {
+		if (payment && payment.paymentStatus === "COMPLETED") {
 			return {
 				success: true,
 				message: "Payment already verified",
@@ -1059,80 +1006,152 @@ export async function verifyPaystackPayment(
 				`/transaction/verify/${encodeURIComponent(reference)}`,
 			);
 
-		const expectedGrossAmount = payment.grossAmount ?? payment.amount;
+		const meta = (verification.data.metadata || {}) as any;
+		const expectedGrossAmount = payment ? (payment.grossAmount ?? payment.amount) : meta.grossAmount;
 		const amountMatches =
 			verification.data.amount === nairaToKobo(expectedGrossAmount);
 
 		if (
 			verification.data.status === "success" &&
-			verification.data.currency === payment.currency &&
+			verification.data.currency === "NGN" &&
 			amountMatches
 		) {
-			const updated = await db.payment.update({
-				where: { id: payment.id },
-				data: {
-					paymentStatus: "COMPLETED",
-					gatewayStatus: verification.data.status,
-					gatewayMeta: toPrismaJson(verification.data),
-					paymentDate:
-						verification.data.paid_at ?
-							new Date(verification.data.paid_at)
-						:	undefined,
-				},
-			});
+			if (!payment) {
+				payment = await db.payment.create({
+					data: {
+						amount: Number(meta.intendedAmount),
+						intendedAmount: Number(meta.intendedAmount),
+						grossAmount: Number(meta.grossAmount),
+						platformFee: Number(meta.platformFee),
+						processorFee: Number(meta.processorFee),
+						currency: "NGN",
+						purpose: meta.purpose,
+						paymentMethod: "CARD",
+						paymentStatus: "COMPLETED",
+						transactionRef: reference,
+						gateway: "PAYSTACK",
+						gatewayReference: reference,
+						gatewayStatus: verification.data.status,
+						gatewayMeta: toPrismaJson(verification.data),
+						paymentDate: verification.data.paid_at ? new Date(verification.data.paid_at) : new Date(),
+						parishionerId: meta.parishionerId,
+						payerName: meta.payerName,
+						payerEmail: meta.payerEmail,
+						massIntentionId: meta.massIntentionId,
+						donationCampaignId: meta.donationCampaignId,
+						paymentTypeId: meta.paymentTypeId,
+						month: meta.month ? Number(meta.month) : undefined,
+						societyId: meta.societyId,
+						recordedById: meta.recordedById,
+						receiptNumber: meta.receiptNumber,
+						organizationId: meta.organizationId,
+					}
+				});
+			} else {
+				payment = await db.payment.update({
+					where: { id: payment.id },
+					data: {
+						paymentStatus: "COMPLETED",
+						gatewayStatus: verification.data.status,
+						gatewayMeta: toPrismaJson(verification.data),
+						paymentDate:
+							verification.data.paid_at ?
+								new Date(verification.data.paid_at)
+							:	undefined,
+					},
+				});
+			}
 
 			return {
 				success: true,
 				message: "Payment verified successfully",
-				data: updated,
+				data: payment,
 			};
 		}
 
-		const failed = await db.payment.update({
-			where: { id: payment.id },
-			data: {
-				paymentStatus: "FAILED",
-				gatewayStatus: verification.data.status,
-				gatewayMeta: toPrismaJson(verification.data),
-			},
-		});
-
-		if (payment.massIntentionId) {
-			const cancelled = await db.massIntention.updateMany({
-				where: {
-					id: payment.massIntentionId,
-					status: "PENDING",
-				},
+		if (payment) {
+			const failed = await db.payment.update({
+				where: { id: payment.id },
 				data: {
-					status: "CANCELLED",
-					notes: "Cancelled due to failed payment",
+					paymentStatus: "FAILED",
+					gatewayStatus: verification.data.status,
+					gatewayMeta: toPrismaJson(verification.data),
 				},
 			});
 
-			if (cancelled.count > 0) {
-				await db.auditLog.create({
+			if (payment.massIntentionId) {
+				const cancelled = await db.massIntention.updateMany({
+					where: {
+						id: payment.massIntentionId,
+						status: "PENDING",
+					},
 					data: {
-						action: "UPDATE",
-						entityType: "MassIntention",
-						entityId: payment.massIntentionId,
-						performedBy: payment.recordedById,
-						details: {
-							status: "CANCELLED",
-							reason: "payment_failed",
-						},
+						status: "CANCELLED",
+						notes: "Cancelled due to failed payment",
 					},
 				});
-			}
-		}
 
-		return {
-			success: false,
-			message:
-				amountMatches ?
-					`Payment verification failed with status ${verification.data.status}`
-				:	"Payment amount mismatch during verification",
-			data: failed,
-		};
+				if (cancelled.count > 0) {
+					await db.auditLog.create({
+						data: {
+							action: "UPDATE",
+							entityType: "MassIntention",
+							entityId: payment.massIntentionId,
+							performedBy: payment.recordedById,
+							details: {
+								status: "CANCELLED",
+								reason: "payment_failed",
+							},
+						},
+					});
+				}
+			}
+
+			return {
+				success: false,
+				message:
+					amountMatches ?
+						`Payment verification failed with status ${verification.data.status}`
+					:	"Payment amount mismatch during verification",
+				data: failed,
+			};
+		} else {
+			if (meta.massIntentionId) {
+				const cancelled = await db.massIntention.updateMany({
+					where: {
+						id: meta.massIntentionId,
+						status: "PENDING",
+					},
+					data: {
+						status: "CANCELLED",
+						notes: "Cancelled due to failed payment",
+					},
+				});
+
+				if (cancelled.count > 0) {
+					await db.auditLog.create({
+						data: {
+							action: "UPDATE",
+							entityType: "MassIntention",
+							entityId: meta.massIntentionId,
+							performedBy: meta.recordedById,
+							details: {
+								status: "CANCELLED",
+								reason: "payment_failed",
+							},
+						},
+					});
+				}
+			}
+
+			return {
+				success: false,
+				message:
+					amountMatches ?
+						`Payment verification failed with status ${verification.data.status}`
+					:	"Payment amount mismatch during verification",
+			};
+		}
 	} catch (error) {
 		console.error("Failed to verify Paystack payment:", error);
 		return {

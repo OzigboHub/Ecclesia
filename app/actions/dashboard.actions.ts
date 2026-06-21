@@ -3,6 +3,7 @@
 import { auth } from "@/auth";
 import db from "@/lib/db";
 import type { ActionResponse } from "@/types";
+import type { JoinRequestWithParishionerAndSociety } from "@/app/actions/society.actions";
 
 export interface SystemMetrics {
   totalOrganizations: number;
@@ -16,6 +17,13 @@ export interface SystemMetrics {
   totalMassIntentions: number;
   totalAppointments: number;
   averageUsersPerOrg: number;
+  paystackRevenue: number;
+  offlineRevenue: number;
+  manualDigitalRevenue: number;
+  pendingPaymentsCount: number;
+  pendingPaymentsAmount: number;
+  failedPaymentsCount: number;
+  failedPaymentsAmount: number;
 }
 
 export interface OrganizationDashboardMetrics {
@@ -31,6 +39,13 @@ export interface OrganizationDashboardMetrics {
     createdAt: Date;
     details: { message: string };
   }>;
+  paystackRevenue: number;
+  offlineRevenue: number;
+  manualDigitalRevenue: number;
+  pendingPaymentsCount: number;
+  pendingPaymentsAmount: number;
+  failedPaymentsCount: number;
+  failedPaymentsAmount: number;
 }
 
 /**
@@ -63,6 +78,13 @@ export async function getSystemMetrics(): Promise<
       totalPayments,
       totalMassIntentions,
       totalAppointments,
+      paystackRevenueAgg,
+      offlineRevenueAgg,
+      manualDigitalRevenueAgg,
+      pendingPaymentsCount,
+      pendingPaymentsAgg,
+      failedPaymentsCount,
+      failedPaymentsAgg,
     ] = await Promise.all([
       // Users
       db.user.count(),
@@ -72,20 +94,50 @@ export async function getSystemMetrics(): Promise<
       db.organization.count({ where: { level: "OUTSTATION" } }),
       // Parishioners
       db.parishioner.count(),
-      // Payments
-      db.payment.count(),
+      // Completed Payments
+      db.payment.count({ where: { paymentStatus: "COMPLETED" } }),
       // Mass Intentions
       db.massIntention.count(),
       // Appointments
       db.appointment.count(),
+      // Paystack Completed
+      db.payment.aggregate({
+        where: { paymentStatus: "COMPLETED", gateway: "PAYSTACK" },
+        _sum: { amount: true },
+      }),
+      // Cash/Check Completed (Offline)
+      db.payment.aggregate({
+        where: { paymentStatus: "COMPLETED", gateway: null, paymentMethod: { in: ["CASH", "CHECK"] } },
+        _sum: { amount: true },
+      }),
+      // Card/Transfer Manual Completed (No Gateway)
+      db.payment.aggregate({
+        where: { paymentStatus: "COMPLETED", gateway: null, paymentMethod: { in: ["CARD", "BANK_TRANSFER", "MOBILE_MONEY"] } },
+        _sum: { amount: true },
+      }),
+      // Pending Count
+      db.payment.count({ where: { paymentStatus: "PENDING" } }),
+      // Pending Amount
+      db.payment.aggregate({
+        where: { paymentStatus: "PENDING" },
+        _sum: { amount: true },
+      }),
+      // Failed Count
+      db.payment.count({ where: { paymentStatus: "FAILED" } }),
+      // Failed Amount
+      db.payment.aggregate({
+        where: { paymentStatus: "FAILED" },
+        _sum: { amount: true },
+      }),
     ]);
 
-    // Calculate total payment amount
-    const paymentAgg = await db.payment.aggregate({
-      _sum: { amount: true },
-    });
+    const paystackRevenue = paystackRevenueAgg._sum.amount ?? 0;
+    const offlineRevenue = offlineRevenueAgg._sum.amount ?? 0;
+    const manualDigitalRevenue = manualDigitalRevenueAgg._sum.amount ?? 0;
+    const totalPaymentAmount = paystackRevenue + offlineRevenue + manualDigitalRevenue;
+    const pendingPaymentsAmount = pendingPaymentsAgg._sum.amount ?? 0;
+    const failedPaymentsAmount = failedPaymentsAgg._sum.amount ?? 0;
 
-    const totalPaymentAmount = paymentAgg._sum.amount ?? 0;
     const totalOrganizations = totalParishes + totalOutstations;
     const averageUsersPerOrg =
       totalOrganizations > 0 ? Math.round(totalUsers / totalOrganizations) : 0;
@@ -102,6 +154,13 @@ export async function getSystemMetrics(): Promise<
       totalMassIntentions,
       totalAppointments,
       averageUsersPerOrg,
+      paystackRevenue,
+      offlineRevenue,
+      manualDigitalRevenue,
+      pendingPaymentsCount,
+      pendingPaymentsAmount,
+      failedPaymentsCount,
+      failedPaymentsAmount,
     };
 
     return {
@@ -133,7 +192,13 @@ export async function getOrganizationDashboardMetrics(): Promise<
     const [
       totalParishioners,
       totalPayments,
-      paymentAggregate,
+      paystackRevenueAgg,
+      offlineRevenueAgg,
+      manualDigitalRevenueAgg,
+      pendingPaymentsCount,
+      pendingPaymentsAgg,
+      failedPaymentsCount,
+      failedPaymentsAgg,
       upcomingAppointments,
       totalMassIntentions,
       recentPayments,
@@ -149,7 +214,29 @@ export async function getOrganizationDashboardMetrics(): Promise<
         where: { organizationId, paymentStatus: "COMPLETED" },
       }),
       db.payment.aggregate({
-        where: { organizationId, paymentStatus: "COMPLETED" },
+        where: { organizationId, paymentStatus: "COMPLETED", gateway: "PAYSTACK" },
+        _sum: { amount: true },
+      }),
+      db.payment.aggregate({
+        where: { organizationId, paymentStatus: "COMPLETED", gateway: null, paymentMethod: { in: ["CASH", "CHECK"] } },
+        _sum: { amount: true },
+      }),
+      db.payment.aggregate({
+        where: { organizationId, paymentStatus: "COMPLETED", gateway: null, paymentMethod: { in: ["CARD", "BANK_TRANSFER", "MOBILE_MONEY"] } },
+        _sum: { amount: true },
+      }),
+      db.payment.count({
+        where: { organizationId, paymentStatus: "PENDING" },
+      }),
+      db.payment.aggregate({
+        where: { organizationId, paymentStatus: "PENDING" },
+        _sum: { amount: true },
+      }),
+      db.payment.count({
+        where: { organizationId, paymentStatus: "FAILED" },
+      }),
+      db.payment.aggregate({
+        where: { organizationId, paymentStatus: "FAILED" },
         _sum: { amount: true },
       }),
       db.appointment.count({
@@ -200,6 +287,13 @@ export async function getOrganizationDashboardMetrics(): Promise<
         },
       }),
     ]);
+
+    const paystackRevenue = paystackRevenueAgg._sum.amount ?? 0;
+    const offlineRevenue = offlineRevenueAgg._sum.amount ?? 0;
+    const manualDigitalRevenue = manualDigitalRevenueAgg._sum.amount ?? 0;
+    const totalPaymentAmount = paystackRevenue + offlineRevenue + manualDigitalRevenue;
+    const pendingPaymentsAmount = pendingPaymentsAgg._sum.amount ?? 0;
+    const failedPaymentsAmount = failedPaymentsAgg._sum.amount ?? 0;
 
     const recentActivity = [
       ...recentPayments.map((payment) => ({
@@ -257,10 +351,17 @@ export async function getOrganizationDashboardMetrics(): Promise<
       data: {
         totalParishioners,
         totalPayments,
-        totalPaymentAmount: paymentAggregate._sum.amount ?? 0,
+        totalPaymentAmount,
         upcomingAppointments,
         totalMassIntentions,
         recentActivity,
+        paystackRevenue,
+        offlineRevenue,
+        manualDigitalRevenue,
+        pendingPaymentsCount,
+        pendingPaymentsAmount,
+        failedPaymentsCount,
+        failedPaymentsAmount,
       },
     };
   } catch (error) {
@@ -278,6 +379,7 @@ export interface ParishionerDashboardMetrics {
   pendingIntentions: number;
   upcomingEvents: number;
   societies: Array<{ id: string; name: string }>;
+  pendingJoinRequests: JoinRequestWithParishionerAndSociety[];
 }
 
 /**
@@ -314,6 +416,7 @@ export async function getParishionerDashboardMetrics(): Promise<
           pendingIntentions: 0,
           upcomingEvents: 0,
           societies: [],
+          pendingJoinRequests: [],
         },
       };
     }
@@ -321,30 +424,64 @@ export async function getParishionerDashboardMetrics(): Promise<
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    const [paymentAgg, societyMemberships, pendingIntentions, upcomingEvents] =
-      await Promise.all([
-        db.payment.aggregate({
-          where: {
-            parishionerId,
-            paymentStatus: "COMPLETED",
-            paymentDate: { gte: startOfMonth },
+    const [
+      paymentAgg,
+      societyMemberships,
+      pendingIntentions,
+      upcomingEvents,
+      pendingJoinRequests,
+    ] = await Promise.all([
+      db.payment.aggregate({
+        where: {
+          parishionerId,
+          paymentStatus: "COMPLETED",
+          paymentDate: { gte: startOfMonth },
+        },
+        _sum: { amount: true },
+      }),
+      db.societyMembership.findMany({
+        where: { parishionerId },
+        include: { society: { select: { id: true, name: true } } },
+      }),
+      db.massIntention.count({
+        where: { parishionerId, status: "PENDING" },
+      }),
+      db.event.count({
+        where: {
+          organizationId,
+          startTime: { gte: now },
+        },
+      }),
+      db.societyJoinRequest.findMany({
+        where: {
+          status: "PENDING",
+          society: {
+            OR: [
+              { presidentId: parishionerId },
+              { secretaryId: parishionerId },
+            ],
           },
-          _sum: { amount: true },
-        }),
-        db.societyMembership.findMany({
-          where: { parishionerId },
-          include: { society: { select: { id: true, name: true } } },
-        }),
-        db.massIntention.count({
-          where: { parishionerId, status: "PENDING" },
-        }),
-        db.event.count({
-          where: {
-            organizationId,
-            startTime: { gte: now },
+        },
+        include: {
+          parishioner: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              phone: true,
+              email: true,
+            },
           },
-        }),
-      ]);
+          society: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+        orderBy: { createdAt: "desc" },
+      }),
+    ]);
 
     return {
       success: true,
@@ -358,6 +495,7 @@ export async function getParishionerDashboardMetrics(): Promise<
           id: m.society.id,
           name: m.society.name,
         })),
+        pendingJoinRequests,
       },
     };
   } catch (error) {

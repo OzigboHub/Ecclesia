@@ -31,8 +31,9 @@ export default async function SocietyManagePage({ params }: ManagePageProps) {
 
   // Verify current user is a leader of this society or has admin rights
   const isSocietyLeader =
-    society.presidentId === session.user.id ||
-    society.secretaryId === session.user.id;
+    !!session.user.parishionerId &&
+    (society.presidentId === session.user.parishionerId ||
+      society.secretaryId === session.user.parishionerId);
   const canManage = canManageSocieties(session.user.role);
 
   if (!isSocietyLeader && !canManage) {
@@ -89,6 +90,7 @@ export default async function SocietyManagePage({ params }: ManagePageProps) {
           : []
       }
       userRole={session.user.role}
+      userEmail={session.user.email || ""}
     />
   );
 }

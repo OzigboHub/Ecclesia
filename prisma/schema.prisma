@@ -367,6 +367,7 @@ model SocietyMembership {
   parishionerId String
   societyId     String
   joinedAt      DateTime    @default(now())
+  membershipDate DateTime?
   role          SocietyRole @default(MEMBER)
   parishioner   Parishioner @relation(fields: [parishionerId], references: [id])
   society       Society     @relation(fields: [societyId], references: [id])

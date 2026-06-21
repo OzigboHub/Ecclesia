@@ -188,6 +188,21 @@ export async function getSociety(
 	}
 }
 
+const MONTH_NAMES = [
+	"January",
+	"February",
+	"March",
+	"April",
+	"May",
+	"June",
+	"July",
+	"August",
+	"September",
+	"October",
+	"November",
+	"December",
+];
+
 export type SocietyMemberDues = {
 	societyId: string;
 	societyName: string;
@@ -198,6 +213,8 @@ export type SocietyMemberDues = {
 	totalPaid: number;
 	totalOwing: number;
 	nextDueMonth: number | null;
+	futureMonthsPaid: number;
+	nextPaymentDate: string | null;
 };
 
 export async function getSocietyDuesForMember(
@@ -232,7 +249,7 @@ export async function getSocietyDuesForMember(
 				monthlyDueAmount: true,
 				members: {
 					where: { parishionerId: session.user.parishionerId },
-					select: { parishionerId: true },
+					select: { parishionerId: true, membershipDate: true, joinedAt: true },
 				},
 			},
 		});
@@ -262,37 +279,59 @@ export async function getSocietyDuesForMember(
 			},
 		});
 
-		const paidMap = new Map<number, number>();
+		let totalPaid = 0;
 		for (const payment of payments) {
-			if (payment.month) {
-				paidMap.set(
-					payment.month,
-					(paidMap.get(payment.month) || 0) + payment.amount,
-				);
-			}
+			totalPaid += payment.amount;
 		}
 
 		const currentMonth =
 			targetYear === new Date().getFullYear() ?
 				new Date().getMonth() + 1
 			:	12;
+			
+		const memberInfo = society.members[0];
+		const startCalculationDate = memberInfo?.membershipDate || memberInfo?.joinedAt || startOfYear;
+		
+		let startMonth = 1;
+		if (startCalculationDate.getFullYear() > targetYear) {
+			startMonth = 13;
+		} else if (startCalculationDate.getFullYear() === targetYear) {
+			startMonth = startCalculationDate.getMonth() + 1;
+		}
+
 		const dueAmount = society.monthlyDueAmount || 0;
 		const monthsPaid: number[] = [];
 		const monthsOwing: number[] = [];
-		let totalPaid = 0;
+		
+		const paidMonthsCount = dueAmount > 0 ? Math.floor(totalPaid / dueAmount) : 0;
+		const maxMonth = Math.max(currentMonth, startMonth + paidMonthsCount - 1);
 
-		for (let month = 1; month <= currentMonth; month++) {
-			const paidAmount = paidMap.get(month) || 0;
-			if (paidAmount > 0) {
+		for (let month = startMonth; month <= maxMonth; month++) {
+			const monthsSinceStart = month - startMonth;
+			if (monthsSinceStart < paidMonthsCount) {
 				monthsPaid.push(month);
-				totalPaid += paidAmount;
-			} else {
+			} else if (month <= currentMonth) {
 				monthsOwing.push(month);
 			}
 		}
 
-		const totalOwing = dueAmount * monthsOwing.length;
+		const totalOwing = Math.max(0, dueAmount * monthsOwing.length);
 		const nextDueMonth = monthsOwing.length > 0 ? monthsOwing[0] : null;
+
+		const futureMonthsPaid = Math.max(0, paidMonthsCount - (currentMonth - startMonth + 1));
+		let nextPaymentDate: string | null = null;
+		if (dueAmount > 0) {
+			if (monthsOwing.length > 0) {
+				const oldestOwingMonth = monthsOwing[0];
+				nextPaymentDate = `${MONTH_NAMES[oldestOwingMonth - 1]} ${targetYear}`;
+			} else {
+				const nextDueMonthIndex = startMonth + paidMonthsCount;
+				const nextMonthYearOffset = Math.floor((nextDueMonthIndex - 1) / 12);
+				const nextMonthVal = ((nextDueMonthIndex - 1) % 12) + 1;
+				const nextYear = targetYear + nextMonthYearOffset;
+				nextPaymentDate = `${MONTH_NAMES[nextMonthVal - 1]} ${nextYear}`;
+			}
+		}
 
 		return {
 			success: true,
@@ -307,6 +346,8 @@ export async function getSocietyDuesForMember(
 				totalPaid,
 				totalOwing,
 				nextDueMonth,
+				futureMonthsPaid,
+				nextPaymentDate,
 			},
 		};
 	} catch (error) {
@@ -514,10 +555,6 @@ export async function updateSociety(
 			return { success: false, message: "Unauthorized" };
 		}
 
-		if (!canManageSocieties(session.user.role)) {
-			return { success: false, message: "Permission denied" };
-		}
-
 		// Validation
 		const parsed = updateSocietySchema.safeParse(formData);
 		if (!parsed.success) {
@@ -538,6 +575,11 @@ export async function updateSociety(
 
 		if (!existing) {
 			return { success: false, message: "Society not found" };
+		}
+
+		const isLeader = isSocietyLeaderForSession(existing, session);
+		if (!canManageSocieties(session.user.role) && !isLeader) {
+			return { success: false, message: "Permission denied" };
 		}
 
 		const { presidentId, secretaryId } = parsed.data;
@@ -968,6 +1010,26 @@ export type JoinRequestWithParishioner = Prisma.SocietyJoinRequestGetPayload<{
 				lastName: true;
 				phone: true;
 				email: true;
+			};
+		};
+	};
+}>;
+
+export type JoinRequestWithParishionerAndSociety = Prisma.SocietyJoinRequestGetPayload<{
+	include: {
+		parishioner: {
+			select: {
+				id: true;
+				firstName: true;
+				lastName: true;
+				phone: true;
+				email: true;
+			};
+		};
+		society: {
+			select: {
+				id: true;
+				name: true;
 			};
 		};
 	};
@@ -1499,6 +1561,8 @@ export type MemberDuesStatus = {
 	monthsOwing: number[];
 	totalPaid: number;
 	totalOwing: number;
+	futureMonthsPaid: number;
+	nextPaymentDate: string | null;
 };
 
 /**
@@ -1575,14 +1639,14 @@ export async function getSocietyDuesOverview(
 			},
 		});
 
-		// Build lookup: parishionerId -> Set of paid months
-		const paidMap = new Map<string, Map<number, number>>();
+		// Build lookup: parishionerId -> Total amount paid
+		const paidMap = new Map<string, number>();
 		for (const p of payments) {
-			if (p.parishionerId && p.month) {
-				const existing =
-					paidMap.get(p.parishionerId) || new Map<number, number>();
-				existing.set(p.month, (existing.get(p.month) || 0) + p.amount);
-				paidMap.set(p.parishionerId, existing);
+			if (p.parishionerId) {
+				paidMap.set(
+					p.parishionerId,
+					(paidMap.get(p.parishionerId) || 0) + p.amount
+				);
 			}
 		}
 
@@ -1594,23 +1658,47 @@ export async function getSocietyDuesOverview(
 
 		const members: MemberDuesStatus[] = societyData.members.map((m) => {
 			const parishioner = m.parishioner;
-			const memberPayments = paidMap.get(parishioner.id) || new Map();
+			const totalPaid = paidMap.get(parishioner.id) || 0;
 			const monthsPaid: number[] = [];
 			const monthsOwing: number[] = [];
-			let totalPaid = 0;
 
-			for (let month = 1; month <= currentMonth; month++) {
-				const paidAmount = memberPayments.get(month) || 0;
-				if (paidAmount > 0) {
+			const startCalculationDate = m.membershipDate || m.joinedAt || startOfYear;
+			let startMonth = 1;
+			if (startCalculationDate.getFullYear() > targetYear) {
+				startMonth = 13;
+			} else if (startCalculationDate.getFullYear() === targetYear) {
+				startMonth = startCalculationDate.getMonth() + 1;
+			}
+
+			const paidMonthsCount = dueAmount > 0 ? Math.floor(totalPaid / dueAmount) : 0;
+			const maxMonth = Math.max(currentMonth, startMonth + paidMonthsCount - 1);
+
+			for (let month = startMonth; month <= maxMonth; month++) {
+				const monthsSinceStart = month - startMonth;
+				if (monthsSinceStart < paidMonthsCount) {
 					monthsPaid.push(month);
-					totalPaid += paidAmount;
-				} else {
+				} else if (month <= currentMonth) {
 					monthsOwing.push(month);
 				}
 			}
 
 			const totalOwing =
 				dueAmount > 0 ? monthsOwing.length * dueAmount : 0;
+
+			const futureMonthsPaid = Math.max(0, paidMonthsCount - (currentMonth - startMonth + 1));
+			let nextPaymentDate: string | null = null;
+			if (dueAmount > 0) {
+				if (monthsOwing.length > 0) {
+					const oldestOwingMonth = monthsOwing[0];
+					nextPaymentDate = `${MONTH_NAMES[oldestOwingMonth - 1]} ${targetYear}`;
+				} else {
+					const nextDueMonthIndex = startMonth + paidMonthsCount;
+					const nextMonthYearOffset = Math.floor((nextDueMonthIndex - 1) / 12);
+					const nextMonthVal = ((nextDueMonthIndex - 1) % 12) + 1;
+					const nextYear = targetYear + nextMonthYearOffset;
+					nextPaymentDate = `${MONTH_NAMES[nextMonthVal - 1]} ${nextYear}`;
+				}
+			}
 
 			return {
 				parishionerId: parishioner.id,
@@ -1624,6 +1712,8 @@ export async function getSocietyDuesOverview(
 				monthsOwing,
 				totalPaid,
 				totalOwing,
+				futureMonthsPaid,
+				nextPaymentDate,
 			};
 		});
 
@@ -1748,7 +1838,6 @@ export async function recordSocietyDue(
 	formData: {
 		parishionerId: string;
 		amount: number;
-		month: number;
 		year: number;
 		paymentMethod: string;
 		notes?: string;
@@ -1811,11 +1900,6 @@ export async function recordSocietyDue(
 			return { success: false, message: "Amount must be greater than 0" };
 		}
 
-		// Validate month
-		if (formData.month < 1 || formData.month > 12) {
-			return { success: false, message: "Invalid month" };
-		}
-
 		// Generate receipt number
 		const year = new Date().getFullYear();
 		const prefix = `RCP-${year}`;
@@ -1836,14 +1920,17 @@ export async function recordSocietyDue(
 		}
 		const receiptNumber = `${prefix}-${nextNumber.toString().padStart(6, "0")}`;
 
-		const paymentDate = new Date(formData.year, formData.month - 1, 15);
+		const currentDate = new Date();
+		const paymentDate =
+			formData.year === currentDate.getFullYear() ?
+				currentDate
+			:	new Date(formData.year, 11, 31); // End of the specified year
 
 		await db.payment.create({
 			data: {
 				amount: formData.amount,
 				currency: "NGN",
 				purpose: "SOCIETY_DUES",
-				month: formData.month,
 				paymentMethod: formData.paymentMethod as any,
 				paymentStatus: "COMPLETED",
 				parishionerId: formData.parishionerId,
@@ -1878,6 +1965,7 @@ export type SocietyMemberRecord = {
 	dateOfBirth: Date | null;
 	address: string | null;
 	joinedAt: Date;
+	membershipDate: Date | null;
 	role: string;
 };
 
@@ -1942,6 +2030,7 @@ export async function getSocietyMemberRecords(
 			dateOfBirth: m.parishioner.dateOfBirth,
 			address: m.parishioner.address,
 			joinedAt: m.joinedAt,
+			membershipDate: m.membershipDate,
 			role: m.role,
 		}));
 
@@ -2002,5 +2091,60 @@ export async function updateSocietyDueAmount(
 	} catch (error) {
 		console.error("Failed to update due amount:", error);
 		return { success: false, message: "Failed to update due amount" };
+	}
+}
+
+export async function updateMembershipDate(
+	societyId: string,
+	parishionerId: string,
+	membershipDate: Date | null,
+): Promise<ActionResponse> {
+	try {
+		const session = await auth();
+		if (!session?.user) {
+			return { success: false, message: "Unauthorized" };
+		}
+
+		const society = await db.society.findFirst({
+			where: {
+				id: societyId,
+				organizationId: session.user.organizationId,
+			},
+			select: { presidentId: true, secretaryId: true },
+		});
+
+		if (!society) {
+			return { success: false, message: "Society not found" };
+		}
+
+		const isSocietyLeader = isSocietyLeaderForSession(society, session);
+
+		if (!canManageSocieties(session.user.role) && !isSocietyLeader) {
+			return { success: false, message: "Permission denied" };
+		}
+
+		await db.societyMembership.update({
+			where: {
+				parishionerId_societyId: {
+					parishionerId,
+					societyId,
+				},
+			},
+			data: {
+				membershipDate,
+			},
+		});
+
+		revalidatePath(`/dashboard/societies/${societyId}/manage`);
+		revalidatePath(`/dashboard/societies/${societyId}`);
+		revalidatePath(`/dashboard/societies`);
+
+		return {
+			success: true,
+			message: "Membership start date updated successfully",
+		};
+	} catch (error) {
+		console.error("Failed to update membership date:", error);
+		return { success: false, message: "Failed to update membership date" };
 	}
 }

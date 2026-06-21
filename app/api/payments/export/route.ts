@@ -27,10 +27,17 @@ export async function GET(request: NextRequest) {
 	const method = searchParams.get("method") || undefined;
 	const dateFrom = searchParams.get("dateFrom");
 	const dateTo = searchParams.get("dateTo");
+	const organizationId = searchParams.get("organizationId") || undefined;
 
-	const where: Record<string, unknown> = {
-		organizationId: session.user.organizationId,
-	};
+	const isSuperAdmin = session.user.role === "SUPER_ADMIN";
+	const where: Record<string, unknown> = {};
+	if (isSuperAdmin) {
+		if (organizationId) {
+			where.organizationId = organizationId;
+		}
+	} else {
+		where.organizationId = session.user.organizationId;
+	}
 
 	if (purpose) where.purpose = purpose;
 	if (status) where.paymentStatus = status;

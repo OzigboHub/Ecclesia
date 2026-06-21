@@ -49,15 +49,23 @@ const MONTH_NAMES = [
 ];
 
 export function SocietyDuesPanel({ societyId, dues, userEmail, userName }: SocietyDuesPanelProps) {
-  const [selectedMonth, setSelectedMonth] = useState<number>(
-    dues.nextDueMonth || dues.monthsOwing[0] || new Date().getMonth() + 1,
-  );
+  const defaultMonths = Math.max(1, dues.monthsOwing.length);
+  const [monthsToPay, setMonthsToPay] = useState<number>(defaultMonths);
   const [amount, setAmount] = useState(
-    dues.monthlyDueAmount ? dues.monthlyDueAmount.toString() : "0",
+    dues.monthlyDueAmount ? (dues.monthlyDueAmount * defaultMonths).toString() : "0",
   );
   const [notes, setNotes] = useState("");
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
+
+  // Helper to update amount when months change
+  const handleMonthsChange = (val: string) => {
+    const num = Number(val);
+    setMonthsToPay(num);
+    if (dues.monthlyDueAmount) {
+      setAmount((dues.monthlyDueAmount * num).toString());
+    }
+  };
 
   const owingText = dues.monthsOwing.length
     ? `${dues.monthsOwing.length} month${dues.monthsOwing.length > 1 ? "s" : ""} owing`
@@ -87,7 +95,6 @@ export function SocietyDuesPanel({ societyId, dues, userEmail, userName }: Socie
         amount: parsedAmount,
         purpose: "SOCIETY_DUES",
         societyId,
-        month: selectedMonth,
         email: userEmail,
         payerName: userName,
       });
@@ -126,13 +133,7 @@ export function SocietyDuesPanel({ societyId, dues, userEmail, userName }: Socie
           <div className="grid grid-cols-2 gap-3">
             <div>
               <p className="text-xs uppercase tracking-wider text-muted-foreground">
-                Month due
-              </p>
-              <p className="font-semibold">{MONTH_NAMES[selectedMonth - 1]}</p>
-            </div>
-            <div>
-              <p className="text-xs uppercase tracking-wider text-muted-foreground">
-                Amount due
+                Monthly Due
               </p>
               <p className="font-semibold">
                 {dues.monthlyDueAmount
@@ -144,7 +145,51 @@ export function SocietyDuesPanel({ societyId, dues, userEmail, userName }: Socie
                   : "—"}
               </p>
             </div>
+            <div>
+              <p className="text-xs uppercase tracking-wider text-muted-foreground">
+                Total Paid (Year)
+              </p>
+              <p className="font-semibold text-green-600">
+                {new Intl.NumberFormat("en-NG", {
+                  style: "currency",
+                  currency: "NGN",
+                  maximumFractionDigits: 0,
+                }).format(dues.totalPaid)}
+              </p>
+            </div>
           </div>
+
+          {dues.nextPaymentDate && (
+            <div className={`mt-1 rounded-lg border p-3 flex items-center justify-between ${
+              dues.totalOwing > 0 
+                ? "border-destructive/20 bg-destructive/5" 
+                : "border-emerald-500/20 bg-emerald-500/5"
+            }`}>
+              <div>
+                <p className="text-xs uppercase tracking-wider text-muted-foreground">
+                  {dues.totalOwing > 0 ? "Next Payment Due (Oldest)" : "Next Payment Expected"}
+                </p>
+                <p className={`font-semibold ${
+                  dues.totalOwing > 0 ? "text-destructive" : "text-emerald-600 dark:text-emerald-400"
+                }`}>
+                  {dues.nextPaymentDate}
+                </p>
+              </div>
+              {dues.futureMonthsPaid > 0 ? (
+                <Badge className="bg-emerald-600 hover:bg-emerald-600 text-white border-transparent">
+                  {dues.futureMonthsPaid} mo ahead
+                </Badge>
+              ) : dues.totalOwing > 0 ? (
+                <Badge variant="destructive">
+                  Owing
+                </Badge>
+              ) : (
+                <Badge className="text-emerald-700 bg-emerald-50 border-emerald-200 hover:bg-emerald-50">
+                  Up to Date
+                </Badge>
+              )}
+            </div>
+          )}
 
           {dues.totalOwing > 0 && (
             <div className="rounded-lg border border-border bg-muted p-4">
@@ -164,24 +209,21 @@ export function SocietyDuesPanel({ societyId, dues, userEmail, userName }: Socie
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="month">Month *</Label>
+                <Label htmlFor="monthsToPay">Months to Pay</Label>
                 <Select
-                  value={selectedMonth.toString()}
-                  onValueChange={(value) => setSelectedMonth(Number(value))}>
-                  <SelectTrigger id="month">
+                  value={monthsToPay.toString()}
+                  onValueChange={handleMonthsChange}>
+                  <SelectTrigger id="monthsToPay">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {dues.monthsOwing.map((month) => (
-                      <SelectItem key={month} value={month.toString()}>
-                        {MONTH_NAMES[month - 1]}
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((num) => (
+                      <SelectItem key={num} value={num.toString()}>
+                        {num} Month{num > 1 ? "s" : ""}
+                        {num === dues.monthsOwing.length ? " (Clear Outstanding)" : ""}
+                        {num === 12 ? " (Full Year)" : ""}
                       </SelectItem>
                     ))}
-                    {dues.monthsOwing.length === 0 && (
-                      <SelectItem value={selectedMonth.toString()}>
-                        {MONTH_NAMES[selectedMonth - 1]}
-                      </SelectItem>
-                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -235,7 +277,7 @@ export function SocietyDuesPanel({ societyId, dues, userEmail, userName }: Socie
               <Button
                 type="submit"
                 size="sm"
-                disabled={isPending || dues.monthsOwing.length === 0}>
+                disabled={isPending}>
                 <Wallet className="mr-2 h-4 w-4" />
                 Pay Dues
               </Button>
