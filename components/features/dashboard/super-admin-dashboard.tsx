@@ -14,6 +14,7 @@ import {
   Settings,
   Plus,
 } from "lucide-react";
+import { PaymentBreakdownGrid } from "@/components/features/payments/payment-breakdown-grid";
 import { NairaSign } from "@/components/ui/naira-sign";
 
 export async function SuperAdminDashboard() {
@@ -193,6 +194,15 @@ export async function SuperAdminDashboard() {
             </p>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Detailed Revenue Breakdown */}
+      <div className="bg-background border border-border rounded-lg shadow-sm p-6">
+        <PaymentBreakdownGrid stats={{
+          ...metrics,
+          totalAmount: metrics.totalPaymentAmount,
+          totalCount: metrics.totalPayments,
+        }} />
       </div>
 
       {/* Quick Admin Actions */}

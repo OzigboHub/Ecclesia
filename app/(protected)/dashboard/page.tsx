@@ -45,6 +45,13 @@ export default async function DashboardPage() {
 				upcomingAppointments: 0,
 				totalMassIntentions: 0,
 				recentActivity: [],
+				paystackRevenue: 0,
+				offlineRevenue: 0,
+				manualDigitalRevenue: 0,
+				pendingPaymentsCount: 0,
+				pendingPaymentsAmount: 0,
+				failedPaymentsCount: 0,
+				failedPaymentsAmount: 0,
 			};
 
 	// PARISHIONER sees personalized dashboard

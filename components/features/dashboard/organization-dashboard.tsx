@@ -8,6 +8,8 @@ import { Building2, Calendar, Church, Users } from "lucide-react";
 import type { Session } from "next-auth";
 import Link from "next/link";
 
+import { PaymentBreakdownGrid } from "@/components/features/payments/payment-breakdown-grid";
+
 interface OrganizationDashboardProps {
 	session: Session;
 	announcements: any[];
@@ -139,6 +141,17 @@ export function OrganizationDashboard({
 					</div>
 				))}
 			</div>
+
+			{/* Financial Breakdown */}
+			{canViewFinancials && (
+				<div className="mb-8 bg-background border border-border rounded-lg shadow-sm p-6">
+					<PaymentBreakdownGrid stats={{
+						...metrics,
+						totalAmount: metrics.totalPaymentAmount,
+						totalCount: metrics.totalPayments,
+					}} />
+				</div>
+			)}
 
 			{/* Quick Actions */}
 			<div className="bg-background border border-border rounded-lg shadow-sm p-6">

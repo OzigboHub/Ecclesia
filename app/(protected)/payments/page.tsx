@@ -14,6 +14,8 @@ import { redirect } from "next/navigation";
 import PaymentsListClient from "./payments-list-client";
 import { PaymentsTable } from "./payments-table";
 
+import { PaymentBreakdownGrid } from "@/components/features/payments/payment-breakdown-grid";
+
 export default async function PaymentsPage({
 	searchParams: searchParamsPromise,
 }: {
@@ -45,10 +47,11 @@ export default async function PaymentsPage({
 			purpose: searchParams.purpose as any,
 			status: searchParams.status as any,
 			method: searchParams.method as any,
+			organizationId: searchParams.organizationId,
 		}),
-		getPaymentStats(),
-		getOrganizationPaymentProfile(),
-		getOrganizationWalletSummary(),
+		getPaymentStats(searchParams.organizationId),
+		getOrganizationPaymentProfile(searchParams.organizationId),
+		getOrganizationWalletSummary(searchParams.organizationId),
 		getPaystackBankList(),
 	]);
 
@@ -79,10 +82,6 @@ export default async function PaymentsPage({
 			);
 		})
 		.reduce((sum, p) => sum + p.amount, 0);
-
-	const pendingCount = payments.filter(
-		(p) => p.paymentStatus === "PENDING",
-	).length;
 
 	const canManageWallet = ["SUPER_ADMIN", "PARISH_ADMIN"].includes(
 		session.user.role,
@@ -116,7 +115,14 @@ export default async function PaymentsPage({
 						</Button>
 					)}
 					<Button variant="outline" size="sm" asChild>
-						<a href="/api/payments/export">
+						<a
+							href={`/api/payments/export?${new URLSearchParams({
+								...(searchParams.purpose && { purpose: searchParams.purpose }),
+								...(searchParams.status && { status: searchParams.status }),
+								...(searchParams.method && { method: searchParams.method }),
+								...(searchParams.organizationId && { organizationId: searchParams.organizationId }),
+							}).toString()}`}
+						>
 							<Download className="mr-2 h-4 w-4" /> Export
 						</a>
 					</Button>
@@ -130,40 +136,41 @@ export default async function PaymentsPage({
 
 			{/* Quick Stats — admin only */}
 			{canViewStats && (
-				<div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-					<div className="bg-background border border-border rounded-lg p-4 shadow-sm">
-						<p className="text-xs font-medium text-muted-foreground uppercase">
-							Today&apos;s Revenue
-						</p>
-						<p className="text-2xl font-bold text-foreground">
-							{new Intl.NumberFormat("en-NG", {
-								style: "currency",
-								currency: "NGN",
-							}).format(todayRevenue)}
-						</p>
+				<div className="space-y-6">
+					<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+						<div className="bg-background border border-border rounded-lg p-4 shadow-sm flex items-center justify-between">
+							<div>
+								<p className="text-xs font-medium text-muted-foreground uppercase">
+									Today&apos;s Revenue
+								</p>
+								<p className="text-2xl font-bold text-foreground mt-1">
+									{new Intl.NumberFormat("en-NG", {
+										style: "currency",
+										currency: "NGN",
+										maximumFractionDigits: 0,
+									}).format(todayRevenue)}
+								</p>
+							</div>
+						</div>
+						<div className="bg-background border border-border rounded-lg p-4 shadow-sm flex items-center justify-between">
+							<div>
+								<p className="text-xs font-medium text-muted-foreground uppercase">
+									Year Total ({new Date().getFullYear()})
+								</p>
+								<p className="text-2xl font-bold text-foreground mt-1">
+									{new Intl.NumberFormat("en-NG", {
+										style: "currency",
+										currency: "NGN",
+										maximumFractionDigits: 0,
+									}).format(stats.totalAmount)}
+								</p>
+								<p className="text-xs text-muted-foreground mt-1">
+									{stats.totalCount} completed payments
+								</p>
+							</div>
+						</div>
 					</div>
-					<div className="bg-background border border-border rounded-lg p-4 shadow-sm">
-						<p className="text-xs font-medium text-muted-foreground uppercase">
-							Year Total ({new Date().getFullYear()})
-						</p>
-						<p className="text-2xl font-bold text-foreground">
-							{new Intl.NumberFormat("en-NG", {
-								style: "currency",
-								currency: "NGN",
-							}).format(stats.totalAmount)}
-						</p>
-						<p className="text-xs text-muted-foreground mt-1">
-							{stats.totalCount} payments
-						</p>
-					</div>
-					<div className="bg-background border border-border rounded-lg p-4 shadow-sm">
-						<p className="text-xs font-medium text-muted-foreground uppercase">
-							Pending Payments
-						</p>
-						<p className="text-2xl font-bold text-yellow-600">
-							{pendingCount}
-						</p>
-					</div>
+					<PaymentBreakdownGrid stats={stats} />
 				</div>
 			)}
 

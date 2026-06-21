@@ -184,13 +184,25 @@ export async function getPayments(
 			dateTo,
 			sortBy,
 			sortOrder,
+			organizationId,
 		} = parsed;
 
 		// Build where clause (EVENT_PAYMENT is stored as OTHER in DB)
 		const dbPurposeForQuery =
 			purpose === "EVENT_PAYMENT" ? "OTHER" : purpose;
+		
+		const isSuperAdmin = session.user.role === "SUPER_ADMIN";
+		let orgFilter: { organizationId: string } | {} = {};
+		if (isSuperAdmin) {
+			if (organizationId) {
+				orgFilter = { organizationId };
+			}
+		} else {
+			orgFilter = { organizationId: session.user.organizationId };
+		}
+
 		const where: Prisma.PaymentWhereInput = {
-			organizationId: session.user.organizationId,
+			...orgFilter,
 			...(dbPurposeForQuery && { purpose: dbPurposeForQuery }),
 			...(status && { paymentStatus: status }),
 			...(method && { paymentMethod: method }),
@@ -323,13 +335,20 @@ export async function getPayment(
 /**
  * Get payment statistics for dashboard
  */
-export async function getPaymentStats(): Promise<
+export async function getPaymentStats(targetOrganizationId?: string): Promise<
 	ActionResponse<{
 		totalAmount: number;
 		totalCount: number;
 		byPurpose: Record<string, number>;
 		byMonth: Record<number, number>;
 		recentPayments: PaymentWithRelations[];
+		paystackRevenue: number;
+		offlineRevenue: number;
+		manualDigitalRevenue: number;
+		pendingPaymentsCount: number;
+		pendingPaymentsAmount: number;
+		failedPaymentsCount: number;
+		failedPaymentsAmount: number;
 	}>
 > {
 	try {
@@ -359,59 +378,144 @@ export async function getPaymentStats(): Promise<
 			};
 		}
 
+		const isSuperAdmin = session.user.role === "SUPER_ADMIN";
+		let orgFilter: { organizationId: string } | {} = {};
+		if (isSuperAdmin) {
+			if (targetOrganizationId) {
+				orgFilter = { organizationId: targetOrganizationId };
+			}
+		} else {
+			orgFilter = { organizationId: session.user.organizationId };
+		}
+
 		const currentYear = new Date().getFullYear();
 		const yearStart = new Date(currentYear, 0, 1);
 
 		// Get total amount and count
-		const [totalStats, byPurpose, byMonth, recentPayments] =
-			await Promise.all([
-				db.payment.aggregate({
-					where: {
-						organizationId: session.user.organizationId,
-						paymentStatus: "COMPLETED",
-						paymentDate: { gte: yearStart },
-					},
-					_sum: { amount: true },
-					_count: true,
-				}),
-				db.payment.groupBy({
-					by: ["purpose"],
-					where: {
-						organizationId: session.user.organizationId,
-						paymentStatus: "COMPLETED",
-						paymentDate: { gte: yearStart },
-					},
-					_sum: { amount: true },
-				}),
-				db.payment.groupBy({
-					by: ["month"],
-					where: {
-						organizationId: session.user.organizationId,
-						paymentStatus: "COMPLETED",
-						purpose: "OFFERING",
-						paymentDate: { gte: yearStart },
-					},
-					_sum: { amount: true },
-				}),
-				db.payment.findMany({
-					where: {
-						organizationId: session.user.organizationId,
-					},
-					include: {
-						parishioner: true,
-						organization: true,
-						recordedBy: true,
-						massIntention: {
-							include: {
-								mass: true,
-							},
+		const [
+			totalStats,
+			byPurpose,
+			byMonth,
+			recentPayments,
+			paystackRevenueAgg,
+			offlineRevenueAgg,
+			manualDigitalRevenueAgg,
+			pendingPaymentsCount,
+			pendingPaymentsAgg,
+			failedPaymentsCount,
+			failedPaymentsAgg,
+		] = await Promise.all([
+			db.payment.aggregate({
+				where: {
+					...orgFilter,
+					paymentStatus: "COMPLETED",
+					paymentDate: { gte: yearStart },
+				},
+				_sum: { amount: true },
+				_count: true,
+			}),
+			db.payment.groupBy({
+				by: ["purpose"],
+				where: {
+					...orgFilter,
+					paymentStatus: "COMPLETED",
+					paymentDate: { gte: yearStart },
+				},
+				_sum: { amount: true },
+			}),
+			db.payment.groupBy({
+				by: ["month"],
+				where: {
+					...orgFilter,
+					paymentStatus: "COMPLETED",
+					purpose: "OFFERING",
+					paymentDate: { gte: yearStart },
+				},
+				_sum: { amount: true },
+			}),
+			db.payment.findMany({
+				where: orgFilter,
+				include: {
+					parishioner: true,
+					organization: true,
+					recordedBy: true,
+					massIntention: {
+						include: {
+							mass: true,
 						},
-						donationCampaign: true,
 					},
-					orderBy: { createdAt: "desc" },
-					take: 10,
-				}),
-			]);
+					donationCampaign: true,
+				},
+				orderBy: { createdAt: "desc" },
+				take: 10,
+			}),
+			// Paystack Completed
+			db.payment.aggregate({
+				where: {
+					...orgFilter,
+					paymentStatus: "COMPLETED",
+					gateway: "PAYSTACK",
+					paymentDate: { gte: yearStart },
+				},
+				_sum: { amount: true },
+			}),
+			// Cash/Check Completed (Offline)
+			db.payment.aggregate({
+				where: {
+					...orgFilter,
+					paymentStatus: "COMPLETED",
+					gateway: null,
+					paymentMethod: { in: ["CASH", "CHECK"] },
+					paymentDate: { gte: yearStart },
+				},
+				_sum: { amount: true },
+			}),
+			// Card/Transfer Manual Completed (No Gateway)
+			db.payment.aggregate({
+				where: {
+					...orgFilter,
+					paymentStatus: "COMPLETED",
+					gateway: null,
+					paymentMethod: { in: ["CARD", "BANK_TRANSFER", "MOBILE_MONEY"] },
+					paymentDate: { gte: yearStart },
+				},
+				_sum: { amount: true },
+			}),
+			// Pending Count
+			db.payment.count({
+				where: {
+					...orgFilter,
+					paymentStatus: "PENDING",
+					paymentDate: { gte: yearStart },
+				},
+			}),
+			// Pending Amount
+			db.payment.aggregate({
+				where: {
+					...orgFilter,
+					paymentStatus: "PENDING",
+					paymentDate: { gte: yearStart },
+				},
+				_sum: { amount: true },
+			}),
+			// Failed Count
+			db.payment.count({
+				where: {
+					...orgFilter,
+					paymentStatus: "FAILED",
+					paymentDate: { gte: yearStart },
+				},
+			}),
+			// Failed Amount
+			db.payment.aggregate({
+				where: {
+					...orgFilter,
+					paymentStatus: "FAILED",
+					paymentDate: { gte: yearStart },
+				},
+				_sum: { amount: true },
+			}),
+		]);
 
 		const byPurposeMap: Record<string, number> = {};
 		byPurpose.forEach((item) => {
@@ -425,15 +529,29 @@ export async function getPaymentStats(): Promise<
 			}
 		});
 
+		const paystackRevenue = paystackRevenueAgg._sum.amount ?? 0;
+		const offlineRevenue = offlineRevenueAgg._sum.amount ?? 0;
+		const manualDigitalRevenue = manualDigitalRevenueAgg._sum.amount ?? 0;
+		const totalAmount = paystackRevenue + offlineRevenue + manualDigitalRevenue;
+		const pendingPaymentsAmount = pendingPaymentsAgg._sum.amount ?? 0;
+		const failedPaymentsAmount = failedPaymentsAgg._sum.amount ?? 0;
+
 		return {
 			success: true,
 			message: "Payment statistics retrieved",
 			data: {
-				totalAmount: totalStats._sum.amount || 0,
+				totalAmount,
 				totalCount: totalStats._count,
 				byPurpose: byPurposeMap,
 				byMonth: byMonthMap,
 				recentPayments,
+				paystackRevenue,
+				offlineRevenue,
+				manualDigitalRevenue,
+				pendingPaymentsCount,
+				pendingPaymentsAmount,
+				failedPaymentsCount,
+				failedPaymentsAmount,
 			},
 		};
 	} catch (error) {
