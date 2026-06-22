@@ -20,6 +20,7 @@ import {
 	type CreateMassIntentionInput,
 } from "@/lib/validators/mass-intention.schema";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { format } from "date-fns";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
@@ -53,8 +54,8 @@ export function MassIntentionForm({
 	const isParishioner = session?.user?.role === "PARISHIONER";
 	const initialSelectedDate =
 		calendarDefaults?.massDate ?
-			new Date(calendarDefaults.massDate).toISOString().split("T")[0]
-		:	new Date().toISOString().split("T")[0];
+			format(new Date(calendarDefaults.massDate), "yyyy-MM-dd")
+		:	format(new Date(), "yyyy-MM-dd");
 	const [isPending, startTransition] = useTransition();
 	const [parishioners, setParishioners] = useState<Parishioner[]>([]);
 	const [isLoadingParishioners, setIsLoadingParishioners] = useState(true);

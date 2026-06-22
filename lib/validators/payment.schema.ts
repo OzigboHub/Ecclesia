@@ -45,6 +45,7 @@ export const createPaymentSchema = z
 		massIntentionId: z.string().uuid().optional(),
 		donationCampaignId: z.string().uuid().optional(),
 		eventId: z.string().uuid().optional(),
+		societyId: z.string().uuid('Invalid society ID').optional(),
 		paymentGateway: z.string().optional(),
 		description: z
 			.string()
@@ -55,9 +56,20 @@ export const createPaymentSchema = z
 			.max(1000, 'Notes must not exceed 1000 characters')
 			.optional(),
 	})
-	.refine((data) => data.purpose !== 'OFFERING' || data.paymentDate, {
-		message: 'Payment date is required for offerings',
-		path: ['paymentDate'],
+	.refine(
+		(data) => data.purpose !== 'OFFERING' || data.paymentDate,
+		{
+			message: 'Payment date is required for offerings',
+			path: ['paymentDate'],
+		},
+	)
+	.refine((data) => data.purpose !== 'SOCIETY_DUES' || data.societyId, {
+		message: 'Society is required for society dues',
+		path: ['societyId'],
+	})
+	.refine((data) => data.purpose !== 'SOCIETY_DUES' || data.month, {
+		message: 'Month is required for society dues',
+		path: ['month'],
 	})
 	.refine(
 		(data) => data.purpose !== 'MASS_INTENTION' || data.massIntentionId,
@@ -114,7 +126,8 @@ export const paymentQuerySchema = z.object({
 	page: z.coerce.number().int().positive().default(1),
 	limit: z.coerce.number().int().min(1).max(100).default(20),
 	search: z.string().optional(),
-		purpose: z
+	organizationId: z.string().uuid().optional(),
+	purpose: z
 		.enum([
 			'OFFERING',
 			'TITHE',
@@ -166,6 +179,10 @@ export const paystackInitializeSchema = z.object({
 	donationCampaignId: z.string().uuid().optional(),
 	eventId: z.string().uuid().optional(),
 	paymentTypeId: z.string().uuid().optional(),
+	societyId: z.string().uuid().optional(),
+}).refine((data) => data.purpose !== 'SOCIETY_DUES' || data.societyId, {
+	message: 'Society is required for society dues',
+	path: ['societyId'],
 });
 
 export type PaystackInitializeInput = z.infer<typeof paystackInitializeSchema>;

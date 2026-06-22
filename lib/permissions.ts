@@ -57,9 +57,11 @@ export function canManageFinancials(role: string): boolean {
 		"PARISH_ADMIN",
 		"PARISH_SECRETARY",
 		"OUTSTATION_ADMIN",
-		"SOCIETY_PRESIDENT",
-		"SOCIETY_SECRETARY",
 	].includes(role);
+}
+
+export function canViewSessions(role: string): boolean {
+	return !["SOCIETY_PRESIDENT", "SOCIETY_SECRETARY"].includes(role);
 }
 
 export function canViewFinancialDashboard(role: string): boolean {
@@ -130,7 +132,7 @@ export function canManageEvents(role: string): boolean {
 }
 
 export function canManageSocieties(role: string): boolean {
-	return ["SUPER_ADMIN", "PARISH_ADMIN", "PARISH_STAFF"].includes(role);
+	return ["SUPER_ADMIN", "PARISH_ADMIN", "PARISH_SECRETARY"].includes(role);
 }
 
 export function canViewSocieties(role: string): boolean {

@@ -3,6 +3,7 @@
 import { auth } from "@/auth";
 import db from "@/lib/db";
 import { canBypassFeatureToggle } from "@/lib/features.server";
+import { sendParishEventNotification } from "@/lib/notifications/parish-events";
 import {
 	createParishionerSchema,
 	csvParishionerSchema,
@@ -37,6 +38,68 @@ type ParishionerWithRelations = Prisma.ParishionerGetPayload<{
 		payments: true;
 	};
 }>;
+
+function isBirthdayToday(date: Date | null | undefined): boolean {
+	if (!date) return false;
+	const today = new Date();
+	return (
+		date.getUTCMonth() === today.getUTCMonth() &&
+		date.getUTCDate() === today.getUTCDate()
+	);
+}
+
+async function notifyParishOnParishionerBirthday(params: {
+	parishionerId: string;
+	firstName: string;
+	lastName: string;
+	organizationId: string;
+	organizationName: string | null;
+	email?: string | null;
+}) {
+	try {
+		const celebrantUser =
+			params.email ?
+				await db.user.findFirst({
+					where: {
+						organizationId: params.organizationId,
+						email: params.email,
+						isActive: true,
+					},
+					select: { id: true },
+				})
+			:	null;
+
+		const celebrantFullName =
+			`${params.firstName} ${params.lastName}`.trim();
+		const organizationName = params.organizationName ?? "your parish";
+
+		await Promise.all([
+			sendParishEventNotification({
+				organizationId: params.organizationId,
+				organizationName,
+				audience: "ALL_ORG_USERS",
+				title: `Birthday Celebration: ${celebrantFullName}`,
+				body: `Today is ${celebrantFullName}'s birthday. Please join us in wishing them a beautiful birthday.`,
+				url: `/dashboard/parishioners/${params.parishionerId}`,
+			}),
+			...(celebrantUser ?
+				[
+					sendParishEventNotification({
+						organizationId: params.organizationId,
+						organizationName,
+						audience: "ALL_ORG_USERS",
+						targetUserIds: [celebrantUser.id],
+						title: "Happy Birthday from your parish family",
+						body: `Everyone at ${organizationName} wishes you a beautiful birthday. May God bless your new year with joy and peace.`,
+						url: "/dashboard",
+					}),
+				]
+			:	[]),
+		]);
+	} catch (error) {
+		console.error("Failed to dispatch birthday notifications:", error);
+	}
+}
 
 // ============================================
 // READ OPERATIONS
@@ -332,6 +395,17 @@ export async function createParishioner(
 			},
 		});
 
+		if (isBirthdayToday(parishioner.dateOfBirth)) {
+			await notifyParishOnParishionerBirthday({
+				parishionerId: parishioner.id,
+				firstName: parishioner.firstName,
+				lastName: parishioner.lastName,
+				organizationId: session.user.organizationId,
+				organizationName: session.user.organizationName,
+				email: parishioner.email,
+			});
+		}
+
 		// 7. Revalidate cache
 		revalidatePath("/dashboard/parishioners");
 
@@ -416,6 +490,41 @@ export async function updateParishioner(
 			}
 		}
 
+		if (parsed.data.organizationId) {
+			if (parsed.data.organizationId !== existing.organizationId) {
+				const targetOrganization = await db.organization.findUnique({
+					where: { id: parsed.data.organizationId },
+				});
+
+				if (!targetOrganization) {
+					return {
+						success: false,
+						message: "Invalid organization selected",
+					};
+				}
+
+				if (session.user.role === "PARISH_ADMIN") {
+					const validOrganization = await db.organization.findFirst({
+						where: {
+							id: parsed.data.organizationId,
+							OR: [
+								{ id: session.user.organizationId },
+								{ parentId: session.user.organizationId },
+							],
+						},
+					});
+
+					if (!validOrganization) {
+						return {
+							success: false,
+							message:
+								"You do not have permission to move this parishioner to the selected organization",
+						};
+					}
+				}
+			}
+		}
+
 		// Update
 		const parishioner = await db.parishioner.update({
 			where: { id },
@@ -429,6 +538,20 @@ export async function updateParishioner(
 					:	undefined,
 			},
 		});
+
+		if (
+			isBirthdayToday(parishioner.dateOfBirth) &&
+			!isBirthdayToday(existing.dateOfBirth)
+		) {
+			await notifyParishOnParishionerBirthday({
+				parishionerId: parishioner.id,
+				firstName: parishioner.firstName,
+				lastName: parishioner.lastName,
+				organizationId: session.user.organizationId,
+				organizationName: session.user.organizationName,
+				email: parishioner.email,
+			});
+		}
 
 		revalidatePath("/dashboard/parishioners");
 		revalidatePath(`/dashboard/parishioners/${id}`);

@@ -53,6 +53,7 @@ interface ManageDashboardProps {
   members: SocietyMemberRecord[];
   announcements: AnnouncementItem[];
   userRole: string;
+  userEmail: string;
 }
 
 export function ManageDashboard({
@@ -62,6 +63,7 @@ export function ManageDashboard({
   members,
   announcements,
   userRole,
+  userEmail,
 }: ManageDashboardProps) {
   const owingCount = duesOverview.members.filter(
     (m) => m.monthsOwing.length > 0,
@@ -102,9 +104,15 @@ export function ManageDashboard({
           <TabsTrigger value="members">Members</TabsTrigger>
           <TabsTrigger value="announcements">
             Announcements
-            {announcements.filter((a) => a.approvalStatus === "PENDING_APPROVAL").length > 0 && (
+            {announcements.filter(
+              (a) => a.approvalStatus === "PENDING_APPROVAL",
+            ).length > 0 && (
               <span className="ml-1.5 rounded-full bg-amber-500 px-1.5 py-0.5 text-xs text-white">
-                {announcements.filter((a) => a.approvalStatus === "PENDING_APPROVAL").length}
+                {
+                  announcements.filter(
+                    (a) => a.approvalStatus === "PENDING_APPROVAL",
+                  ).length
+                }
               </span>
             )}
           </TabsTrigger>
@@ -121,10 +129,7 @@ export function ManageDashboard({
         </TabsContent>
 
         <TabsContent value="dues" className="mt-6">
-          <DuesOverviewTab
-            societyId={society.id}
-            duesOverview={duesOverview}
-          />
+          <DuesOverviewTab societyId={society.id} duesOverview={duesOverview} userEmail={userEmail} />
         </TabsContent>
 
         <TabsContent value="payments" className="mt-6">
@@ -136,7 +141,7 @@ export function ManageDashboard({
         </TabsContent>
 
         <TabsContent value="members" className="mt-6">
-          <MemberRecordsTab members={members} />
+          <MemberRecordsTab societyId={society.id} members={members} />
         </TabsContent>
 
         <TabsContent value="announcements" className="mt-6">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { useSession } from "next-auth/react";
@@ -30,6 +30,18 @@ export default function NewPaymentPage() {
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
   const { data: session } = useSession();
+  const financialRoles = ["SUPER_ADMIN", "PARISH_ADMIN", "PARISH_SECRETARY"];
+  const canAccessPage = session?.user
+    ? financialRoles.includes(session.user.role)
+    : true;
+
+  useEffect(() => {
+    if (session && !canAccessPage) {
+      router.push("/dashboard");
+    }
+  }, [session, canAccessPage, router]);
+
+  if (session && !canAccessPage) return null;
 
   const loggedInName = session?.user?.name ?? "";
   const loggedInEmail = session?.user?.email ?? "";

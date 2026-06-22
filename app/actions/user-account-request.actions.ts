@@ -2,6 +2,7 @@
 
 import { auth } from "@/auth";
 import db from "@/lib/db";
+import { sendParishEventNotification } from "@/lib/notifications/parish-events";
 import {
 	requestUserAccountSchema,
 	type RequestUserAccountInput,
@@ -145,6 +146,22 @@ export async function createUserAccountRequest(
 
 		revalidatePath("/dashboard");
 
+		const org = await db.organization.findUnique({
+			where: { id: context.organization.id },
+			select: { name: true, parentId: true },
+		});
+
+		if (org?.parentId) {
+			await sendParishEventNotification({
+				organizationId: org.parentId,
+				organizationName: org.name,
+				audience: "PARISH_ADMIN_AND_SECRETARY",
+				title: "New registration request",
+				body: `${payload.firstName} ${payload.lastName} requested a ${payload.role.toLowerCase().replace(/_/g, " ")} account from ${org.name}.`,
+				url: "/dashboard",
+			});
+		}
+
 		return {
 			success: true,
 			message: "User account request submitted",
@@ -287,6 +304,24 @@ export async function approveUserAccountRequest(
 					isActive: true,
 				},
 			});
+
+			if (request.role === "PARISHIONER") {
+				const existingParishioner = await tx.parishioner.findUnique({
+					where: { email: request.email },
+					select: { id: true },
+				});
+
+				if (!existingParishioner) {
+					await tx.parishioner.create({
+						data: {
+							firstName: request.firstName,
+							lastName: request.lastName,
+							email: request.email,
+							organizationId: request.organizationId,
+						},
+					});
+				}
+			}
 
 			await tx.userAccountRequest.update({
 				where: { id: request.id },

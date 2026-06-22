@@ -39,6 +39,10 @@ export default async function SocietiesPage() {
 	const canReviewRequests = canReviewSocietyJoinRequests(session.user.role);
 
 	const isParishioner = session.user.role === "PARISHIONER";
+	const canJoinSociety =
+		isParishioner ||
+		session.user.role === "PARISH_ADMIN" ||
+		session.user.role === "PARISH_SECRETARY";
 
 	const result = await getSocieties();
 
@@ -56,7 +60,7 @@ export default async function SocietiesPage() {
 	let joinRequestMap = new Map<string, "PENDING" | "REJECTED">();
 	const pendingRequestCountMap = new Map<string, number>();
 
-	if (isParishioner && session.user.parishionerId) {
+	if (canJoinSociety && session.user.parishionerId) {
 		const [memberships, joinRequests] = await Promise.all([
 			db.societyMembership.findMany({
 				where: { parishionerId: session.user.parishionerId },
@@ -143,7 +147,7 @@ export default async function SocietiesPage() {
 					</div>
 				:	societies.map((society: SocietyWithRelations) => {
 						const joinStatus =
-							isParishioner ?
+							canJoinSociety ?
 								membershipSet.has(society.id) ?
 									"MEMBER"
 								:	(joinRequestMap.get(society.id) ?? "NONE")
@@ -201,8 +205,9 @@ export default async function SocietiesPage() {
 											</div>
 										)}
 
-										{isParishioner &&
-											joinStatus !== null && (
+										{canJoinSociety &&
+											joinStatus !== null &&
+											joinStatus !== "MEMBER" && (
 												<div className="pt-2 border-t">
 													<JoinRequestButton
 														societyId={society.id}

@@ -1,240 +1,283 @@
 import db from "@/lib/db";
-import { addDays, startOfDay, endOfDay, getDay } from "date-fns";
 
 const DAYS_MAP = [
-  "SUNDAY",
-  "MONDAY",
-  "TUESDAY",
-  "WEDNESDAY",
-  "THURSDAY",
-  "FRIDAY",
-  "SATURDAY",
+	"SUNDAY",
+	"MONDAY",
+	"TUESDAY",
+	"WEDNESDAY",
+	"THURSDAY",
+	"FRIDAY",
+	"SATURDAY",
 ];
 
+function toUtcDayStart(value: Date | string): Date {
+	const d = new Date(value);
+	return new Date(
+		Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()),
+	);
+}
+
+function toUtcDayEnd(value: Date | string): Date {
+	const d = new Date(value);
+	return new Date(
+		Date.UTC(
+			d.getUTCFullYear(),
+			d.getUTCMonth(),
+			d.getUTCDate(),
+			23,
+			59,
+			59,
+			999,
+		),
+	);
+}
+
+function addUtcDays(value: Date, days: number): Date {
+	return new Date(
+		Date.UTC(
+			value.getUTCFullYear(),
+			value.getUTCMonth(),
+			value.getUTCDate() + days,
+		),
+	);
+}
+
+function parseDayInput(value: Date | string): Date {
+	if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+		return new Date(`${value}T00:00:00.000Z`);
+	}
+
+	const d = new Date(value);
+	return new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+}
+
 export async function generateMassesForPeriod(
-  organizationId: string,
-  startDate: Date = new Date(),
-  endDate: Date = addDays(new Date(), 30),
-  options?: { ignoreAutoGenerateSetting?: boolean },
+	organizationId: string,
+	startDate: Date | string = new Date(),
+	endDate: Date | string = addUtcDays(toUtcDayStart(new Date()), 30),
+	options?: { ignoreAutoGenerateSetting?: boolean },
 ): Promise<number> {
-  const org = await db.organization.findUnique({
-    where: { id: organizationId },
-    include: { massScheduleTemplates: true },
-  });
+	const org = await db.organization.findUnique({
+		where: { id: organizationId },
+		include: { massScheduleTemplates: true },
+	});
 
-  if (!org) {
-    return 0;
-  }
+	if (!org) {
+		return 0;
+	}
 
-  if (!options?.ignoreAutoGenerateSetting && !org.autoGenerateMasses) {
-    return 0;
-  }
+	if (!options?.ignoreAutoGenerateSetting && !org.autoGenerateMasses) {
+		return 0;
+	}
 
-  const dailyLimit = Math.min(org.maxMassesPerDay, 5);
+	const dailyLimit = Math.min(org.maxMassesPerDay, 5);
 
-  let createdCount = 0;
-  // Use differenceInDays to calculate loop count or just loop while current <= end
-  let currentDate = startOfDay(startDate);
-  const lastDate = startOfDay(endDate);
+	let createdCount = 0;
+	let currentDate = toUtcDayStart(parseDayInput(startDate));
+	const lastDate = toUtcDayStart(parseDayInput(endDate));
 
-  while (currentDate <= lastDate) {
-    const dayName = DAYS_MAP[getDay(currentDate)];
+	while (currentDate <= lastDate) {
+		const dayName = DAYS_MAP[currentDate.getUTCDay()];
 
-    const dayTemplates = org.massScheduleTemplates.filter((t) => {
-      if (t.dayOfWeek !== dayName || !t.isActive) return false;
-      if (
-        t.effectiveFrom &&
-        startOfDay(currentDate) < startOfDay(t.effectiveFrom)
-      ) {
-        return false;
-      }
-      if (
-        t.effectiveUntil &&
-        startOfDay(currentDate) > startOfDay(t.effectiveUntil)
-      ) {
-        return false;
-      }
-      return true;
-    });
+		const dayTemplates = org.massScheduleTemplates.filter((t) => {
+			if (t.dayOfWeek !== dayName || !t.isActive) return false;
+			if (
+				t.effectiveFrom &&
+				toUtcDayStart(currentDate).getTime() <
+					toUtcDayStart(t.effectiveFrom).getTime()
+			) {
+				return false;
+			}
+			if (
+				t.effectiveUntil &&
+				toUtcDayStart(currentDate).getTime() >
+					toUtcDayStart(t.effectiveUntil).getTime()
+			) {
+				return false;
+			}
+			return true;
+		});
 
-    if (dayTemplates.length > 0) {
-      const existingMasses = await db.mass.findMany({
-        where: {
-          organizationId,
-          date: {
-            gte: startOfDay(currentDate),
-            lte: endOfDay(currentDate),
-          },
-        },
-      });
+		if (dayTemplates.length > 0) {
+			const existingMasses = await db.mass.findMany({
+				where: {
+					organizationId,
+					date: {
+						gte: toUtcDayStart(currentDate),
+						lte: toUtcDayEnd(currentDate),
+					},
+				},
+			});
 
-      const existingTimes = new Set(existingMasses.map((m) => m.time));
-      let dailyCreatedCount = 0;
+			const existingTimes = new Set(existingMasses.map((m) => m.time));
+			let dailyCreatedCount = 0;
 
-      for (const template of dayTemplates) {
-        if (existingMasses.length + dailyCreatedCount >= dailyLimit) {
-          break;
-        }
+			for (const template of dayTemplates) {
+				if (existingMasses.length + dailyCreatedCount >= dailyLimit) {
+					break;
+				}
 
-        if (existingTimes.has(template.time)) {
-          continue;
-        }
+				if (existingTimes.has(template.time)) {
+					continue;
+				}
 
-        await db.mass.create({
-          data: {
-            organizationId,
-            date: currentDate,
-            time: template.time,
-            massType: template.massType,
-            language: template.language,
-            location: template.location,
-            templateId: template.id,
-            isAutoGenerated: true,
-            maxIntentions: 1,
-            status: "SCHEDULED",
-          },
-        });
-        createdCount++;
-        dailyCreatedCount++;
-        existingTimes.add(template.time);
-      }
-    }
-    currentDate = addDays(currentDate, 1);
-  }
-  return createdCount;
+				await db.mass.create({
+					data: {
+						organizationId,
+						date: currentDate,
+						time: template.time,
+						massType: template.massType,
+						language: template.language,
+						location: template.location,
+						templateId: template.id,
+						isAutoGenerated: true,
+						maxIntentions: 1,
+						status: "SCHEDULED",
+					},
+				});
+				createdCount++;
+				dailyCreatedCount++;
+				existingTimes.add(template.time);
+			}
+		}
+		currentDate = addUtcDays(currentDate, 1);
+	}
+	return createdCount;
 }
 
 type ManualMassPattern = {
-  dayOfWeek: string;
-  time: string;
-  massType: string;
-  language: string | null;
-  location: string | null;
-  celebrant: string | null;
-  maxIntentions: number;
+	dayOfWeek: string;
+	time: string;
+	massType: string;
+	language: string | null;
+	location: string | null;
+	celebrant: string | null;
+	maxIntentions: number;
 };
 
 export async function generateMassesFromExistingMasses(
-  organizationId: string,
-  startDate: Date = new Date(),
-  endDate: Date = addDays(new Date(), 30),
+	organizationId: string,
+	startDate: Date | string = new Date(),
+	endDate: Date | string = addUtcDays(toUtcDayStart(new Date()), 30),
 ): Promise<number> {
-  const org = await db.organization.findUnique({
-    where: { id: organizationId },
-    select: { maxMassesPerDay: true },
-  });
+	const org = await db.organization.findUnique({
+		where: { id: organizationId },
+		select: { maxMassesPerDay: true },
+	});
 
-  if (!org) {
-    return 0;
-  }
+	if (!org) {
+		return 0;
+	}
 
-  const sourceMasses = await db.mass.findMany({
-    where: {
-      organizationId,
-      isAutoGenerated: false,
-      status: { not: "CANCELLED" },
-    },
-    orderBy: [{ date: "desc" }, { time: "asc" }],
-    select: {
-      date: true,
-      time: true,
-      massType: true,
-      language: true,
-      location: true,
-      celebrant: true,
-      maxIntentions: true,
-    },
-  });
+	const sourceMasses = await db.mass.findMany({
+		where: {
+			organizationId,
+			isAutoGenerated: false,
+			status: { not: "CANCELLED" },
+		},
+		orderBy: [{ date: "desc" }, { time: "asc" }],
+		select: {
+			date: true,
+			time: true,
+			massType: true,
+			language: true,
+			location: true,
+			celebrant: true,
+			maxIntentions: true,
+		},
+	});
 
-  const patternMap = new Map<string, ManualMassPattern>();
-  for (const mass of sourceMasses) {
-    const dayOfWeek = DAYS_MAP[getDay(mass.date)];
-    const key = [
-      dayOfWeek,
-      mass.time,
-      mass.massType,
-      mass.language ?? "",
-      mass.location ?? "",
-      mass.celebrant ?? "",
-      mass.maxIntentions,
-    ].join("|");
+	const patternMap = new Map<string, ManualMassPattern>();
+	for (const mass of sourceMasses) {
+		const dayOfWeek = DAYS_MAP[new Date(mass.date).getUTCDay()];
+		const key = [
+			dayOfWeek,
+			mass.time,
+			mass.massType,
+			mass.language ?? "",
+			mass.location ?? "",
+			mass.celebrant ?? "",
+			mass.maxIntentions,
+		].join("|");
 
-    if (!patternMap.has(key)) {
-      patternMap.set(key, {
-        dayOfWeek,
-        time: mass.time,
-        massType: mass.massType,
-        language: mass.language,
-        location: mass.location,
-        celebrant: mass.celebrant,
-        maxIntentions: mass.maxIntentions,
-      });
-    }
-  }
+		if (!patternMap.has(key)) {
+			patternMap.set(key, {
+				dayOfWeek,
+				time: mass.time,
+				massType: mass.massType,
+				language: mass.language,
+				location: mass.location,
+				celebrant: mass.celebrant,
+				maxIntentions: mass.maxIntentions,
+			});
+		}
+	}
 
-  const patterns = Array.from(patternMap.values());
-  if (patterns.length === 0) {
-    return 0;
-  }
+	const patterns = Array.from(patternMap.values());
+	if (patterns.length === 0) {
+		return 0;
+	}
 
-  const dailyLimit = Math.min(org.maxMassesPerDay, 5);
-  let createdCount = 0;
-  let currentDate = startOfDay(startDate);
-  const lastDate = startOfDay(endDate);
+	const dailyLimit = Math.min(org.maxMassesPerDay, 5);
+	let createdCount = 0;
+	let currentDate = toUtcDayStart(parseDayInput(startDate));
+	const lastDate = toUtcDayStart(parseDayInput(endDate));
 
-  while (currentDate <= lastDate) {
-    const dayName = DAYS_MAP[getDay(currentDate)];
-    const dayPatterns = patterns.filter(
-      (pattern) => pattern.dayOfWeek === dayName,
-    );
+	while (currentDate <= lastDate) {
+		const dayName = DAYS_MAP[currentDate.getUTCDay()];
+		const dayPatterns = patterns.filter(
+			(pattern) => pattern.dayOfWeek === dayName,
+		);
 
-    if (dayPatterns.length > 0) {
-      const existingMasses = await db.mass.findMany({
-        where: {
-          organizationId,
-          date: {
-            gte: startOfDay(currentDate),
-            lte: endOfDay(currentDate),
-          },
-        },
-        select: { time: true },
-      });
+		if (dayPatterns.length > 0) {
+			const existingMasses = await db.mass.findMany({
+				where: {
+					organizationId,
+					date: {
+						gte: toUtcDayStart(currentDate),
+						lte: toUtcDayEnd(currentDate),
+					},
+				},
+				select: { time: true },
+			});
 
-      const existingTimes = new Set(existingMasses.map((mass) => mass.time));
-      let dailyCreatedCount = 0;
+			const existingTimes = new Set(
+				existingMasses.map((mass) => mass.time),
+			);
+			let dailyCreatedCount = 0;
 
-      for (const pattern of dayPatterns) {
-        if (existingMasses.length + dailyCreatedCount >= dailyLimit) {
-          break;
-        }
+			for (const pattern of dayPatterns) {
+				if (existingMasses.length + dailyCreatedCount >= dailyLimit) {
+					break;
+				}
 
-        if (existingTimes.has(pattern.time)) {
-          continue;
-        }
+				if (existingTimes.has(pattern.time)) {
+					continue;
+				}
 
-        await db.mass.create({
-          data: {
-            organizationId,
-            date: currentDate,
-            time: pattern.time,
-            massType: pattern.massType as any,
-            language: pattern.language,
-            location: pattern.location,
-            celebrant: pattern.celebrant,
-            maxIntentions: pattern.maxIntentions,
-            isAutoGenerated: true,
-            status: "SCHEDULED",
-          },
-        });
+				await db.mass.create({
+					data: {
+						organizationId,
+						date: currentDate,
+						time: pattern.time,
+						massType: pattern.massType as any,
+						language: pattern.language,
+						location: pattern.location,
+						celebrant: pattern.celebrant,
+						maxIntentions: pattern.maxIntentions,
+						isAutoGenerated: true,
+						status: "SCHEDULED",
+					},
+				});
 
-        createdCount++;
-        dailyCreatedCount++;
-        existingTimes.add(pattern.time);
-      }
-    }
+				createdCount++;
+				dailyCreatedCount++;
+				existingTimes.add(pattern.time);
+			}
+		}
 
-    currentDate = addDays(currentDate, 1);
-  }
+		currentDate = addUtcDays(currentDate, 1);
+	}
 
-  return createdCount;
+	return createdCount;
 }

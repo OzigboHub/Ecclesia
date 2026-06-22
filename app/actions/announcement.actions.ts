@@ -3,6 +3,7 @@
 import { auth } from "@/auth";
 import db from "@/lib/db";
 import { isFeatureEnabled } from "@/lib/features.server";
+import { sendAnnouncementNotifications } from "@/lib/notifications/announcements";
 import {
 	canApproveAnnouncements,
 	canCreateSocietyAnnouncement,
@@ -221,6 +222,21 @@ export async function createAnnouncement(
 		revalidatePath("/announcements");
 		revalidatePath("/dashboard");
 
+		const now = new Date();
+		const shouldNotify =
+			announcement.isPublished &&
+			(!announcement.publishedAt || announcement.publishedAt <= now);
+		if (shouldNotify) {
+			await sendAnnouncementNotifications({
+				id: announcement.id,
+				title: announcement.title,
+				content: announcement.content,
+				imageUrl: announcement.imageUrl,
+				organizationId: announcement.organizationId,
+				organizationName: session.user.organizationName || "Parish",
+			});
+		}
+
 		return {
 			success: true,
 			message: "Announcement created successfully",
@@ -305,6 +321,29 @@ export async function updateAnnouncement(
 
 		revalidatePath("/announcements");
 		revalidatePath("/dashboard");
+
+		const now = new Date();
+		const previousPublishedAt = existing.publishedAt;
+		const nextPublishedAt =
+			data.publishedAt !== undefined ?
+				data.publishedAt
+			:	previousPublishedAt;
+		const wasLive =
+			existing.isPublished &&
+			(!previousPublishedAt || previousPublishedAt <= now);
+		const willBeLive =
+			(data.isPublished ?? existing.isPublished) &&
+			(!nextPublishedAt || nextPublishedAt <= now);
+		if (!wasLive && willBeLive) {
+			await sendAnnouncementNotifications({
+				id: announcement.id,
+				title: announcement.title,
+				content: announcement.content,
+				imageUrl: announcement.imageUrl,
+				organizationId: announcement.organizationId,
+				organizationName: session.user.organizationName || "Parish",
+			});
+		}
 
 		return {
 			success: true,
@@ -492,14 +531,22 @@ export async function createSocietyAnnouncement(
 			};
 		}
 
+		const parishionerId = session.user.parishionerId ?? null;
+		if (!parishionerId) {
+			return {
+				success: false,
+				message: "You are not a leader of this society",
+			};
+		}
+
 		// Verify user is leader of this society
 		const society = await db.society.findFirst({
 			where: {
 				id: societyId,
 				organizationId: session.user.organizationId,
 				OR: [
-					{ presidentId: session.user.id },
-					{ secretaryId: session.user.id },
+					{ presidentId: parishionerId },
+					{ secretaryId: parishionerId },
 				],
 			},
 		});
@@ -573,9 +620,11 @@ export async function getSocietyAnnouncements(
 			return { success: false, message: "Society not found" };
 		}
 
+		const parishionerId = session.user.parishionerId ?? null;
 		const isSocietyLeader =
-			society.presidentId === session.user.id ||
-			society.secretaryId === session.user.id;
+			parishionerId !== null &&
+			(society.presidentId === parishionerId ||
+				society.secretaryId === parishionerId);
 
 		if (!canManageSocieties(session.user.role) && !isSocietyLeader) {
 			return { success: false, message: "Permission denied" };
@@ -662,6 +711,15 @@ export async function approveSocietyAnnouncement(
 				`/dashboard/societies/${announcement.societyId}/manage`,
 			);
 		}
+
+		await sendAnnouncementNotifications({
+			id: announcement.id,
+			title: announcement.title,
+			content: announcement.content,
+			imageUrl: announcement.imageUrl,
+			organizationId: announcement.organizationId,
+			organizationName: session.user.organizationName || "Parish",
+		});
 
 		return {
 			success: true,

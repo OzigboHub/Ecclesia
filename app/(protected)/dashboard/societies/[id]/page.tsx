@@ -1,6 +1,7 @@
 import {
 	getJoinRequestsForSociety,
 	getSociety,
+	getSocietyDuesForMember,
 	JoinRequestWithParishioner,
 } from "@/app/actions/society.actions";
 import { auth } from "@/auth";
@@ -9,14 +10,12 @@ import { CreateMeetingDialog } from "@/components/societies/create-meeting-dialo
 import { JoinRequestButton } from "@/components/societies/join-request-button";
 import { JoinRequestsPanel } from "@/components/societies/join-requests-panel";
 import { MemberListItem } from "@/components/societies/member-list-item";
+import { SocietyDuesPanel } from "@/components/societies/society-dues-panel";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import db from "@/lib/db";
-import {
-	canManageSocieties,
-	canReviewSocietyJoinRequests,
-} from "@/lib/permissions";
+import { canManageSocieties } from "@/lib/permissions";
 import { ArrowLeft, Edit2, Settings, Users } from "lucide-react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -43,17 +42,21 @@ export default async function SocietyDetailPage({
 	const society = result.data;
 	const isParishioner = session.user.role === "PARISHIONER";
 	const isSecretary = session.user.role === "PARISH_SECRETARY";
+	const canJoinSociety =
+		isParishioner ||
+		session.user.role === "PARISH_ADMIN" ||
+		session.user.role === "PARISH_SECRETARY";
 	const canManage = canManageSocieties(session.user.role);
 	const isSocietyLeader =
-		society.presidentId === session.user.id ||
-		society.secretaryId === session.user.id;
-	const canReviewRequests =
-		canReviewSocietyJoinRequests(session.user.role) || isSocietyLeader;
+		!!session.user.parishionerId &&
+		(society.presidentId === session.user.parishionerId ||
+			society.secretaryId === session.user.parishionerId);
+	const canReviewRequests = canManage || isSocietyLeader;
 	const canEdit = canManage || isSocietyLeader;
 	const isViewOnly = isParishioner || isSecretary;
 
 	let joinStatus: "NONE" | "PENDING" | "MEMBER" | "REJECTED" = "NONE";
-	if (isParishioner && session.user.parishionerId) {
+	if (canJoinSociety && session.user.parishionerId) {
 		const [membership, joinRequest] = await Promise.all([
 			db.societyMembership.findUnique({
 				where: {
@@ -90,6 +93,14 @@ export default async function SocietyDetailPage({
 			joinRequests = requestsResult.data;
 		} else if (!requestsResult.success) {
 			joinRequestsError = requestsResult.message;
+		}
+	}
+
+	let memberDues = null;
+	if (isParishioner && joinStatus === "MEMBER") {
+		const duesResult = await getSocietyDuesForMember(id);
+		if (duesResult.success && duesResult.data) {
+			memberDues = duesResult.data;
 		}
 	}
 
@@ -130,7 +141,7 @@ export default async function SocietyDetailPage({
 						</Button>
 					</div>
 				)}
-				{isParishioner && (
+				{canJoinSociety && joinStatus !== "MEMBER" && !isSocietyLeader && (
 					<JoinRequestButton
 						societyId={society.id}
 						initialStatus={joinStatus}
@@ -289,6 +300,15 @@ export default async function SocietyDetailPage({
 							</div>
 						</CardContent>
 					</Card>
+
+					{memberDues && (
+						<SocietyDuesPanel
+							societyId={society.id}
+							dues={memberDues}
+							userEmail={session.user.email || ""}
+							userName={session.user.name || ""}
+						/>
+					)}
 				</div>
 			</div>
 		</div>
