@@ -13,7 +13,7 @@ Ecclesia is a Catholic parish management system that supports parish/outstation 
 ## Tech Stack
 
 - Next.js 16 (App Router) + React 19
-- TypeScript
+- TypeScript.
 - Prisma ORM + PostgreSQL (Neon compatible)
 - Auth.js (NextAuth v5).
 - Tailwind CSS v4 + shadcn/ui
