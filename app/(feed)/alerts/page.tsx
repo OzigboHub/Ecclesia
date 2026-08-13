@@ -4,7 +4,7 @@ import { FeedShell } from "@/components/feed/feed-shell";
 import { NotificationSetup } from "@/components/feed/alerts/notification-setup";
 import { relativeTime } from "@/components/feed/feed-card-shell";
 import db from "@/lib/db";
-import type { AnnouncementItem, LiveItem } from "@/lib/feed/types";
+import type { AnnouncementItem, FeedItem, LiveItem } from "@/lib/feed/types";
 import Link from "next/link";
 
 export const metadata = { title: "Alerts · Ecclesia" };
@@ -33,7 +33,13 @@ export default async function AlertsPage() {
 	// Alerts are the things a parish actively said, not the whole timeline.
 	// A type predicate rather than a bare filter, so `title` is known to exist
 	// on every item that survives.
-	const notices = (feed.data ?? []).filter(
+	//
+	// `items` is annotated rather than inferred from `feed.data`: ActionResponse
+	// declares `data?: T`, and on a cold build the generic does not always flow
+	// far enough for the filter callback to infer its parameter — which fails
+	// under noImplicitAny in CI while passing locally off a warm cache.
+	const items: FeedItem[] = feed.data ?? [];
+	const notices = items.filter(
 		(item): item is AnnouncementItem | LiveItem =>
 			item.kind === "announcement" ||
 			item.kind === "societyPost" ||
