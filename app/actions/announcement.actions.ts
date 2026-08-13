@@ -3,6 +3,7 @@
 import { auth } from "@/auth";
 import db from "@/lib/db";
 import { isFeatureEnabled } from "@/lib/features.server";
+import { HIDDEN_ORGANIZATION_NAMES } from "@/lib/organization-visibility";
 import { sendAnnouncementNotifications } from "@/lib/notifications/announcements";
 import {
 	canApproveAnnouncements,
@@ -34,6 +35,18 @@ type AnnouncementWithOrganization = Prisma.AnnouncementGetPayload<{
 		updatedAt: true;
 	};
 }>;
+
+/** Shape returned to unauthenticated callers — the feed and parish pages. */
+export type PublicAnnouncement = {
+	id: string;
+	title: string;
+	content: string;
+	imageUrl: string | null;
+	organizationId: string;
+	organizationName: string;
+	society: { id: string; name: string } | null;
+	publishedAt: Date;
+};
 
 const activeAnnouncementWhere = (now: Date) =>
 	({
@@ -471,18 +484,90 @@ export async function getActiveAnnouncementsForOrg(
 	}
 }
 
-export async function getPublicAnnouncements(): Promise<
-	ActionResponse<AnnouncementWithOrganization[]>
-> {
-	// NOTE: Some deployed databases may be missing announcement columns
-	// referenced by the Prisma schema (causing P2022 errors during build).
-	// To avoid build-time failures, return an empty set here when the
-	// database schema is unknown. This keeps the public site buildable.
-	return {
-		success: true,
-		message: "Public announcements are unavailable in this environment",
-		data: [] as AnnouncementWithOrganization[],
-	};
+/**
+ * Published, unexpired, approved announcements for anyone — no session.
+ *
+ * This previously returned a hard-coded empty array to keep builds green on
+ * deployments whose database predated some announcement columns. That made the
+ * richest source of feed content invisible to every visitor. The query now runs
+ * for real, and the catch below preserves the original safety property: a
+ * database that cannot answer degrades to an empty feed section rather than
+ * taking the page down.
+ *
+ * `organizationId` is a plain scalar on Announcement — there is no Prisma
+ * relation to Organization — so parish names are resolved by a second keyed
+ * lookup rather than an include.
+ */
+export async function getPublicAnnouncements(
+	options: { organizationId?: string; limit?: number } = {},
+): Promise<ActionResponse<PublicAnnouncement[]>> {
+	const { organizationId, limit = 20 } = options;
+
+	try {
+		const now = new Date();
+
+		const announcements = await db.announcement.findMany({
+			where: {
+				...(organizationId ? { organizationId } : {}),
+				isPublished: true,
+				approvalStatus: "APPROVED",
+				OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+			},
+			select: {
+				id: true,
+				title: true,
+				content: true,
+				imageUrl: true,
+				organizationId: true,
+				societyId: true,
+				publishedAt: true,
+				createdAt: true,
+				society: { select: { id: true, name: true } },
+			},
+			orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
+			take: limit,
+		});
+
+		if (announcements.length === 0) {
+			return { success: true, message: "No announcements", data: [] };
+		}
+
+		const organizations = await db.organization.findMany({
+			where: {
+				id: { in: [...new Set(announcements.map((a) => a.organizationId))] },
+				name: { notIn: HIDDEN_ORGANIZATION_NAMES },
+			},
+			select: { id: true, name: true },
+		});
+		const orgNames = new Map(organizations.map((o) => [o.id, o.name]));
+
+		const data: PublicAnnouncement[] = announcements
+			// Drop anything whose parish is hidden from public listings.
+			.filter((a) => orgNames.has(a.organizationId))
+			.map((a) => ({
+				id: a.id,
+				title: a.title,
+				content: a.content,
+				imageUrl: a.imageUrl,
+				organizationId: a.organizationId,
+				organizationName: orgNames.get(a.organizationId) ?? "",
+				society: a.society,
+				publishedAt: a.publishedAt ?? a.createdAt,
+			}));
+
+		return {
+			success: true,
+			message: "Announcements retrieved",
+			data,
+		};
+	} catch (error) {
+		console.error("Failed to get public announcements:", error);
+		return {
+			success: false,
+			message: "Failed to retrieve announcements",
+			data: [],
+		};
+	}
 }
 
 // ============================================

@@ -16,6 +16,8 @@ import {
 import Link from 'next/link';
 import { DeleteParishionerButton } from '@/components/features/parishioners/delete-parishioner-button';
 import { PhotoUpload } from '@/components/features/parishioners/photo-upload';
+import { IssueAccessCode } from '@/components/features/parishioners/issue-access-code';
+import { canManageParishioners } from '@/lib/permissions';
 
 interface PageProps {
 	params: Promise<{ id: string }>;
@@ -127,6 +129,15 @@ export default async function ParishionerDetailPage({ params }: PageProps) {
 					</div>
 				)}
 			</div>
+
+			{canManageParishioners(session.user.role) && (
+				<IssueAccessCode
+					parishionerId={parishioner.id}
+					parishionerName={`${parishioner.firstName} ${parishioner.lastName}`}
+					hasPhone={Boolean(parishioner.phoneE164)}
+					allowCodeSignIn={parishioner.user?.allowCodeSignIn ?? true}
+				/>
+			)}
 
 			{/* Personal Information Card */}
 			<div className='rounded-lg border bg-card p-6 space-y-6'>
