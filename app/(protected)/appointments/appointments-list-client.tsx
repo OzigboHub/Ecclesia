@@ -59,13 +59,13 @@ type AppointmentWithRelations = {
 		id: string;
 		firstName: string;
 		lastName: string;
-		email: string;
+		email: string | null;
 	} | null;
 	requestedBy: {
 		id: string;
 		firstName: string;
 		lastName: string;
-		email: string;
+		email: string | null;
 	} | null;
 };
 
@@ -87,7 +87,7 @@ interface AppointmentsListClientProps {
 		id: string;
 		firstName: string;
 		lastName: string;
-		email: string;
+		email: string | null;
 		role: string;
 	}>;
 }

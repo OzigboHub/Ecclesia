@@ -25,6 +25,160 @@
 	--sidebar-ring: hsl(217.2 91.2% 59.8%);
 }
 
+/* ---------------------------------------------------------------------------
+   Parish feed design system.
+
+   A separate token namespace from the console tokens above. The console owns
+   --background / --primary / --secondary and must keep them; the feed owns
+   --surface-* / --fg-* / --text-*. Nothing here redefines a console token.
+
+   Light is the bare :root definition so it is always present; dark is applied
+   both by the explicit [data-theme="dark"] stamp and by prefers-color-scheme
+   when no stamp exists. Every colour has a definition outside a media query.
+   --------------------------------------------------------------------------- */
+:root {
+	--surface-0: #fbfaf7;
+	--surface-1: #ffffff;
+	--surface-2: #f4f1ea;
+	--surface-3: #ede7da;
+	--hairline: #e6e1d6;
+	--gold: #945a06;
+	--fg: #16181d;
+	--fg-body: #3a414d;
+	--fg-muted: #55606e;
+	--fg-dim: #616874;
+	--positive: #147839;
+	--critical: #b42318;
+	--scrim: rgba(22, 24, 29, 0.45);
+	--on-gold: #ffffff;
+}
+
+/* System preference, only when the user has not chosen light explicitly. */
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme="light"]) {
+		--surface-0: #0f151f;
+		--surface-1: #161d29;
+		--surface-2: #1f2937;
+		--surface-3: #273241;
+		--hairline: #2a3441;
+		--gold: #eab308;
+		--fg: #f9fafb;
+		--fg-body: #c7cdd6;
+		--fg-muted: #a7b0be;
+		--fg-dim: #9199a7;
+		--positive: #8bd1a6;
+		--critical: #f2777a;
+		--scrim: rgba(6, 9, 14, 0.72);
+		--on-gold: #0f151f;
+	}
+}
+
+/* Explicit choice wins in both directions. */
+:root[data-theme="dark"] {
+	--surface-0: #0f151f;
+	--surface-1: #161d29;
+	--surface-2: #1f2937;
+	--surface-3: #273241;
+	--hairline: #2a3441;
+	--gold: #eab308;
+	--fg: #f9fafb;
+	--fg-body: #c7cdd6;
+	--fg-muted: #a7b0be;
+	--fg-dim: #9199a7;
+	--positive: #8bd1a6;
+	--critical: #f2777a;
+	--scrim: rgba(6, 9, 14, 0.72);
+	--on-gold: #0f151f;
+}
+
+@theme inline {
+	--color-surface-0: var(--surface-0);
+	--color-surface-1: var(--surface-1);
+	--color-surface-2: var(--surface-2);
+	--color-surface-3: var(--surface-3);
+	--color-hairline: var(--hairline);
+	--color-gold: var(--gold);
+	--color-on-gold: var(--on-gold);
+	--color-fg: var(--fg);
+	--color-fg-body: var(--fg-body);
+	--color-fg-muted: var(--fg-muted);
+	--color-fg-dim: var(--fg-dim);
+	--color-positive: var(--positive);
+	--color-critical: var(--critical);
+	--color-scrim: var(--scrim);
+
+	--text-caption: 11px;
+	--text-caption--line-height: 16px;
+	--text-meta: 12px;
+	--text-meta--line-height: 16px;
+	--text-body-sm: 13px;
+	--text-body-sm--line-height: 20px;
+	--text-body: var(--fluid-body, 14px);
+	--text-body--line-height: var(--fluid-body-lh, 21px);
+	--text-title-sm: var(--fluid-title-sm, 15px);
+	--text-title-sm--line-height: var(--fluid-title-sm-lh, 20px);
+	--text-title: var(--fluid-title, 17px);
+	--text-title--line-height: var(--fluid-title-lh, 24px);
+	--text-headline: var(--fluid-headline, 20px);
+	--text-headline--line-height: var(--fluid-headline-lh, 26px);
+	--text-display: var(--fluid-display, 24px);
+	--text-display--line-height: var(--fluid-display-lh, 30px);
+
+	--font-plex: var(--ff-plex-sans), system-ui, sans-serif;
+	--font-plex-serif: var(--ff-plex-serif), Georgia, serif;
+	--font-plex-mono: var(--ff-plex-mono), ui-monospace, monospace;
+
+	--radius-card: 14px;
+}
+
+/* Desktop type bump. Five of the eight steps grow; caption, meta and body-sm
+   are already at their floor and stay put. */
+@media (min-width: 1024px) {
+	:root {
+		--fluid-body: 15px;
+		--fluid-body-lh: 23px;
+		--fluid-title-sm: 16px;
+		--fluid-title-sm-lh: 22px;
+		--fluid-title: 18px;
+		--fluid-title-lh: 26px;
+		--fluid-headline: 22px;
+		--fluid-headline-lh: 28px;
+		--fluid-display: 32px;
+		--fluid-display-lh: 38px;
+	}
+}
+
+@keyframes livePulse {
+	0%,
+	100% {
+		opacity: 1;
+		transform: scale(1);
+	}
+	50% {
+		opacity: 0.3;
+		transform: scale(0.7);
+	}
+}
+
+@keyframes feedShimmer {
+	0% {
+		background-position: -340px 0;
+	}
+	100% {
+		background-position: 340px 0;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+	}
+}
+
 @theme inline {
 	--color-background: var(--background);
 	--color-foreground: var(--foreground);
@@ -119,4 +273,19 @@ body {
 /* Hide public navbar on docs layout */
 body[data-docs-layout="true"] [data-public-navbar] {
 	display: none !important;
+}
+
+/* The feed owns its own chrome. Server-rendered marker rather than the docs
+   layout's client-side attribute, so the navbar never flashes before it is
+   hidden. */
+body:has([data-feed-root]) [data-public-navbar] {
+	display: none !important;
+}
+
+/* The feed paints its own surface; the console's --background must not show
+   through behind it. */
+[data-feed-root] {
+	background: var(--surface-0);
+	color: var(--fg-body);
+	min-height: 100dvh;
 }

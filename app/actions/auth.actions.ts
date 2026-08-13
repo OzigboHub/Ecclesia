@@ -11,7 +11,9 @@ import {
 import db from "@/lib/db";
 import { renderBrandedEmailTemplate } from "@/lib/notifications/email-template";
 import { sendParishEventNotification } from "@/lib/notifications/parish-events";
+import { reauthenticate } from "@/lib/auth/reauthenticate";
 import { HIDDEN_ORGANIZATION_NAMES } from "@/lib/organization-visibility";
+import { toE164NG } from "@/lib/phone";
 import {
 	loginSchema,
 	registerSchemaServer,
@@ -126,12 +128,44 @@ async function logAuthAction(params: {
 	}
 }
 
-function isTwoFactorRole(role: UserRole): boolean {
+/**
+ * Roles that are *forced* to hold two-factor. These accounts reach the console,
+ * where a compromise is a compromise of the whole parish.
+ *
+ * This is deliberately separate from twoFactorAvailable below. A role decides
+ * the minimum rung of security an account must reach; it must never decide the
+ * maximum. Conflating the two is what previously made 2FA unreachable for
+ * parishioners who wanted it.
+ */
+function twoFactorRequired(role: UserRole): boolean {
 	return (
 		role === "SUPER_ADMIN" ||
 		role === "PARISH_ADMIN" ||
 		role === "PARISH_SECRETARY"
 	);
+}
+
+/**
+ * Whether an account is *able* to hold two-factor, whatever its role.
+ *
+ * Needs both an email and a password: TOTP puts the email in the authenticator
+ * label, EMAIL-method codes are sent there, and a second factor on an account
+ * with no password would be guarding nothing — the parish-code door would still
+ * open it in one step.
+ */
+function twoFactorAvailable(user: {
+	email: string | null;
+	password: string | null;
+}): boolean {
+	return Boolean(user.email && user.password);
+}
+
+/**
+ * Mirrors sessionProfileFor(...).singleSession in auth.config.ts. Parishioners
+ * hold several devices at once whichever door they came through.
+ */
+function holdsSingleSession(role: UserRole): boolean {
+	return role !== "PARISHIONER";
 }
 
 async function getActiveSessionForUser(
@@ -330,11 +364,15 @@ export async function login(data: {
 			};
 		}
 
-		const shouldRequireTwoFactor = isTwoFactorRole(user.role);
+		const mustEnrol = twoFactorRequired(user.role);
 		const hasTwoFactorConfigured =
 			user.twoFactorEnabled && user.twoFactorMethod;
 
-		if (shouldRequireTwoFactor) {
+		// Previously this branched on the role alone, which meant an account
+		// outside the three staff roles had its two-factor silently ignored at
+		// login — enabled, but never challenged. Anyone who has it configured
+		// gets challenged now, regardless of role.
+		if (mustEnrol || hasTwoFactorConfigured) {
 			const isValid = await bcrypt.compare(
 				parsed.data.password,
 				user.password,
@@ -348,7 +386,11 @@ export async function login(data: {
 				};
 			}
 
-			if (user.activeSessionId) {
+			// Clearing the previous session is a console protection, and only
+			// applies to accounts held to one session at a time. A parishioner
+			// with two-factor enabled still keeps their other devices — see
+			// sessionProfileFor in auth.config.ts.
+			if (holdsSingleSession(user.role) && user.activeSessionId) {
 				const existingSession = await getActiveSessionForUser(
 					user.id,
 					user.activeSessionId,
@@ -368,6 +410,9 @@ export async function login(data: {
 				}
 			}
 
+			// Forced enrolment is only for the roles that must hold two-factor.
+			// A parishioner who has not enrolled never reaches here, and must
+			// never be dragged into setup on their way to their own feed.
 			if (!hasTwoFactorConfigured) {
 				const setupToken = await createTwoFactorSetupToken(user.id);
 				return {
@@ -457,6 +502,62 @@ export async function login(data: {
 	}
 }
 
+/**
+ * Mint a two-factor challenge for an account that has already proved its
+ * password, and hand the token back to the caller.
+ *
+ * Exists so the feed's lock-in sheet can render the challenge as one more step
+ * of its own flow rather than redirecting to /auth/verify-2fa — a redirect
+ * there would land a parishioner on the console and lose whatever action they
+ * were in the middle of.
+ *
+ * Password verification is the caller's job. This does not check credentials
+ * and must never be reachable without one.
+ */
+export async function startTwoFactorChallengeFor(userId: string): Promise<
+	ActionResponse<{ challengeToken: string; method: TwoFactorMethod }>
+> {
+	try {
+		const user = await db.user.findUnique({
+			where: { id: userId },
+			select: {
+				id: true,
+				email: true,
+				twoFactorEnabled: true,
+				twoFactorMethod: true,
+			},
+		});
+
+		if (!user?.twoFactorEnabled || !user.twoFactorMethod || !user.email) {
+			return { success: false, message: "Two-factor is not set up" };
+		}
+
+		const challenge = await createTwoFactorChallenge({
+			userId: user.id,
+			email: user.email,
+			method: user.twoFactorMethod,
+		});
+
+		return {
+			success: true,
+			message: "Two-factor verification required",
+			data: {
+				challengeToken: challenge.challengeToken,
+				method: challenge.method,
+			},
+		};
+	} catch (error) {
+		console.error("Failed to start two-factor challenge:", error);
+		return {
+			success: false,
+			message:
+				error instanceof Error ?
+					error.message
+				:	"Couldn't start two-factor verification",
+		};
+	}
+}
+
 export async function startTwoFactorEnrollment(data: {
 	setupToken: string;
 	method: "EMAIL" | "TOTP";
@@ -490,14 +591,27 @@ export async function startTwoFactorEnrollment(data: {
 			return { success: false, message: "Two-factor already enabled" };
 		}
 
-		if (!isTwoFactorRole(setupSession.user.role)) {
+		if (!twoFactorRequired(setupSession.user.role)) {
+			// This path exists only to complete forced enrolment. Voluntary
+			// enrolment goes through startTwoFactorSetup, which authorises on
+			// capability rather than role.
 			return { success: false, message: "Two-factor not required" };
 		}
 
+		// Both enrolment methods key on an email address — TOTP puts it in the
+		// authenticator label, EMAIL sends the code there. Accounts created by
+		// the parish-code path have none, but they are always PARISHIONER and
+		// so never reach here; this is a type guard for a real invariant.
+		const setupEmail = setupSession.user.email;
+		if (!setupEmail) {
+			return {
+				success: false,
+				message: "This account has no email address for two-factor setup",
+			};
+		}
+
 		if (parsed.data.method === "TOTP") {
-			const { secret, otpauthUrl } = generateTotpSecret(
-				setupSession.user.email,
-			);
+			const { secret, otpauthUrl } = generateTotpSecret(setupEmail);
 
 			await db.user.update({
 				where: { id: setupSession.userId },
@@ -511,7 +625,7 @@ export async function startTwoFactorEnrollment(data: {
 
 			const challenge = await createTwoFactorChallenge({
 				userId: setupSession.userId,
-				email: setupSession.user.email,
+				email: setupEmail,
 				method: "TOTP",
 			});
 
@@ -537,7 +651,7 @@ export async function startTwoFactorEnrollment(data: {
 
 		const challenge = await createTwoFactorChallenge({
 			userId: setupSession.userId,
-			email: setupSession.user.email,
+			email: setupEmail,
 			method: "EMAIL",
 		});
 
@@ -732,9 +846,6 @@ export async function verifyTwoFactor(data: {
 			return { success: false, message: "Two-factor not enabled" };
 		}
 
-		if (!isTwoFactorRole(user.role)) {
-			return { success: false, message: "Two-factor not required" };
-		}
 
 		const challenge = await db.twoFactorChallenge.findUnique({
 			where: { challengeToken: parsed.data.challengeToken },
@@ -876,7 +987,7 @@ export async function startTwoFactorSetup(data: {
 > {
 	try {
 		const session = await auth();
-		if (!session?.user?.id || !session.user.email) {
+		if (!session?.user?.id) {
 			return { success: false, message: "Unauthorized" };
 		}
 
@@ -889,17 +1000,26 @@ export async function startTwoFactorSetup(data: {
 			};
 		}
 
-		if (!isTwoFactorRole(session.user.role as UserRole)) {
+		// Read the address from the record, not the session. A member who
+		// locked in by code holds a token with no email on it, and the JWT
+		// callback does not refresh that field — so a session read here would
+		// still be empty minutes after they set a password, and lock them out
+		// of the very rung they just earned.
+		const account = await db.user.findUnique({
+			where: { id: session.user.id },
+			select: { email: true, password: true },
+		});
+
+		if (!account?.email || !twoFactorAvailable(account)) {
 			return {
 				success: false,
-				message: "Two-factor is not required for this account",
+				message:
+					"Add an email address and a password to this account before turning on two-factor.",
 			};
 		}
 
 		if (parsed.data.method === "TOTP") {
-			const { secret, otpauthUrl } = generateTotpSecret(
-				session.user.email,
-			);
+			const { secret, otpauthUrl } = generateTotpSecret(account.email);
 			await db.user.update({
 				where: { id: session.user.id },
 				data: {
@@ -928,7 +1048,7 @@ export async function startTwoFactorSetup(data: {
 
 		const challenge = await createTwoFactorChallenge({
 			userId: session.user.id,
-			email: session.user.email,
+			email: account.email,
 			method: "EMAIL",
 		});
 
@@ -1043,11 +1163,26 @@ export async function confirmTwoFactorSetup(data: {
 	}
 }
 
-export async function disableTwoFactor(): Promise<ActionResponse> {
+/**
+ * Turn two-factor off.
+ *
+ * Requires the password, not just a live session. Otherwise an unlocked phone
+ * that is already signed in can strip the account back down to one factor —
+ * and for anyone who has closed the parish-code door, that is the only thing
+ * standing between a borrowed handset and permanent access.
+ */
+export async function disableTwoFactor(
+	password?: string,
+): Promise<ActionResponse> {
 	try {
 		const session = await auth();
 		if (!session?.user?.id) {
 			return { success: false, message: "Unauthorized" };
+		}
+
+		const reauth = await reauthenticate(session.user.id, password);
+		if (!reauth.ok) {
+			return { success: false, message: reauth.message };
 		}
 
 		await db.user.update({
@@ -1064,7 +1199,31 @@ export async function disableTwoFactor(): Promise<ActionResponse> {
 			where: { userId: session.user.id },
 		});
 
-		return { success: true, message: "Two-factor disabled" };
+		// Two-factor was the thing making a password-only door safe. Without
+		// it, leaving the parish-code door shut would mean one factor guarding
+		// everything — so the code door comes back with it.
+		const reopened = await db.user.updateMany({
+			where: { id: session.user.id, allowCodeSignIn: false },
+			data: { allowCodeSignIn: true },
+		});
+
+		await logAuthAction({
+			action: "PERMISSION_CHANGE",
+			entityId: session.user.id,
+			performedBy: session.user.id,
+			details: {
+				twoFactorDisabled: true,
+				codeSignInReopened: reopened.count > 0,
+			},
+		});
+
+		return {
+			success: true,
+			message:
+				reopened.count > 0 ?
+					"Two-factor is off, and parish codes work again"
+				:	"Two-factor disabled",
+		};
 	} catch (error) {
 		console.error("Two-factor disable error:", error);
 		return { success: false, message: "Failed to disable two-factor" };
@@ -1190,10 +1349,17 @@ export async function register(data: {
 						lastName: parsed.data.lastName,
 						email: parsed.data.email.toLowerCase().trim(),
 						phone: parsed.data.phone,
+						// Normalised for the lock-in lookup. Null when the
+						// number can't be read — the register keeps what was
+						// typed either way.
+						phoneE164: toE164NG(parsed.data.phone),
 						address: parsed.data.address || null,
 						dateOfBirth: new Date(parsed.data.dateOfBirth),
 						photoUrl: parsed.data.displayPicture || null,
 						organizationId: parsed.data.organizationId,
+						// Explicit link, rather than relying on the two records
+						// happening to share an email.
+						userId: newUser.id,
 					},
 				});
 			}
@@ -1291,11 +1457,22 @@ export async function requestPasswordReset(
 						isActive: true,
 					},
 				});
+
+				// Keep the FK in step with the account we just backfilled.
+				if (!parishioner.userId) {
+					await db.parishioner.update({
+						where: { id: parishioner.id },
+						data: { userId: user.id },
+					});
+				}
 			}
 		}
 
-		// Always return success for security (don't reveal if email exists)
-		if (!user) {
+		// Always return success for security (don't reveal if email exists).
+		// The same response covers an account that has no email address at all
+		// — a parishioner who signs in by parish code — so this doesn't reveal
+		// how a given person signs in either.
+		if (!user?.email) {
 			return {
 				success: true,
 				message: "If an account exists, a reset link will be sent",
@@ -1319,10 +1496,6 @@ export async function requestPasswordReset(
 				expiresAt,
 			},
 		});
-
-		const resetUrl = `${
-			process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
-		}/auth/reset-password?token=${token}`;
 
 		const emailResult = await sendTransactionalEmail({
 			to: user.email,

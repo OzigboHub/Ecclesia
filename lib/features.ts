@@ -64,6 +64,7 @@ export const featureCategories = {
       "enableRecurringDonations",
       "enableMobileApp",
       "enablePublicWebsite",
+      "requireGateCode",
     ] as FeatureName[],
   },
 } as const;
@@ -93,6 +94,7 @@ export const featureLabels: Record<FeatureName, string> = {
   enableRecurringDonations: "Recurring Donations",
   enableMobileApp: "Mobile App",
   enablePublicWebsite: "Public Website",
+  requireGateCode: "Parish Gate Code",
 };
 
 /**
@@ -120,6 +122,8 @@ export const featureDescriptions: Record<FeatureName, string> = {
   enableRecurringDonations: "Set up recurring donation schedules",
   enableMobileApp: "Enable mobile app access for members",
   enablePublicWebsite: "Show a public website for the parish",
+  requireGateCode:
+    "Require a shared code before anyone can view this parish's public timeline",
 };
 
 /**
@@ -147,6 +151,7 @@ const defaultFeatureValues: Record<FeatureName, boolean> = {
   enableRecurringDonations: false,
   enableMobileApp: false,
   enablePublicWebsite: true,
+  requireGateCode: false,
 };
 
 /**
