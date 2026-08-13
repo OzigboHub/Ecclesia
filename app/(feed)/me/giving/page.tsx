@@ -1,4 +1,7 @@
-import { getMemberGiving } from "@/app/actions/member.actions";
+import {
+	getMemberGiving,
+	type GivingEntry,
+} from "@/app/actions/member.actions";
 import { naira } from "@/components/feed/feed-card-shell";
 import { FeedShell } from "@/components/feed/feed-shell";
 import { cn } from "@/lib/utils";
@@ -14,7 +17,8 @@ const monthFormatter = new Intl.DateTimeFormat("en-NG", {
 
 export default async function GivingPage() {
 	const result = await getMemberGiving();
-	const entries = result.data ?? [];
+	// Annotated rather than inferred — see the note in alerts/page.tsx.
+	const entries: GivingEntry[] = result.data ?? [];
 
 	// Grouped by month, because that is how anybody checking their own giving
 	// thinks about it — "what did I give in July".

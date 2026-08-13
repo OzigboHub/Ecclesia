@@ -7,6 +7,7 @@ import { naira } from "@/components/feed/feed-card-shell";
 import { FeedShell } from "@/components/feed/feed-shell";
 import { LockInProvider } from "@/components/feed/lock-in/lock-in-provider";
 import db from "@/lib/db";
+import type { FeedItem } from "@/lib/feed/types";
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 
@@ -42,9 +43,9 @@ export default async function GivePage() {
 		getMemberProfile(),
 	]);
 
-	const campaigns = (feed.data ?? []).filter(
-		(item) => item.kind === "campaign",
-	);
+	// Annotated rather than inferred — see the note in alerts/page.tsx.
+	const items: FeedItem[] = feed.data ?? [];
+	const campaigns = items.filter((item) => item.kind === "campaign");
 	const isMember =
 		Boolean(session?.user?.parishionerId) &&
 		session?.user?.organizationId === prefs.organizationId;
