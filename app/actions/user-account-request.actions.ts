@@ -34,7 +34,7 @@ export type RequestWithMeta = {
 		id: string;
 		firstName: string;
 		lastName: string;
-		email: string;
+		email: string | null;
 	};
 };
 

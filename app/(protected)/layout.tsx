@@ -14,7 +14,11 @@ export default async function DashboardLayout({
 	const session = await auth();
 
 	if (!session?.user) {
-		redirect("/auth/login");
+		// Not /auth/login directly: the cookie that made this session look alive
+		// is still in the browser, and the proxy — which has no database access
+		// — would read it and bounce straight back here. /auth/signed-out is a
+		// route handler, so it can actually drop the cookie first.
+		redirect("/auth/signed-out?reason=session-ended");
 	}
 
 	return (

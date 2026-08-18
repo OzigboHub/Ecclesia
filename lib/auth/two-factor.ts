@@ -24,7 +24,11 @@ function getEncryptionKey(): Buffer {
 }
 
 export function generateEmailOtp(): { code: string; codeHash: string } {
-	const code = Math.floor(100000 + Math.random() * 900000).toString();
+	// randomInt, not Math.random: this is a credential. Math.random is seeded
+	// predictably enough that a six-digit code drawn from it is guessable given
+	// a few observed samples, and this OTP now guards parishioner accounts as
+	// well as staff ones.
+	const code = crypto.randomInt(100000, 1000000).toString();
 	const codeHash = crypto.createHash("sha256").update(code).digest("hex");
 	return { code, codeHash };
 }

@@ -1,10 +1,11 @@
 import { getParishioners } from "@/app/actions/parishioner.actions";
 import { auth } from "@/auth";
+import { BatchIssueCodes } from "@/components/features/parishioners/batch-issue-codes";
 import { CsvImportDialog } from "@/components/features/parishioners/csv-import-dialog";
 import { ParishionersList } from "@/components/features/parishioners/parishioners-list";
 import { Button } from "@/components/ui/button";
 import { isAdminRole } from "@/lib/permissions";
-import { Plus } from "lucide-react";
+import { FileUp, Plus } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -46,7 +47,14 @@ export default async function ParishionersPage({
 						Manage your parish members
 					</p>
 				</div>
-				<div className="flex gap-2">
+				<div className="flex flex-wrap gap-2">
+					<BatchIssueCodes />
+					<Link href="/parishioners/import">
+						<Button variant="outline">
+							<FileUp className="mr-2 h-4 w-4" />
+							Import register
+						</Button>
+					</Link>
 					<CsvImportDialog />
 					<Link href="/dashboard/parishioners/new">
 						<Button>

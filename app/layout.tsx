@@ -1,7 +1,13 @@
 import { AuthProvider } from "@/components/providers/auth-provider";
 import { ServiceWorkerRegistration } from "@/components/providers/sw-registration";
+import { ThemeScript } from "@/components/providers/theme-script";
 import type { Metadata, Viewport } from "next";
-import { Montserrat } from "next/font/google";
+import {
+	IBM_Plex_Mono,
+	IBM_Plex_Sans,
+	IBM_Plex_Serif,
+	Montserrat,
+} from "next/font/google";
 import NextTopLoader from "nextjs-toploader";
 
 import PublicNavbar from "@/components/layout/public-navbar";
@@ -11,6 +17,31 @@ import "./globals.css";
 const montserrat = Montserrat({
 	variable: "--montserrat",
 	weight: ["100", "200", "300", "400", "500", "600", "700", "800", "900"],
+});
+
+// The feed's type system. Loaded as variables and applied only by the (feed)
+// route group, so the console keeps Montserrat unchanged.
+const plexSans = IBM_Plex_Sans({
+	variable: "--ff-plex-sans",
+	subsets: ["latin"],
+	weight: ["400", "500", "600"],
+	style: ["normal", "italic"],
+	display: "swap",
+});
+
+const plexSerif = IBM_Plex_Serif({
+	variable: "--ff-plex-serif",
+	subsets: ["latin"],
+	weight: ["400", "500"],
+	style: ["normal", "italic"],
+	display: "swap",
+});
+
+const plexMono = IBM_Plex_Mono({
+	variable: "--ff-plex-mono",
+	subsets: ["latin"],
+	weight: ["400", "500"],
+	display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -39,12 +70,13 @@ export default function RootLayout({
 	children: React.ReactNode;
 }>) {
 	return (
-		<html lang="en">
+		<html lang="en" suppressHydrationWarning>
 			<head>
 				<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+				<ThemeScript />
 			</head>
 			<body
-				className={`${montserrat.className} scroll-smooth text-[13px] antialiased`}
+				className={`${montserrat.className} ${plexSans.variable} ${plexSerif.variable} ${plexMono.variable} scroll-smooth text-[13px] antialiased`}
 				suppressHydrationWarning
 			>
 				<AuthProvider>

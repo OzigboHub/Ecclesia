@@ -1,0 +1,212 @@
+# Instructions
+
+- Following Playwright test failed.
+- Explain why, be concise, respect Playwright best practices.
+- Provide a snippet of code with the fix, if possible.
+
+# Test info
+
+- Name: p0-session-policy.spec.ts >> P0 — Session policy, both directions >> Staff single session enforcement: signing in on context B signs out context A
+- Location: e2e\p0-session-policy.spec.ts:11:6
+
+# Error details
+
+```
+Test timeout of 30000ms exceeded.
+```
+
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - link [ref=e3] [cursor=pointer]:
+      - /url: /
+      - img "logo" [ref=e4]
+    - generic [ref=e5]:
+      - link "Home" [ref=e6] [cursor=pointer]:
+        - /url: /
+      - link "Features" [ref=e7] [cursor=pointer]:
+        - /url: "#features"
+      - link "Contact" [ref=e8] [cursor=pointer]:
+        - /url: /contact
+      - link "Parish" [ref=e9] [cursor=pointer]:
+        - /url: /parish
+      - generic [ref=e10]:
+        - button [ref=e11]:
+          - link "Register" [ref=e12] [cursor=pointer]:
+            - /url: /auth/register
+        - button [ref=e13]:
+          - link "Login" [ref=e14] [cursor=pointer]:
+            - /url: /auth/login
+  - generic [ref=e16]:
+    - complementary [ref=e17]:
+      - link [ref=e18] [cursor=pointer]:
+        - /url: /dashboard
+        - img "logo" [ref=e19]
+      - generic [ref=e20]:
+        - generic [ref=e21]:
+          - generic [ref=e22]:
+            - paragraph [ref=e23]: System Admin
+            - link "Overview" [ref=e24] [cursor=pointer]:
+              - /url: /dashboard/admin/overview
+            - link "Organizations" [ref=e32] [cursor=pointer]:
+              - /url: /dashboard/admin/organizations
+            - link "Global Actions" [ref=e37] [cursor=pointer]:
+              - /url: /dashboard/admin/global-actions
+          - generic [ref=e47]:
+            - paragraph [ref=e48]: Organization Context
+            - generic [ref=e49]:
+              - combobox [ref=e51]
+              - button "Clear Context" [ref=e58]
+          - generic [ref=e59]:
+            - paragraph [ref=e60]: Viewing Parish
+            - link "Dashboard" [ref=e61] [cursor=pointer]:
+              - /url: /dashboard
+            - link "Parishioners" [ref=e69] [cursor=pointer]:
+              - /url: /parishioners
+            - link "Mass Calendar" [ref=e77] [cursor=pointer]:
+              - /url: /masses
+            - link "Mass Intentions" [ref=e82] [cursor=pointer]:
+              - /url: /mass-intentions
+            - link "Mass Schedule" [ref=e88] [cursor=pointer]:
+              - /url: /mass-schedule
+            - link "Appointments" [ref=e102] [cursor=pointer]:
+              - /url: /appointments
+            - link "Announcements" [ref=e107] [cursor=pointer]:
+              - /url: /announcements
+            - link "Societies" [ref=e113] [cursor=pointer]:
+              - /url: /dashboard/societies
+            - link "Organization" [ref=e123] [cursor=pointer]:
+              - /url: /organization
+            - link "Settings" [ref=e130] [cursor=pointer]:
+              - /url: /settings
+            - link "Pay" [ref=e136] [cursor=pointer]:
+              - /url: /pay
+            - link "Payments" [ref=e141] [cursor=pointer]:
+              - /url: /payments
+            - link "Parish Finances" [ref=e149] [cursor=pointer]:
+              - /url: /parish-finances
+            - link "Live Streams" [ref=e154] [cursor=pointer]:
+              - /url: /live-streams
+            - link "Sessions" [ref=e159] [cursor=pointer]:
+              - /url: /sessions
+        - generic [ref=e164]:
+          - link "Audit Logs" [ref=e166] [cursor=pointer]:
+            - /url: /dashboard/admin/audit-logs
+          - generic [ref=e172]:
+            - link [ref=e173] [cursor=pointer]:
+              - /url: /profile
+              - paragraph [ref=e177]: My Profile
+            - paragraph [ref=e182] [cursor=pointer]: Logout
+    - generic [ref=e183]:
+      - link "SA System Admin SUPER ADMIN" [ref=e187] [cursor=pointer]:
+        - /url: /profile
+        - generic [ref=e188]: SA
+        - generic [ref=e190]:
+          - paragraph [ref=e192]: System Admin
+          - generic [ref=e193]: SUPER ADMIN
+      - main [ref=e194]:
+        - generic [ref=e196]:
+          - generic [ref=e197]:
+            - heading "System Dashboard" [level=1] [ref=e198]
+            - paragraph [ref=e199]: Platform-wide overview and administration
+          - generic [ref=e200]:
+            - generic [ref=e201]:
+              - generic [ref=e202]: Organizations
+              - generic [ref=e208]:
+                - generic [ref=e209]: "2"
+                - paragraph [ref=e210]: 2 parishes, 0 outstations
+            - generic [ref=e211]:
+              - generic [ref=e212]: Total Users
+              - generic [ref=e219]:
+                - generic [ref=e220]: "21"
+                - paragraph [ref=e221]: 21 active (11 per org)
+            - generic [ref=e222]:
+              - generic [ref=e223]: Parishioners
+              - generic [ref=e229]:
+                - generic [ref=e230]: "291"
+                - paragraph [ref=e231]: Registered members
+            - generic [ref=e232]:
+              - generic [ref=e233]: Total Payments
+              - generic [ref=e237]:
+                - generic [ref=e238]: ₦43,600
+                - paragraph [ref=e239]: 12 transactions
+            - generic [ref=e240]:
+              - generic [ref=e241]: Mass Intentions
+              - generic [ref=e247]:
+                - generic [ref=e248]: "7"
+                - paragraph [ref=e249]: Total booked
+            - generic [ref=e250]:
+              - generic [ref=e251]: Appointments
+              - generic [ref=e255]:
+                - generic [ref=e256]: "0"
+                - paragraph [ref=e257]: Total scheduled
+            - generic [ref=e258]:
+              - generic [ref=e259]: Active Users %
+              - generic [ref=e263]:
+                - generic [ref=e264]: 100%
+                - paragraph [ref=e265]: 21 of 21 users
+            - generic [ref=e266]:
+              - generic [ref=e267]: Avg Payments/Org
+              - generic [ref=e271]:
+                - generic [ref=e272]: "6"
+                - paragraph [ref=e273]: per organization
+          - generic [ref=e275]:
+            - generic [ref=e276]:
+              - heading "Structured Revenue & Transaction Breakdown" [level=3] [ref=e277]
+              - generic [ref=e278]: Showing current calendar year summary
+            - generic [ref=e282]:
+              - generic [ref=e283]:
+                - generic [ref=e284]: Online Revenue (Paystack)
+                - generic [ref=e289]:
+                  - generic [ref=e290]: ₦43,600
+                  - generic [ref=e291]: Completed digital transactions routed through Paystack gateway
+              - generic [ref=e292]:
+                - generic [ref=e293]: Offline Revenue (Manual)
+                - generic [ref=e299]:
+                  - generic [ref=e300]: ₦0
+                  - generic [ref=e301]: Completed payments recorded by staff using cash or checks
+              - generic [ref=e302]:
+                - generic [ref=e303]:
+                  - generic [ref=e304]: Manual Digital (Unverified)
+                  - img [ref=e306] [cursor=pointer]
+                - generic [ref=e311]:
+                  - generic [ref=e312]: ₦0
+                  - generic [ref=e313]: Recorded manually as card/transfer but bypasses Paystack tracking
+              - generic [ref=e314]:
+                - generic [ref=e315]: Pending Payments
+                - generic [ref=e321]:
+                  - generic [ref=e322]: ₦0
+                  - generic [ref=e323]:
+                    - generic [ref=e324]: 0 transactions
+                    - text: Initiated online payments that are not yet completed
+              - generic [ref=e325]:
+                - generic [ref=e326]: Failed Payments
+                - generic [ref=e331]:
+                  - generic [ref=e332]: ₦0
+                  - generic [ref=e333]:
+                    - generic [ref=e334]: 0 transactions
+                    - text: Unsuccessful online transactions
+          - generic [ref=e335]:
+            - generic [ref=e336]: Admin Actions
+            - generic [ref=e342]:
+              - link [ref=e343] [cursor=pointer]:
+                - /url: /dashboard/admin/organizations
+                - button "Manage Organizations" [ref=e344]
+              - link [ref=e345] [cursor=pointer]:
+                - /url: /dashboard/admin/organizations/new
+                - button "Create Parish" [ref=e346]
+              - link [ref=e347] [cursor=pointer]:
+                - /url: /dashboard/users
+                - button "View All Users" [ref=e348]
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e354] [cursor=pointer]:
+    - generic [ref=e357]:
+      - text: Compiling
+      - generic [ref=e358]:
+        - generic [ref=e359]: .
+        - generic [ref=e360]: .
+        - generic [ref=e361]: .
+  - alert [ref=e362]
+```

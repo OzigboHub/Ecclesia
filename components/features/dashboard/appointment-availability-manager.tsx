@@ -43,7 +43,7 @@ type AppointmentAvailabilityItem = {
     id: string;
     firstName: string;
     lastName: string;
-    email: string;
+    email: string | null;
   } | null;
   appointments: Array<{
     id: string;
@@ -61,7 +61,7 @@ type StaffMember = {
   id: string;
   firstName: string;
   lastName: string;
-  email: string;
+  email: string | null;
   role: string;
 };
 
