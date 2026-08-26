@@ -4,12 +4,11 @@ import { auth } from "@/auth";
 import { naira } from "@/components/feed/feed-card-shell";
 import { FeedShell } from "@/components/feed/feed-shell";
 import { SignedOutMe } from "@/components/feed/me/signed-out-me";
-import { ThemeToggle } from "@/components/feed/chrome/theme-toggle";
 import db from "@/lib/db";
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 
-export const metadata = { title: "Me · Ecclesia" };
+export const metadata = { title: "Me" };
 
 export default async function MePage() {
 	const [session, prefs, profile] = await Promise.all([
@@ -170,10 +169,6 @@ export default async function MePage() {
 					<span className="text-body text-fg">Signed-in devices</span>
 					<ChevronRight className="size-4 shrink-0 text-fg-dim" aria-hidden />
 				</Link>
-				<div className="flex items-center justify-between gap-3 px-4 py-3">
-					<span className="text-body text-fg">Appearance</span>
-					<ThemeToggle />
-				</div>
 			</MeSection>
 		</FeedShell>
 	);
@@ -181,7 +176,7 @@ export default async function MePage() {
 
 function MeTopBar() {
 	return (
-		<div className="sticky top-0 z-30 border-b border-hairline bg-surface-1/95 px-4 py-3 backdrop-blur pt-[calc(12px+env(safe-area-inset-top))]">
+		<div className="sticky top-16 z-30 border-b border-hairline bg-surface-1/95 px-4 py-3 backdrop-blur pt-[calc(12px+env(safe-area-inset-top))]">
 			<h1 className="text-title font-semibold text-fg">Me</h1>
 		</div>
 	);

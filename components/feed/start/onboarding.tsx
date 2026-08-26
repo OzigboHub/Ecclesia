@@ -55,7 +55,7 @@ export function Onboarding({
 	}
 
 	return (
-		<div className="mx-auto flex min-h-[100dvh] w-full max-w-md flex-col px-5 pb-10 pt-[calc(16px+env(safe-area-inset-top))]">
+		<div className="mx-auto flex min-h-[100dvh] w-full max-w-md flex-col px-5 pb-10 pt-[calc(80px+env(safe-area-inset-top))]">
 			<header className="flex items-center justify-between py-2">
 				{step !== "parish" && step !== "done" ?
 					<button

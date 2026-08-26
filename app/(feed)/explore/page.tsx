@@ -8,8 +8,8 @@ import db from "@/lib/db";
 import { HIDDEN_ORGANIZATION_NAMES } from "@/lib/organization-visibility";
 
 export const metadata = {
-	title: "Explore · Ecclesia",
-	description: "Find a parish and see what's happening across Ecclesia.",
+	title: "Explore",
+	description: "Find a parish and see what's happening across all parishes.",
 };
 
 export default async function ExplorePage() {
@@ -28,7 +28,7 @@ export default async function ExplorePage() {
 	return (
 		<FeedShell
 			topBar={
-				<div className="sticky top-0 z-30 border-b border-hairline bg-surface-1/95 px-4 py-3 backdrop-blur pt-[calc(12px+env(safe-area-inset-top))]">
+				<div className="sticky top-16 z-30 border-b border-hairline bg-surface-1/95 px-4 py-3 backdrop-blur pt-[calc(12px+env(safe-area-inset-top))]">
 					<h1 className="text-title font-semibold text-fg">Explore</h1>
 				</div>
 			}
@@ -40,7 +40,7 @@ export default async function ExplorePage() {
 
 			<div className="border-b border-hairline px-4 py-3">
 				<h2 className="font-plex-mono text-caption uppercase tracking-[0.1em] text-fg-dim">
-					Across Ecclesia
+					Across Parishes
 				</h2>
 			</div>
 

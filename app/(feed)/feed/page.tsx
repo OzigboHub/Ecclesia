@@ -14,7 +14,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 export const metadata = {
-	title: "Feed · Ecclesia",
+	title: "Feed",
 	description: "What's happening in your parish.",
 };
 
@@ -36,7 +36,7 @@ export default async function FeedPage() {
 					{highlights.data && highlights.data.length > 0 ?
 						<FeedList items={highlights.data} />
 					:	<FeedEmpty
-							parishName="Ecclesia"
+							parishName="Public Feed"
 							description="No parish has posted anything public yet. Find your parish to see what's happening there."
 						/>
 					}
@@ -92,11 +92,11 @@ export default async function FeedPage() {
 
 function HighlightsTopBar() {
 	return (
-		<div className="sticky top-0 z-30 border-b border-hairline bg-surface-1/95 px-4 py-3 backdrop-blur pt-[calc(12px+env(safe-area-inset-top))]">
+		<div className="sticky top-16 z-30 border-b border-hairline bg-surface-1/95 px-4 py-3 backdrop-blur pt-[calc(12px+env(safe-area-inset-top))]">
 			<div className="flex items-center gap-2">
 				<span aria-hidden className="size-[7px] rounded-full bg-gold" />
 				<span className="text-title-sm font-semibold tracking-[0.01em] text-fg">
-					Ecclesia
+					Highlights
 				</span>
 			</div>
 		</div>
@@ -219,15 +219,17 @@ function ContextRail({
 				)}
 			</RailSection>
 
-			{campaigns.length > 0 && (
-				<RailSection
-					title="Campaigns"
-					action={
+			<RailSection
+				title="Campaigns"
+				action={
+					campaigns.length > 0 ?
 						<span className="text-caption text-fg-dim">
 							{campaigns.length} open
 						</span>
-					}
-				>
+					:	undefined
+				}
+			>
+				{campaigns.length > 0 ?
 					<ul className="flex flex-col gap-3">
 						{campaigns.map((campaign) => (
 							<li key={campaign.id}>
@@ -244,11 +246,11 @@ function ContextRail({
 							</li>
 						))}
 					</ul>
-				</RailSection>
-			)}
+				:	<p className="text-body-sm text-fg-muted">No active campaigns right now.</p>}
+			</RailSection>
 
-			{societies.length > 0 && (
-				<RailSection title="Your societies">
+			<RailSection title="Societies">
+				{societies.length > 0 ?
 					<ul className="flex flex-col gap-1">
 						{societies.map((society) => (
 							<li key={society.id}>
@@ -261,8 +263,8 @@ function ContextRail({
 							</li>
 						))}
 					</ul>
-				</RailSection>
-			)}
+				:	<p className="text-body-sm text-fg-muted">No societies registered yet.</p>}
+			</RailSection>
 		</>
 	);
 }

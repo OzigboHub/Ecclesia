@@ -76,7 +76,7 @@ export default function RootLayout({
 				<ThemeScript />
 			</head>
 			<body
-				className={`${montserrat.className} ${plexSans.variable} ${plexSerif.variable} ${plexMono.variable} scroll-smooth text-[13px] antialiased`}
+				className={`${montserrat.className} ${plexSans.variable} ${plexSerif.variable} ${plexMono.variable} scroll-smooth text-[13px] antialiased bg-background text-foreground transition-colors duration-150`}
 				suppressHydrationWarning
 			>
 				<AuthProvider>

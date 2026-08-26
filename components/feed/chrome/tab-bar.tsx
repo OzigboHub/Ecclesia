@@ -48,6 +48,7 @@ const TABS: Tab[] = [
 			</svg>
 		),
 	},
+	/*
 	{
 		href: "/give",
 		label: "Give",
@@ -87,6 +88,7 @@ const TABS: Tab[] = [
 			</svg>
 		),
 	},
+	*/
 ];
 
 export function TabBar() {

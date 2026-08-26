@@ -74,7 +74,7 @@ export default async function Masses({
 					<div className="flex flex-wrap items-center justify-between gap-4">
 						<div className="space-y-2">
 							<p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
-								Masses
+								Parish
 							</p>
 							<h1 className="text-3xl font-bold md:text-4xl">
 								Browse Parishes

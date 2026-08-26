@@ -120,7 +120,7 @@ export function NotificationSetup({
 			<div className="flex items-start gap-3 border-b border-hairline px-4 py-3.5">
 				<BellOff className="mt-0.5 size-4 shrink-0 text-fg-dim" aria-hidden />
 				<p className="text-body-sm text-fg-muted">
-					This browser can&rsquo;t show notifications. Install Ecclesia to
+					This browser can&rsquo;t show notifications. Install the app to
 					your home screen to get them.
 				</p>
 			</div>

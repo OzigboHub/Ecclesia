@@ -1,5 +1,4 @@
 import { NavRail } from "@/components/feed/chrome/tab-bar";
-import { ThemeToggle } from "@/components/feed/chrome/theme-toggle";
 
 /**
  * Page frame for every feed screen.
@@ -19,25 +18,11 @@ export function FeedShell({
 	topBar?: React.ReactNode;
 }) {
 	return (
-		<div className="min-h-[100dvh] bg-surface-0">
+		<div className="min-h-[100dvh] bg-surface-0 pt-16">
 			<div className="mx-auto flex w-full max-w-[1400px] gap-8 px-0 lg:px-6">
 				<aside className="hidden shrink-0 lg:block lg:w-[216px]">
-					<div className="sticky top-0 flex h-[100dvh] flex-col justify-between py-4">
-						<div>
-							<div className="flex items-center gap-2 px-3 pb-4">
-								<span
-									aria-hidden
-									className="size-[7px] rounded-full bg-gold"
-								/>
-								<span className="text-title-sm font-semibold tracking-[0.01em] text-fg">
-									Ecclesia
-								</span>
-							</div>
-							<NavRail />
-						</div>
-						<div className="px-2">
-							<ThemeToggle />
-						</div>
+					<div className="sticky top-16 flex h-[calc(100dvh-4rem)] flex-col py-4">
+						<NavRail />
 					</div>
 				</aside>
 
@@ -48,7 +33,7 @@ export function FeedShell({
 
 				{aside && (
 					<aside className="hidden shrink-0 xl:block xl:w-[300px]">
-						<div className="sticky top-0 max-h-[100dvh] overflow-y-auto py-4">
+						<div className="sticky top-16 max-h-[calc(100dvh-4rem)] overflow-y-auto py-4">
 							{aside}
 						</div>
 					</aside>

@@ -3,7 +3,7 @@ import { GateScreen } from "@/components/feed/gate/gate-screen";
 import { notFound, redirect } from "next/navigation";
 
 export const metadata = {
-	title: "Parish code · Ecclesia",
+	title: "Parish code",
 };
 
 export default async function GatePage({

@@ -35,15 +35,14 @@ export default function LandingPage() {
 								community updates. Faith has no boundaries.
 							</p>
 							<div className="flex flex-col gap-3 sm:flex-row">
-								<Button className="rounded-[15px] py-6 sm:w-auto">
-									<HiMiniArrowRightCircle />
-									Access Live Streams
-								</Button>
 								<Button
-									variant={"ghost"}
-									className="rounded-[15px] border-muted-foreground bg-linear-to-r from-[#cac9c937] to-[#ebebeb3c] py-6 sm:w-auto"
+									asChild
+									className="rounded-[15px] py-6 sm:w-auto"
 								>
-									Learn More
+									<Link href={"/feed"}>
+										<HiMiniArrowRightCircle />
+										Access Live Streams
+									</Link>
 								</Button>
 							</div>
 						</div>
@@ -52,16 +51,16 @@ export default function LandingPage() {
 			</div>
 			<MaxWidthWrapper>
 				<div className="grid gap-4 py-8 md:grid-cols-3">
-					<Card className=" bg-primary-foreground md:col-span-2">
-						<CardContent className=" pt-6">
-							<div className=" flex flex-row items-center gap-3">
-								<IoLocation className=" text-primary w-5 h-5" />
-								<p className=" font-bold text-xl">
+					<Card className="bg-[#111827] text-white md:col-span-2 border-border">
+						<CardContent className="pt-6">
+							<div className="flex flex-row items-center gap-3">
+								<IoLocation className="text-primary w-5 h-5" />
+								<p className="font-bold text-xl text-white">
 									Find Your Parish
 								</p>
 							</div>
-							<div className="">
-								<p className=" mt-2 max-w-md text-muted-foreground">
+							<div>
+								<p className="mt-2 max-w-md text-slate-300">
 									Search for your local congregation to view
 									their specific events, updates and
 									stewardship opportunities.
@@ -72,23 +71,23 @@ export default function LandingPage() {
 							</div>
 						</CardContent>
 					</Card>
-					<Card className=" w-full bg-primary/30">
-						<CardContent className=" pt-6">
-							<div className=" flex flex-row items-center gap-3">
-								<FaUserCircle className=" text-primary-foreground w-5 h-5" />
-								<p className=" font-bold text-xl">
+					<Card className="w-full bg-secondary text-secondary-foreground border-border">
+						<CardContent className="pt-6">
+							<div className="flex flex-row items-center gap-3">
+								<FaUserCircle className="text-primary w-5 h-5" />
+								<p className="font-bold text-xl text-secondary-foreground">
 									Parishioner Portal
 								</p>
 							</div>
-							<div className="">
-								<p className=" text-white w-full mt-[10px]">
+							<div>
+								<p className="text-muted-foreground w-full mt-[10px]">
 									Already a registered member? Access your
 									profile, giving history and ministry groups.
 								</p>
 								<div className="mt-[10px]">
 									<Button
 										asChild
-										className="w-full rounded-[15px] bg-primary py-6"
+										className="w-full rounded-[15px] bg-primary text-primary-foreground py-6"
 									>
 										<Link href={"/auth/login"}>
 											Login To Your Account
@@ -100,14 +99,14 @@ export default function LandingPage() {
 						</CardContent>
 					</Card>
 				</div>
-				<div className=" py-12 md:py-16">
-					<p className=" font-bold text-center text-primary">
+				<div className="py-12 md:py-16">
+					<p className="font-bold text-center text-primary">
 						EXPERIENCE CONNECTION
 					</p>
 					<div className="mt-10 flex flex-col gap-8 md:flex-row md:justify-between">
-						<div className=" flex gap-7 items-center flex-col">
-							<div className=" p-[20px] bg-primary/30 rounded-[15px] ">
-								<FaBell className=" text-primary w-6 h-6" />
+						<div className="flex gap-7 items-center flex-col">
+							<div className="p-[20px] bg-primary/30 rounded-[15px]">
+								<FaBell className="text-primary w-6 h-6" />
 							</div>
 							<div className="max-w-xs text-center">
 								<p>
@@ -117,9 +116,9 @@ export default function LandingPage() {
 								</p>
 							</div>
 						</div>
-						<div className=" flex gap-7 items-center flex-col">
-							<div className=" p-[20px] bg-primary/30 rounded-[15px] ">
-								<FaCalendarDays className=" text-primary w-6 h-6" />
+						<div className="flex gap-7 items-center flex-col">
+							<div className="p-[20px] bg-primary/30 rounded-[15px]">
+								<FaCalendarDays className="text-primary w-6 h-6" />
 							</div>
 							<div className="max-w-xs text-center">
 								<p className="">
@@ -129,9 +128,9 @@ export default function LandingPage() {
 								</p>
 							</div>
 						</div>
-						<div className=" flex gap-7 items-center flex-col">
-							<div className=" p-[20px] bg-primary/30 rounded-[15px] ">
-								<MdVolunteerActivism className=" text-primary w-6 h-6" />
+						<div className="flex gap-7 items-center flex-col">
+							<div className="p-[20px] bg-primary/30 rounded-[15px]">
+								<MdVolunteerActivism className="text-primary w-6 h-6" />
 							</div>
 							<div className="max-w-xs text-center">
 								<p>
@@ -144,10 +143,10 @@ export default function LandingPage() {
 					</div>
 				</div>
 			</MaxWidthWrapper>
-			<div id="features" className="bg-primary/30">
+			<div id="features" className="bg-primary/15 py-12 md:py-16">
 				<MaxWidthWrapper>
-					<div className="flex items-center flex-col py-12 md:py-16">
-						<p className="max-w-2xl text-center text-3xl font-extrabold md:text-4xl">
+					<div className="flex items-center flex-col">
+						<p className="max-w-2xl text-center text-3xl font-extrabold md:text-4xl text-foreground">
 							Everything Your Parish Needs, In One Platform
 						</p>
 						<p className="mt-4 max-w-xl text-center text-muted-foreground">
@@ -170,61 +169,61 @@ export default function LandingPage() {
 					</div>
 				</MaxWidthWrapper>
 			</div>
-			<div className=" bg-primary-foreground ">
+			<div className="bg-[#111827] text-white">
 				<MaxWidthWrapper>
 					<div className="flex flex-col items-center gap-8 py-12 md:flex-row md:py-16">
-						<div className=" ">
-							<p className=" text-3xl font-bold md:text-4xl">
+						<div>
+							<p className="text-3xl font-bold md:text-4xl text-white">
 								Your Parish. Your Digital Presence. Fully
 								Managed.
 							</p>
-							<div className=" mt-5 flex flex-col gap-4">
-								<div className=" flex flex-row items-start gap-3">
-									<div className=" p-[15px] bg-primary/30 rounded-[15px] ">
-										<MdBrandingWatermark className=" text-primary w-5 h-5" />
+							<div className="mt-5 flex flex-col gap-4">
+								<div className="flex flex-row items-start gap-3">
+									<div className="p-[15px] bg-primary/30 rounded-[15px]">
+										<MdBrandingWatermark className="text-primary w-5 h-5" />
 									</div>
-									<div className="">
-										<p className=" text-[15px] font-bold">
+									<div>
+										<p className="text-[15px] font-bold text-white">
 											Branded Spaces
 										</p>
-										<p className=" text-muted-foreground">
+										<p className="text-slate-300">
 											Customized layout with your parish
 											colors, logos and specific identity.
 										</p>
 									</div>
 								</div>
-								<div className=" flex flex-row items-start gap-3">
-									<div className=" p-[15px] bg-primary/30 rounded-[15px] ">
-										<MdBrandingWatermark className=" text-primary w-5 h-5" />
+								<div className="flex flex-row items-start gap-3">
+									<div className="p-[15px] bg-primary/30 rounded-[15px]">
+										<MdBrandingWatermark className="text-primary w-5 h-5" />
 									</div>
-									<div className="">
-										<p className=" text-[15px] font-bold">
+									<div>
+										<p className="text-[15px] font-bold text-white">
 											Branded Spaces
 										</p>
-										<p className=" text-muted-foreground">
+										<p className="text-slate-300">
 											Customized layout with your parish
 											colors, logos and specific identity.
 										</p>
 									</div>
 								</div>
-								<div className=" flex flex-row items-start gap-3">
-									<div className=" p-[15px] bg-primary/30 rounded-[15px] ">
-										<MdBrandingWatermark className=" text-primary w-5 h-5" />
+								<div className="flex flex-row items-start gap-3">
+									<div className="p-[15px] bg-primary/30 rounded-[15px]">
+										<MdBrandingWatermark className="text-primary w-5 h-5" />
 									</div>
-									<div className="">
-										<p className=" text-[15px] font-bold">
+									<div>
+										<p className="text-[15px] font-bold text-white">
 											Branded Spaces
 										</p>
-										<p className=" text-muted-foreground">
+										<p className="text-slate-300">
 											Customized layout with your parish
 											colors, logos and specific identity.
 										</p>
 									</div>
 								</div>
-								<div className="">
+								<div>
 									<Button
 										asChild
-										className=" rounded-[15px] py-6"
+										className="rounded-[15px] py-6"
 									>
 										<Link href={"/contact"}>
 											Request a Demo
@@ -239,11 +238,11 @@ export default function LandingPage() {
 								alt="placeholder"
 								width={"1000"}
 								height={"1000"}
-								className=" rounded-[40px]"
+								className="rounded-[40px]"
 							/>
-							<div className="mt-4 rounded-[15px] bg-primary px-6 py-4 text-secondary md:absolute md:-left-[50px] md:-bottom-[50px]">
-								<p className=" font-bold text-2xl">99.99%</p>
-								<p className=" font-bold">UPTIME GUARANTEED</p>
+							<div className="mt-4 rounded-[15px] bg-primary px-6 py-4 text-primary-foreground md:absolute md:-left-[50px] md:-bottom-[50px]">
+								<p className="font-bold text-2xl">99.99%</p>
+								<p className="font-bold">UPTIME GUARANTEED</p>
 							</div>
 						</div>
 					</div>

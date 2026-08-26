@@ -4,7 +4,7 @@ import db from "@/lib/db";
 import { HIDDEN_ORGANIZATION_NAMES } from "@/lib/organization-visibility";
 
 export const metadata = {
-	title: "Find your parish · Ecclesia",
+	title: "Find your parish",
 };
 
 export default async function StartPage() {

@@ -1,42 +1,82 @@
 @import "tailwindcss";
 
+@variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
 :root {
-	--background: #1f2937;
-	--foreground: #f9fafb;
+	--background: #fbfaf7;
+	--foreground: #16181d;
+	--card: #ffffff;
+	--card-foreground: #16181d;
+	--popover: #ffffff;
+	--popover-foreground: #16181d;
 	--primary: #eab308;
 	--primary-foreground: #111827;
-	--secondary: #1f2937;
-	--secondary-foreground: #f3f4f6;
-	--accent: #374151;
-	--accent-foreground: #f9fafb;
-	--muted: #111827;
-	--muted-foreground: #cbd5f5;
-	--border: #334155;
-	--input: #334155;
+	--secondary: #ffffff;
+	--secondary-foreground: #16181d;
+	--accent: #f4f1ea;
+	--accent-foreground: #16181d;
+	--muted: #f4f1ea;
+	--muted-foreground: #55606e;
+	--border: #e6e1d6;
+	--input: #e6e1d6;
 	--ring: #eab308;
 	--radius: 0.5rem;
-	--sidebar: #111827;
-	--sidebar-foreground: #e5e7eb;
+	--sidebar: #ffffff;
+	--sidebar-foreground: #16181d;
 	--sidebar-primary: #fbbf24;
 	--sidebar-primary-foreground: #111827;
-	--sidebar-accent: #1f2937;
-	--sidebar-accent-foreground: #f9fafb;
-	--sidebar-border: #334155;
+	--sidebar-accent: #f4f1ea;
+	--sidebar-accent-foreground: #16181d;
+	--sidebar-border: #e6e1d6;
 	--sidebar-ring: hsl(217.2 91.2% 59.8%);
+
+	--surface-0: #fbfaf7;
+	--surface-1: #ffffff;
+	--surface-2: #f4f1ea;
+	--surface-3: #ede7da;
+	--hairline: #e6e1d6;
+	--gold: #945a06;
+	--fg: #16181d;
+	--fg-body: #3a414d;
+	--fg-muted: #55606e;
+	--fg-dim: #616874;
+	--positive: #147839;
+	--critical: #b42318;
+	--scrim: rgba(22, 24, 29, 0.45);
+	--on-gold: #ffffff;
 }
 
-/* ---------------------------------------------------------------------------
-   Parish feed design system.
+/* Fallback: elements with #111827 background render white text */
+.bg-\[\#111827\], [style*="background: #111827"], [style*="background-color: #111827"] {
+	color: #ffffff;
+}
 
-   A separate token namespace from the console tokens above. The console owns
-   --background / --primary / --secondary and must keep them; the feed owns
-   --surface-* / --fg-* / --text-*. Nothing here redefines a console token.
+:root[data-theme="light"] {
+	--background: #fbfaf7;
+	--foreground: #16181d;
+	--card: #ffffff;
+	--card-foreground: #16181d;
+	--popover: #ffffff;
+	--popover-foreground: #16181d;
+	--primary: #eab308;
+	--primary-foreground: #111827;
+	--secondary: #ffffff;
+	--secondary-foreground: #16181d;
+	--accent: #f4f1ea;
+	--accent-foreground: #16181d;
+	--muted: #f4f1ea;
+	--muted-foreground: #55606e;
+	--border: #e6e1d6;
+	--input: #e6e1d6;
+	--ring: #eab308;
+	--sidebar: #ffffff;
+	--sidebar-foreground: #16181d;
+	--sidebar-primary: #fbbf24;
+	--sidebar-primary-foreground: #111827;
+	--sidebar-accent: #f4f1ea;
+	--sidebar-accent-foreground: #16181d;
+	--sidebar-border: #e6e1d6;
 
-   Light is the bare :root definition so it is always present; dark is applied
-   both by the explicit [data-theme="dark"] stamp and by prefers-color-scheme
-   when no stamp exists. Every colour has a definition outside a media query.
-   --------------------------------------------------------------------------- */
-:root {
 	--surface-0: #fbfaf7;
 	--surface-1: #ffffff;
 	--surface-2: #f4f1ea;
@@ -56,6 +96,31 @@
 /* System preference, only when the user has not chosen light explicitly. */
 @media (prefers-color-scheme: dark) {
 	:root:not([data-theme="light"]) {
+		--background: #0f151f;
+		--foreground: #f9fafb;
+		--card: #161d29;
+		--card-foreground: #f9fafb;
+		--popover: #161d29;
+		--popover-foreground: #f9fafb;
+		--primary: #eab308;
+		--primary-foreground: #111827;
+		--secondary: #161d29;
+		--secondary-foreground: #f3f4f6;
+		--accent: #1f2937;
+		--accent-foreground: #f9fafb;
+		--muted: #111827;
+		--muted-foreground: #a7b0be;
+		--border: #2a3441;
+		--input: #2a3441;
+		--ring: #eab308;
+		--sidebar: #111827;
+		--sidebar-foreground: #e5e7eb;
+		--sidebar-primary: #fbbf24;
+		--sidebar-primary-foreground: #111827;
+		--sidebar-accent: #1f2937;
+		--sidebar-accent-foreground: #f9fafb;
+		--sidebar-border: #2a3441;
+
 		--surface-0: #0f151f;
 		--surface-1: #161d29;
 		--surface-2: #1f2937;
@@ -75,6 +140,31 @@
 
 /* Explicit choice wins in both directions. */
 :root[data-theme="dark"] {
+	--background: #0f151f;
+	--foreground: #f9fafb;
+	--card: #161d29;
+	--card-foreground: #f9fafb;
+	--popover: #161d29;
+	--popover-foreground: #f9fafb;
+	--primary: #eab308;
+	--primary-foreground: #111827;
+	--secondary: #161d29;
+	--secondary-foreground: #f3f4f6;
+	--accent: #1f2937;
+	--accent-foreground: #f9fafb;
+	--muted: #111827;
+	--muted-foreground: #a7b0be;
+	--border: #2a3441;
+	--input: #2a3441;
+	--ring: #eab308;
+	--sidebar: #111827;
+	--sidebar-foreground: #e5e7eb;
+	--sidebar-primary: #fbbf24;
+	--sidebar-primary-foreground: #111827;
+	--sidebar-accent: #1f2937;
+	--sidebar-accent-foreground: #f9fafb;
+	--sidebar-border: #2a3441;
+
 	--surface-0: #0f151f;
 	--surface-1: #161d29;
 	--surface-2: #1f2937;
@@ -92,6 +182,10 @@
 }
 
 @theme inline {
+	--color-card: var(--card);
+	--color-card-foreground: var(--card-foreground);
+	--color-popover: var(--popover);
+	--color-popover-foreground: var(--popover-foreground);
 	--color-surface-0: var(--surface-0);
 	--color-surface-1: var(--surface-1);
 	--color-surface-2: var(--surface-2);
@@ -272,13 +366,6 @@ body {
 
 /* Hide public navbar on docs layout */
 body[data-docs-layout="true"] [data-public-navbar] {
-	display: none !important;
-}
-
-/* The feed owns its own chrome. Server-rendered marker rather than the docs
-   layout's client-side attribute, so the navbar never flashes before it is
-   hidden. */
-body:has([data-feed-root]) [data-public-navbar] {
 	display: none !important;
 }
 
