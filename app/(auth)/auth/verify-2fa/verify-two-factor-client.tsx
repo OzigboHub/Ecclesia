@@ -31,6 +31,10 @@ export default function VerifyTwoFactorClient() {
 		() => searchParams.get("email") ?? "",
 		[searchParams],
 	);
+	const callbackUrl = useMemo(() => {
+		const raw = searchParams.get("callbackUrl");
+		return raw && raw.startsWith("/") ? raw : "/dashboard";
+	}, [searchParams]);
 
 	const isMissingContext = !challengeToken || !email;
 
@@ -49,8 +53,7 @@ export default function VerifyTwoFactorClient() {
 
 			if (result.success) {
 				toast.success("Verification complete");
-				router.push("/dashboard");
-				router.refresh();
+				window.location.href = callbackUrl;
 				return;
 			}
 
@@ -60,7 +63,7 @@ export default function VerifyTwoFactorClient() {
 
 	if (isMissingContext) {
 		return (
-			<div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-accent/20 p-4">
+			<div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-accent/20 p-4 pt-24 pb-12">
 				<div className="w-full max-w-md">
 					<div className="bg-background/80 backdrop-blur-sm border border-border rounded-lg shadow-2xl p-8 text-center space-y-4">
 						<div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
@@ -86,7 +89,7 @@ export default function VerifyTwoFactorClient() {
 	}
 
 	return (
-		<div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-accent/20 p-4">
+		<div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-accent/20 p-4 pt-24 pb-12">
 			<div className="w-full max-w-md">
 				<div className="bg-background/80 backdrop-blur-sm border border-border rounded-lg shadow-2xl p-8">
 					<div className="text-center mb-6">

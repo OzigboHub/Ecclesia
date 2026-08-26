@@ -11,6 +11,21 @@ export function ServiceWorkerRegistration() {
 	useEffect(() => {
 		if (!("serviceWorker" in navigator)) return;
 
+		// Disable service worker in development to prevent caching issues with Fast Refresh / HMR
+		if (process.env.NODE_ENV !== "production") {
+			navigator.serviceWorker.getRegistrations().then((registrations) => {
+				for (const registration of registrations) {
+					registration.unregister();
+				}
+			});
+			if ("caches" in window) {
+				caches.keys().then((keys) => {
+					keys.forEach((key) => caches.delete(key));
+				});
+			}
+			return;
+		}
+
 		navigator.serviceWorker.register("/sw.js").catch((err) => {
 			console.error("Service worker registration failed:", err);
 		});

@@ -1,11 +1,10 @@
+import { PublicParishSearch } from "@/components/public/public-parish-search";
 import db from "@/lib/db";
 import { HIDDEN_ORGANIZATION_NAMES } from "@/lib/organization-visibility";
-import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
 export default async function ParishesPage() {
-	// List a few public organizations
 	const orgs = await db.organization.findMany({
 		where: {
 			name: { notIn: HIDDEN_ORGANIZATION_NAMES },
@@ -13,44 +12,36 @@ export default async function ParishesPage() {
 		select: {
 			id: true,
 			name: true,
+			address: true,
 			contactPhone: true,
 			contactEmail: true,
 		},
 		orderBy: { name: "asc" },
-		take: 50,
+		take: 100,
 	});
+
+	const searchItems = orgs.map((o) => ({
+		id: o.id,
+		name: o.name,
+		address: o.address,
+		contactPhone: o.contactPhone,
+		contactEmail: o.contactEmail,
+	}));
 
 	return (
 		<div className="min-h-screen bg-background">
-			<div className="mx-auto max-w-4xl px-4 py-20">
-				<h1 className="text-2xl font-bold mb-4">Browse Parishes</h1>
-				<p className="text-muted-foreground mb-6">
-					Select a parish to view public events, livestreams and
-					campaigns.
-				</p>
-
-				<div className="grid gap-4 sm:grid-cols-2">
-					{orgs.map((o: any) => (
-						<Link
-							key={o.id}
-							href={`/p/${o.id}`}
-							className="rounded-lg border bg-card p-4 hover:shadow-md transition"
-						>
-							<h3 className="font-semibold">{o.name}</h3>
-							<p className="text-sm text-muted-foreground mt-1">
-								{o.contactPhone ||
-									o.contactEmail ||
-									"No contact info"}
-							</p>
-						</Link>
-					))}
+			<div className="mx-auto max-w-6xl px-4 py-20">
+				<div className="space-y-2 mb-8">
+					<h1 className="text-3xl font-bold tracking-tight">Browse Parishes</h1>
+					<p className="text-muted-foreground">
+						Select a parish to view public events, masses, societies, and campaigns.
+					</p>
 				</div>
 
-				{orgs.length === 0 && (
-					<div className="mt-8 text-center text-muted-foreground">
-						No parishes available.
-					</div>
-				)}
+				<PublicParishSearch
+					initialParishes={searchItems}
+					showMassesCount={false}
+				/>
 			</div>
 		</div>
 	);

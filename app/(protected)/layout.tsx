@@ -1,4 +1,5 @@
 import { auth } from "@/auth";
+import { DashboardJoinSocietyHandler } from "@/components/dashboard/dashboard-join-society-handler";
 import ProtectedNavbar from "@/components/layout/protected-navbar";
 import Sidebar from "@/components/layout/sidebar";
 import { AuthProvider } from "@/components/providers/auth-provider";
@@ -23,6 +24,10 @@ export default async function DashboardLayout({
 
 	return (
 		<AuthProvider session={session}>
+			<DashboardJoinSocietyHandler
+				userRole={session.user.role}
+				userOrganizationId={session.user.organizationId}
+			/>
 			<div className="h-screen overflow-hidden">
 				<div className="h-screen min-h-0 lg:grid lg:grid-cols-[280px_1fr]">
 					<Sidebar session={session} />
