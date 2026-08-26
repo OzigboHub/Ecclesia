@@ -5,7 +5,7 @@ import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-export const metadata = { title: "Security · Ecclesia" };
+export const metadata = { title: "Security" };
 
 export default async function SecurityPage() {
 	const result = await getSecurityStatus();
@@ -15,7 +15,7 @@ export default async function SecurityPage() {
 	return (
 		<FeedShell
 			topBar={
-				<div className="sticky top-0 z-30 flex items-center gap-1 border-b border-hairline bg-surface-1/95 px-2 py-2 backdrop-blur pt-[calc(8px+env(safe-area-inset-top))]">
+				<div className="sticky top-16 z-30 flex items-center gap-1 border-b border-hairline bg-surface-1/95 px-2 py-2 backdrop-blur pt-[calc(8px+env(safe-area-inset-top))]">
 					<Link
 						href="/me"
 						className="flex size-11 items-center justify-center rounded-[10px] text-fg-muted"

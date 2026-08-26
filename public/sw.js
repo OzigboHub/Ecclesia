@@ -33,8 +33,14 @@ self.addEventListener("fetch", (event) => {
 	// Skip Chrome extension and non-http(s) requests
 	if (!request.url.startsWith("http")) return;
 
-	// Skip API routes and auth routes — always go to network
 	const url = new URL(request.url);
+
+	// In local development, always bypass service worker caching
+	if (url.hostname === "localhost" || url.hostname === "127.0.0.1") {
+		return;
+	}
+
+	// Skip API routes and auth routes — always go to network
 	if (url.pathname.startsWith("/api/") || url.pathname.startsWith("/auth/")) {
 		return;
 	}

@@ -1,5 +1,8 @@
 import { getPublicAppointmentAvailabilities } from "@/app/actions/appointment.actions";
+import { getPublicSocietiesForParish } from "@/app/actions/society.actions";
+import { auth } from "@/auth";
 import { PublicAppointmentBooking } from "@/components/features/appointments/public-appointment-booking";
+import { PublicSocietiesSection } from "@/components/public/public-societies-section";
 import { Button } from "@/components/ui/button";
 import db from "@/lib/db";
 import { isFeatureEnabled } from "@/lib/features.server";
@@ -14,6 +17,7 @@ import {
 	Phone,
 	Radio,
 	UserPlus,
+	Users,
 } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -142,14 +146,21 @@ export default async function ParishPage({
 		}),
 	);
 
-	const appointmentAvailabilityResult =
-		await getPublicAppointmentAvailabilities(parishId);
+	const [
+		appointmentAvailabilityResult,
+		massIntentionsEnabled,
+		societiesResult,
+		session,
+	] = await Promise.all([
+		getPublicAppointmentAvailabilities(parishId),
+		isFeatureEnabled(parishId, "enableMassIntentions"),
+		getPublicSocietiesForParish(parishId),
+		auth(),
+	]);
+
+	const societies = societiesResult.data ?? [];
 
 	// Get approved mass intentions for upcoming masses
-	const massIntentionsEnabled = await isFeatureEnabled(
-		parishId,
-		"enableMassIntentions",
-	);
 	const massIntentions =
 		massIntentionsEnabled ?
 			await db.massIntention.findMany({
@@ -195,13 +206,20 @@ export default async function ParishPage({
 							{org.name}
 						</h1>
 						<p className="text-sm text-muted-foreground md:text-base">
-							Discover upcoming masses, live streams, and
+							Discover upcoming masses, live streams, societies, and
 							parish-led campaigns in one place.
 						</p>
 					</div>
-					<div className="flex flex-col gap-3 sm:flex-row">
+					<div className="flex flex-wrap gap-3">
 						<Button asChild className="w-full sm:w-auto">
 							<Link href="#masses">View masses</Link>
+						</Button>
+						<Button
+							asChild
+							variant="outline"
+							className="w-full sm:w-auto"
+						>
+							<Link href="#societies">Societies & Groups</Link>
 						</Button>
 						<Button
 							asChild
@@ -225,7 +243,7 @@ export default async function ParishPage({
 							</Link>
 						</Button>
 					</div>
-					<div className="grid gap-3 md:grid-cols-3">
+					<div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
 						<div className="rounded-xl border bg-card p-4 shadow-sm">
 							<div className="flex items-center gap-2">
 								<MapPin className="h-4 w-4 text-primary" />
@@ -233,7 +251,7 @@ export default async function ParishPage({
 									Location
 								</p>
 							</div>
-							<p className="mt-2 text-sm text-muted-foreground">
+							<p className="mt-2 text-xs sm:text-sm text-muted-foreground line-clamp-2">
 								{org.address ?? "Address not available"}
 							</p>
 						</div>
@@ -244,7 +262,7 @@ export default async function ParishPage({
 									Upcoming masses
 								</p>
 							</div>
-							<p className="mt-2 text-sm text-muted-foreground">
+							<p className="mt-2 text-xs sm:text-sm text-muted-foreground">
 								{masses.length > 0 ?
 									`${masses.length} scheduled`
 								:	"No upcoming masses"}
@@ -257,10 +275,23 @@ export default async function ParishPage({
 									Livestreams
 								</p>
 							</div>
-							<p className="mt-2 text-sm text-muted-foreground">
+							<p className="mt-2 text-xs sm:text-sm text-muted-foreground">
 								{totalStreams > 0 ?
 									`${totalStreams} available`
 								:	"No livestreams listed"}
+							</p>
+						</div>
+						<div className="rounded-xl border bg-card p-4 shadow-sm">
+							<div className="flex items-center gap-2">
+								<Users className="h-4 w-4 text-primary" />
+								<p className="text-sm font-semibold">
+									Societies
+								</p>
+							</div>
+							<p className="mt-2 text-xs sm:text-sm text-muted-foreground">
+								{societies.length > 0 ?
+									`${societies.length} registered`
+								:	"No societies yet"}
 							</p>
 						</div>
 					</div>
@@ -560,6 +591,15 @@ export default async function ParishPage({
 						</div>
 					</section>
 				)}
+
+				{/* Societies Section */}
+				<PublicSocietiesSection
+					parishId={parishId}
+					societies={societies}
+					currentRole={session?.user?.role}
+					userOrganizationId={session?.user?.organizationId}
+					showViewAllLink={true}
+				/>
 
 				{/* Campaigns Section */}
 				{campaignsWithProgress.length > 0 && (

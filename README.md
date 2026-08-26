@@ -7,8 +7,8 @@ Ecclesia is a Catholic parish management system that supports parish/outstation 
 - Multi-tenant organization scoping with parish and outstation support
 - Feature toggles per organization (live streaming, online payments, SMS, etc.)
 - Role-based access control with 8 roles
-- Unified payments and monthly tracking 
-- Society management with dues and announcements
+- Unified payments and monthly tracking.
+- Society management with dues and announcements.
  
 ## Tech Stack
 

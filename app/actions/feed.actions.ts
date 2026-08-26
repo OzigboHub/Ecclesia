@@ -88,7 +88,7 @@ async function resolveOrganizationNames(
 async function liveItems(
 	organizationId: string | undefined,
 	names: Map<string, string>,
-	limit: number,
+	limit?: number,
 ): Promise<LiveItem[]> {
 	const streams = await db.liveStream.findMany({
 		where: {
@@ -98,7 +98,6 @@ async function liveItems(
 				{
 					scheduledFor: {
 						gte: new Date(),
-						lte: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
 					},
 				},
 			],
@@ -115,7 +114,7 @@ async function liveItems(
 			mass: { select: { celebrant: true } },
 		},
 		orderBy: [{ isLive: "desc" }, { scheduledFor: "asc" }],
-		take: limit,
+		...(limit ? { take: limit } : {}),
 	});
 
 	return streams
@@ -147,7 +146,7 @@ async function massTimesItem(
 	const now = new Date();
 	const sunday = nextSunday(now);
 
-	const [today, thisSunday] = await Promise.all([
+	let [today, thisSunday] = await Promise.all([
 		db.mass.findMany({
 			where: {
 				organizationId,
@@ -179,6 +178,39 @@ async function massTimesItem(
 			orderBy: { time: "asc" },
 		}),
 	]);
+
+	if (today.length === 0 && thisSunday.length === 0) {
+		const jsDayMap = ["SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"] as const;
+		const todayEnum = jsDayMap[now.getDay()];
+
+		const templates = await db.massScheduleTemplate.findMany({
+			where: { organizationId, isActive: true },
+			select: { id: true, dayOfWeek: true, time: true, location: true, language: true },
+			orderBy: { time: "asc" },
+		});
+
+		if (templates.length > 0) {
+			today = templates
+				.filter((t) => t.dayOfWeek === todayEnum)
+				.map((t) => ({
+					id: `tpl:${t.id}`,
+					time: t.time,
+					celebrant: null,
+					location: t.location,
+					language: t.language,
+				}));
+
+			thisSunday = templates
+				.filter((t) => t.dayOfWeek === "SUNDAY")
+				.map((t) => ({
+					id: `tpl:${t.id}`,
+					time: t.time,
+					celebrant: null,
+					location: t.location,
+					language: t.language,
+				}));
+		}
+	}
 
 	if (today.length === 0 && thisSunday.length === 0) return null;
 
@@ -427,10 +459,9 @@ async function intentionsItem(
 }
 
 /**
- * Baptisms and confirmations from the last fortnight, and only for people who
- * opted in. `shareMoments` defaults to false, so this card is empty until a
- * parish deliberately turns it on person by person — which is the correct
- * default for publishing somebody's sacrament to a public timeline.
+ * Sacraments (baptisms, confirmations, marriages) from the last fortnight, and
+ * only for people who opted in. `shareMoments` defaults to false, so this card
+ * is empty until a parishioner deliberately turns it on.
  */
 async function momentsItem(
 	organizationId: string,
@@ -438,24 +469,96 @@ async function momentsItem(
 ): Promise<MomentsItem | null> {
 	const since = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
 
-	const baptisms = await db.baptism.findMany({
-		where: {
-			organizationId,
-			date: { gte: since, lte: new Date() },
-			parishioner: { shareMoments: true, deletedAt: null },
-		},
-		select: {
-			id: true,
-			date: true,
-			parishioner: {
-				select: { id: true, firstName: true, lastName: true },
+	const [baptisms, confirmations, marriages] = await Promise.all([
+		db.baptism.findMany({
+			where: {
+				organizationId,
+				date: { gte: since, lte: new Date() },
+				parishioner: { shareMoments: true, deletedAt: null },
 			},
-		},
-		orderBy: { date: "desc" },
-		take: 8,
-	});
+			select: {
+				id: true,
+				date: true,
+				parishioner: { select: { id: true, firstName: true, lastName: true } },
+			},
+			orderBy: { date: "desc" },
+			take: 8,
+		}),
+		db.confirmation.findMany({
+			where: {
+				organizationId,
+				date: { gte: since, lte: new Date() },
+				parishioner: { shareMoments: true, deletedAt: null },
+			},
+			select: {
+				id: true,
+				date: true,
+				parishioner: { select: { id: true, firstName: true, lastName: true } },
+			},
+			orderBy: { date: "desc" },
+			take: 8,
+		}),
+		db.marriage.findMany({
+			where: {
+				organizationId,
+				date: { gte: since, lte: new Date() },
+				OR: [
+					{ husband: { shareMoments: true, deletedAt: null } },
+					{ wife: { shareMoments: true, deletedAt: null } },
+				],
+			},
+			select: {
+				id: true,
+				date: true,
+				husband: { select: { id: true, firstName: true, lastName: true, shareMoments: true } },
+				wife: { select: { id: true, firstName: true, lastName: true, shareMoments: true } },
+			},
+			orderBy: { date: "desc" },
+			take: 8,
+		}),
+	]);
 
-	if (baptisms.length === 0) return null;
+	const peopleMap = new Map<string, { id: string; displayName: string; initials: string }>();
+
+	for (const b of baptisms) {
+		peopleMap.set(b.parishioner.id, {
+			id: b.parishioner.id,
+			displayName: shortName(b.parishioner.firstName, b.parishioner.lastName),
+			initials: crestInitials(`${b.parishioner.firstName} ${b.parishioner.lastName}`),
+		});
+	}
+	for (const c of confirmations) {
+		peopleMap.set(c.parishioner.id, {
+			id: c.parishioner.id,
+			displayName: shortName(c.parishioner.firstName, c.parishioner.lastName),
+			initials: crestInitials(`${c.parishioner.firstName} ${c.parishioner.lastName}`),
+		});
+	}
+	for (const m of marriages) {
+		if (m.husband.shareMoments) {
+			peopleMap.set(m.husband.id, {
+				id: m.husband.id,
+				displayName: shortName(m.husband.firstName, m.husband.lastName),
+				initials: crestInitials(`${m.husband.firstName} ${m.husband.lastName}`),
+			});
+		}
+		if (m.wife.shareMoments) {
+			peopleMap.set(m.wife.id, {
+				id: m.wife.id,
+				displayName: shortName(m.wife.firstName, m.wife.lastName),
+				initials: crestInitials(`${m.wife.firstName} ${m.wife.lastName}`),
+			});
+		}
+	}
+
+	const people = Array.from(peopleMap.values());
+	if (people.length === 0) return null;
+
+	const dates = [
+		...baptisms.map((b) => b.date),
+		...confirmations.map((c) => c.date),
+		...marriages.map((m) => m.date),
+	].sort((a, b) => b.getTime() - a.getTime());
 
 	return {
 		kind: "moments",
@@ -463,18 +566,9 @@ async function momentsItem(
 		source: makeSource(organizationId, organizationName, {
 			context: "Parish moments · this fortnight",
 		}),
-		at: baptisms[0].date,
-		title: "Baptised recently",
-		people: baptisms.map((b) => ({
-			id: b.parishioner.id,
-			displayName: shortName(
-				b.parishioner.firstName,
-				b.parishioner.lastName,
-			),
-			initials: crestInitials(
-				`${b.parishioner.firstName} ${b.parishioner.lastName}`,
-			),
-		})),
+		at: dates[0] ?? new Date(),
+		title: "Sacraments & moments recently",
+		people,
 	};
 }
 
@@ -515,7 +609,7 @@ export async function getParishFeed(
 
 		const [live, masses, announcements, campaigns, events, intentions, moments] =
 			await Promise.all([
-				liveItems(organizationId, names, 3),
+				liveItems(organizationId, names),
 				massTimesItem(organization.id, organization.name),
 				announcementItems(organizationId, names, 15),
 				campaignItems(organizationId, names, 5),
@@ -554,12 +648,17 @@ export async function getParishFeed(
  */
 export async function getHighlightsFeed(): Promise<ActionResponse<FeedItem[]>> {
 	try {
-		const [liveIds, announcementOrgs, campaignOrgs, eventOrgs] =
+		const [liveStreams, announcementOrgs, campaignOrgs, eventOrgs] =
 			await Promise.all([
 				db.liveStream.findMany({
-					where: { isLive: true },
+					where: {
+						OR: [
+							{ isLive: true },
+							{ scheduledFor: { gte: new Date() } },
+						],
+					},
 					select: { organizationId: true },
-					take: 20,
+					take: 50,
 				}),
 				db.announcement.findMany({
 					where: { isPublished: true, approvalStatus: "APPROVED" },
@@ -579,14 +678,14 @@ export async function getHighlightsFeed(): Promise<ActionResponse<FeedItem[]>> {
 			]);
 
 		const names = await resolveOrganizationNames([
-			...liveIds.map((r) => r.organizationId),
+			...liveStreams.map((r) => r.organizationId),
 			...announcementOrgs.map((r) => r.organizationId),
 			...campaignOrgs.map((r) => r.organizationId),
 			...eventOrgs.map((r) => r.organizationId),
 		]);
 
 		const [live, announcements, campaigns, events] = await Promise.all([
-			liveItems(undefined, names, 3),
+			liveItems(undefined, names),
 			announcementItems(undefined, names, 12),
 			campaignItems(undefined, names, 4),
 			eventItems(undefined, names, 6, null),

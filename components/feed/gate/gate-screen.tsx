@@ -52,7 +52,7 @@ export function GateScreen({
 	const lockedOut = remaining === 0;
 
 	return (
-		<div className="mx-auto flex min-h-[100dvh] w-full max-w-md flex-col justify-center px-6 py-12">
+		<div className="mx-auto flex min-h-[100dvh] w-full max-w-md flex-col justify-center px-6 py-12 pt-24">
 			<div className="flex flex-col items-center text-center">
 				<span
 					aria-hidden

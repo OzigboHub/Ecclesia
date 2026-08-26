@@ -7,7 +7,7 @@ import db from "@/lib/db";
 import type { AnnouncementItem, FeedItem, LiveItem } from "@/lib/feed/types";
 import Link from "next/link";
 
-export const metadata = { title: "Alerts · Ecclesia" };
+export const metadata = { title: "Alerts" };
 
 export default async function AlertsPage() {
 	const prefs = await getPreferences();
@@ -82,7 +82,7 @@ export default async function AlertsPage() {
 
 function AlertsTopBar() {
 	return (
-		<div className="sticky top-0 z-30 border-b border-hairline bg-surface-1/95 px-4 py-3 backdrop-blur pt-[calc(12px+env(safe-area-inset-top))]">
+		<div className="sticky top-16 z-30 border-b border-hairline bg-surface-1/95 px-4 py-3 backdrop-blur pt-[calc(12px+env(safe-area-inset-top))]">
 			<h1 className="text-title font-semibold text-fg">Alerts</h1>
 		</div>
 	);

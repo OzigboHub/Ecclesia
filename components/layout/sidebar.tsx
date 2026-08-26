@@ -46,8 +46,8 @@ export default function Sidebar({ session }: { session: Session | null }) {
 	const getLinkClass = (href: string) =>
 		`${
 			pathName === href ?
-				"text-secondary bg-primary "
-			:	" text-white hover:bg-white/10"
+				"text-primary-foreground bg-primary "
+			:	" text-secondary-foreground hover:bg-accent"
 		} ${linkBaseClass}`;
 
 	// Organization context state (in a real app, this might come from the session or a cookie)
@@ -168,7 +168,7 @@ export default function Sidebar({ session }: { session: Session | null }) {
 	if (!session?.user) return null;
 
 	return (
-		<aside className="sidebar-scroll hidden w-[280px] bg-secondary h-screen shrink-0 py-5 px-3 items-center lg:flex flex-col gap-6 overflow-x-hidden">
+		<aside className="sidebar-scroll hidden w-[280px] bg-secondary text-secondary-foreground border-r border-border h-screen shrink-0 py-5 px-3 items-center lg:flex flex-col gap-6 overflow-x-hidden">
 			<Link href="/dashboard">
 				<Image
 					src={"/standalone-golden-yellow-logo-typography.png"}
@@ -201,7 +201,7 @@ export default function Sidebar({ session }: { session: Session | null }) {
 									</Link>
 								))}
 							</div>
-							<Separator className="my-2 bg-white/10" />
+							<Separator className="my-2 bg-border" />
 						</>
 					)}
 
@@ -248,8 +248,8 @@ export default function Sidebar({ session }: { session: Session | null }) {
 												`/societies/${mySocietyId}/manage`,
 											)
 										) ?
-											"text-secondary bg-primary "
-										:	" text-white hover:bg-white/10"
+											"text-primary-foreground bg-primary "
+										:	" text-secondary-foreground hover:bg-accent"
 									} ${linkBaseClass}`}
 								>
 									<div className="shrink-0">
@@ -268,7 +268,7 @@ export default function Sidebar({ session }: { session: Session | null }) {
 					{/* Role Specific Admin Section (Non-Super Admin) */}
 					{!isSuperAdmin && filteredAdmin.length > 0 && (
 						<>
-							<Separator className="my-4 bg-white/10" />
+							<Separator className="my-4 bg-border" />
 							<p className="text-[11px] text-primary/70 font-bold uppercase tracking-wider mb-2">
 								Manage
 							</p>
@@ -308,7 +308,7 @@ export default function Sidebar({ session }: { session: Session | null }) {
 					)}
 
 					<div className="mt-6">
-						<Separator className="my-4 bg-white/10" />
+						<Separator className="my-4 bg-border" />
 						<Link
 							href="/profile"
 							className={getLinkClass("/profile")}
@@ -319,7 +319,7 @@ export default function Sidebar({ session }: { session: Session | null }) {
 						{canInstall && (
 							<div
 								onClick={install}
-								className="px-4 py-2 text-primary cursor-pointer hover:bg-white/10 rounded-[10px] gap-4 flex items-center mb-1 transition-all"
+								className="px-4 py-2 text-primary cursor-pointer hover:bg-accent rounded-[10px] gap-4 flex items-center mb-1 transition-all"
 							>
 								<Download className="w-5 h-5 shrink-0" />
 								<p className="text-[13px] font-bold">
@@ -331,7 +331,7 @@ export default function Sidebar({ session }: { session: Session | null }) {
 							onClick={async () => {
 								await logout();
 							}}
-							className="px-4 py-2 text-primary cursor-pointer hover:bg-white/10 rounded-[10px] gap-4 flex items-center mb-6 transition-all"
+							className="px-4 py-2 text-primary cursor-pointer hover:bg-accent rounded-[10px] gap-4 flex items-center mb-6 transition-all"
 						>
 							<LogOut className="w-5 h-5 shrink-0" />
 							<p className="text-[13px] font-bold">Logout</p>

@@ -1,6 +1,5 @@
 "use client";
 
-import { ThemeToggle } from "@/components/feed/chrome/theme-toggle";
 import { LockInSheet } from "@/components/feed/lock-in/lock-in-sheet";
 import { UserRound } from "lucide-react";
 import Link from "next/link";
@@ -63,11 +62,6 @@ export function SignedOutMe({
 				>
 					Parish staff? Sign in with your email
 				</Link>
-			</div>
-
-			<div className="mt-10 flex items-center justify-between border-t border-hairline pt-5">
-				<span className="text-body text-fg">Appearance</span>
-				<ThemeToggle />
 			</div>
 
 			{organizationId && (

@@ -58,14 +58,21 @@ export default auth((req) => {
 		publicExact.includes(pathname) ||
 		publicPrefixes.some((prefix) => pathname.startsWith(prefix));
 
-	// Redirect authenticated users away from auth pages
+	// Redirect authenticated users away from auth pages, honoring callbackUrl if provided
 	if (isLoggedIn && isOnAuth) {
+		const rawCallback = req.nextUrl.searchParams.get("callbackUrl");
+		if (rawCallback && rawCallback.startsWith("/")) {
+			return NextResponse.redirect(new URL(rawCallback, req.url));
+		}
 		return NextResponse.redirect(new URL("/dashboard", req.url));
 	}
 
 	// Redirect unauthenticated users to login (but not on public pages)
 	if (!isLoggedIn && isProtectedRoute && !isOnPublic) {
-		return NextResponse.redirect(new URL("/auth/login", req.url));
+		const loginUrl = new URL("/auth/login", req.url);
+		const fullPath = req.nextUrl.pathname + req.nextUrl.search;
+		loginUrl.searchParams.set("callbackUrl", fullPath);
+		return NextResponse.redirect(loginUrl);
 	}
 
 	return NextResponse.next();

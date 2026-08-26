@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 
-export const metadata = { title: "Giving · Ecclesia" };
+export const metadata = { title: "Giving" };
 
 const monthFormatter = new Intl.DateTimeFormat("en-NG", {
 	month: "long",
@@ -33,7 +33,7 @@ export default async function GivingPage() {
 	return (
 		<FeedShell
 			topBar={
-				<div className="sticky top-0 z-30 flex items-center gap-1 border-b border-hairline bg-surface-1/95 px-2 py-2 backdrop-blur pt-[calc(8px+env(safe-area-inset-top))]">
+				<div className="sticky top-16 z-30 flex items-center gap-1 border-b border-hairline bg-surface-1/95 px-2 py-2 backdrop-blur pt-[calc(8px+env(safe-area-inset-top))]">
 					<Link
 						href="/me"
 						className="flex size-11 items-center justify-center rounded-[10px] text-fg-muted"

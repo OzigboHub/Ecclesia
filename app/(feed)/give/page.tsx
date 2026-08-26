@@ -11,7 +11,7 @@ import type { FeedItem } from "@/lib/feed/types";
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 
-export const metadata = { title: "Give · Ecclesia" };
+export const metadata = { title: "Give" };
 
 export default async function GivePage() {
 	const [prefs, session] = await Promise.all([getPreferences(), auth()]);
@@ -91,7 +91,7 @@ export default async function GivePage() {
 
 function GiveTopBar() {
 	return (
-		<div className="sticky top-0 z-30 border-b border-hairline bg-surface-1/95 px-4 py-3 backdrop-blur pt-[calc(12px+env(safe-area-inset-top))]">
+		<div className="sticky top-16 z-30 border-b border-hairline bg-surface-1/95 px-4 py-3 backdrop-blur pt-[calc(12px+env(safe-area-inset-top))]">
 			<h1 className="text-title font-semibold text-fg">Give</h1>
 		</div>
 	);

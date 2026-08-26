@@ -19,7 +19,7 @@ export function ParishTopBar({
 	parishId?: string | null;
 }) {
 	return (
-		<div className="sticky top-0 z-30 border-b border-hairline bg-surface-1/95 backdrop-blur pt-[env(safe-area-inset-top)]">
+		<div className="sticky top-16 z-30 border-b border-hairline bg-surface-1/95 backdrop-blur pt-[env(safe-area-inset-top)]">
 			<div className="flex items-center justify-between px-2.5 py-1">
 				<Link
 					href="/explore"

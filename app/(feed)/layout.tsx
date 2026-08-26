@@ -12,9 +12,7 @@ export const dynamic = "force-dynamic";
 /**
  * The feed's shell.
  *
- * `data-feed-root` is what suppresses the marketing navbar the root layout
- * renders unconditionally (see globals.css) — a server-rendered marker rather
- * than a client effect, so the navbar never flashes before it disappears.
+ * `data-feed-root` scopes the feed surface styles and background.
  *
  * `font-plex` scopes IBM Plex to this route group; the console keeps Montserrat.
  */

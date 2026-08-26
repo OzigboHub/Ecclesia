@@ -137,7 +137,14 @@ function RegisterPageContent() {
 
 			if (result.success) {
 				toast.success(result.message);
-				router.push("/auth/login?registered=true");
+				const callbackUrl = searchParams.get("callbackUrl");
+				router.push(
+					callbackUrl
+						? `/auth/login?registered=true&callbackUrl=${encodeURIComponent(
+								callbackUrl,
+						  )}`
+						: "/auth/login?registered=true",
+				);
 			} else {
 				toast.error(result.message);
 
@@ -418,7 +425,7 @@ function RegisterPageContent() {
 										}
 									/>
 								</SelectTrigger>
-								<SelectContent className=" bg-secondary">
+								<SelectContent>
 									{organizations.map((org) => (
 										<SelectItem key={org.id} value={org.id}>
 											{org.name}

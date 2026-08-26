@@ -38,6 +38,10 @@ export default function SetupTwoFactorClient() {
 		() => searchParams.get("email") ?? "",
 		[searchParams],
 	);
+	const callbackUrl = useMemo(() => {
+		const raw = searchParams.get("callbackUrl");
+		return raw && raw.startsWith("/") ? raw : "/dashboard";
+	}, [searchParams]);
 
 	const isMissingContext = !setupToken || !email;
 
@@ -81,8 +85,7 @@ export default function SetupTwoFactorClient() {
 
 			if (result.success) {
 				toast.success("Two-factor enabled");
-				router.push("/dashboard");
-				router.refresh();
+				window.location.href = callbackUrl;
 				return;
 			}
 
@@ -109,8 +112,8 @@ export default function SetupTwoFactorClient() {
 
 	if (isMissingContext) {
 		return (
-			<div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-accent/20 p-4">
-				<div className="w-full max-w-md">
+			<div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-accent/20 p-4 pt-24 pb-12">
+				<div className="w-full max-w-lg">
 					<div className="bg-background/80 backdrop-blur-sm border border-border rounded-lg shadow-2xl p-8 text-center space-y-4">
 						<div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
 							<ShieldCheck className="h-6 w-6 text-primary" />
@@ -135,9 +138,9 @@ export default function SetupTwoFactorClient() {
 	}
 
 	return (
-		<div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-accent/20 p-4">
-			<div className="w-full max-w-md">
-				<div className="bg-background/80 backdrop-blur-sm border border-border rounded-lg shadow-2xl p-8">
+		<div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-accent/20 p-4 pt-24 pb-12">
+			<div className="w-full max-w-2xl">
+				<div className="bg-background/80 backdrop-blur-sm border border-border rounded-lg shadow-2xl p-6 sm:p-8">
 					<div className="text-center mb-6">
 						<div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
 							<ShieldCheck className="h-6 w-6 text-primary" />
@@ -155,10 +158,10 @@ export default function SetupTwoFactorClient() {
 						onValueChange={(value) =>
 							setMethod(value as "EMAIL" | "TOTP")
 						}
-						className="gap-3"
+						className="grid grid-cols-1 sm:grid-cols-2 gap-3"
 						disabled={hasStarted}
 					>
-						<label className="flex items-center gap-3 rounded-lg border p-3">
+						<label className="flex items-center gap-3 rounded-lg border p-3 cursor-pointer hover:bg-accent/40 transition-colors">
 							<RadioGroupItem value="EMAIL" />
 							<div>
 								<p className="text-sm font-medium">
@@ -169,7 +172,7 @@ export default function SetupTwoFactorClient() {
 								</p>
 							</div>
 						</label>
-						<label className="flex items-center gap-3 rounded-lg border p-3">
+						<label className="flex items-center gap-3 rounded-lg border p-3 cursor-pointer hover:bg-accent/40 transition-colors">
 							<RadioGroupItem value="TOTP" />
 							<div>
 								<p className="text-sm font-medium">
@@ -191,36 +194,39 @@ export default function SetupTwoFactorClient() {
 					</Button>
 
 					{method === "TOTP" && otpauthUrl && totpSecret && (
-						<div className="mt-4 rounded-lg border border-dashed border-muted-foreground/40 p-4 text-xs text-muted-foreground space-y-3">
-							<p className="font-medium text-foreground">
+						<div className="mt-6 rounded-lg border border-dashed border-muted-foreground/40 p-4 sm:p-5 text-xs text-muted-foreground">
+							<p className="font-medium text-foreground text-sm mb-3">
 								Authenticator setup
 							</p>
-							<div className="flex justify-center">
-								<QRCodeCanvas
-									value={otpauthUrl}
-									size={160}
-									includeMargin
-									className="bg-background p-2 rounded-md"
-								/>
+							<div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-5 items-center">
+								<div className="flex justify-center">
+									<QRCodeCanvas
+										value={otpauthUrl}
+										size={160}
+										includeMargin
+										className="bg-background p-2 rounded-md shadow-xs"
+									/>
+								</div>
+								<div className="space-y-3">
+									<p>
+										Scan the QR code with your authenticator app, or add this secret manually if you cannot scan the QR code.
+									</p>
+									<div className="flex items-center justify-between gap-2 rounded-md bg-muted/60 p-2 border border-border">
+										<p className="font-mono text-foreground break-all text-xs font-semibold select-all">
+											{totpSecret}
+										</p>
+										<Button
+											type="button"
+											variant="outline"
+											size="sm"
+											className="shrink-0"
+											onClick={handleCopySecret}
+										>
+											Copy
+										</Button>
+									</div>
+								</div>
 							</div>
-							<p>
-								Add this secret in your authenticator app if you
-								cannot scan the QR code.
-							</p>
-							<div className="flex items-center justify-between gap-2 rounded-md bg-background/60 p-2">
-								<p className="font-mono text-foreground break-all">
-									{totpSecret}
-								</p>
-								<Button
-									type="button"
-									variant="outline"
-									size="sm"
-									onClick={handleCopySecret}
-								>
-									Copy
-								</Button>
-							</div>
-							<p className="break-all">{otpauthUrl}</p>
 						</div>
 					)}
 
