@@ -4,6 +4,7 @@ import type { DailyLiturgy, LiturgicalColor } from "@/types/liturgy";
 import { BookOpen, Calendar, ExternalLink, Quote } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
+import { UsccbReaderModal } from "./usccb-reader-modal";
 import { LiturgyImageModal } from "./liturgy-image-modal";
 
 interface LiturgyFeedCardProps {
@@ -155,31 +156,26 @@ export function LiturgyFeedCard({ liturgy }: LiturgyFeedCardProps) {
 			</div>
 
 			{/* Actions */}
-			<div className="mt-3.5 flex flex-wrap items-center justify-between gap-2 border-t border-hairline/60 pt-2.5">
-				<div className="flex items-center gap-2">
+			<div className="mt-3.5 flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 border-t border-hairline/60 pt-2.5">
+				<div className="flex items-center gap-2 shrink-0 whitespace-nowrap">
 					<Link
 						href={`/readings?date=${liturgy.date}`}
-						className="inline-flex min-h-8 items-center gap-1.5 rounded-md bg-gold px-3 py-1 text-caption font-semibold text-on-gold hover:opacity-95 transition-opacity"
+						className="inline-flex min-h-8 items-center gap-1.5 rounded-md bg-gold px-3 py-1 text-caption font-semibold text-on-gold hover:opacity-95 transition-opacity whitespace-nowrap shrink-0"
 					>
 						<BookOpen className="size-3.5" />
 						Full Readings & Saint
 					</Link>
 
-					<a
-						href={liturgy.usccbLink}
-						target="_blank"
-						rel="noopener noreferrer"
-						className="inline-flex min-h-8 items-center gap-1 rounded-md px-2.5 py-1 text-caption font-medium text-fg-muted hover:bg-surface-2 transition-colors"
-					>
-						<span>USCCB</span>
-						<ExternalLink className="size-3" />
-					</a>
+					<UsccbReaderModal
+						url={liturgy.usccbLink}
+						liturgy={liturgy}
+					/>
 				</div>
 
 				<button
 					type="button"
 					onClick={handleShare}
-					className="inline-flex min-h-8 items-center gap-1 rounded-md px-2.5 py-1 text-caption font-medium text-fg-dim hover:bg-surface-2 transition-colors"
+					className="inline-flex min-h-8 items-center gap-1 rounded-md px-2.5 py-1 text-caption font-medium text-fg-dim hover:bg-surface-2 transition-colors whitespace-nowrap shrink-0"
 				>
 					Share
 				</button>

@@ -33,7 +33,7 @@ export function FeedShell({
 
 				{aside && (
 					<aside className="hidden shrink-0 xl:block xl:w-[300px]">
-						<div className="sticky top-16 max-h-[calc(100dvh-4rem)] overflow-y-auto py-4">
+						<div className="sticky top-16 max-h-[calc(100dvh-4rem)] overflow-y-auto custom-scrollbar py-4 pr-1">
 							{aside}
 						</div>
 					</aside>
