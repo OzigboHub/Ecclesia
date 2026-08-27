@@ -39,14 +39,14 @@ export function UsccbReaderModal({
 	const [isOpen, setIsOpen] = useState(false);
 	const [loading, setLoading] = useState(false);
 	const [scriptureTexts, setScriptureTexts] = useState<DailyScriptureTexts | null>(null);
-	const [activeTab, setActiveTab] = useState<"all" | "first" | "psalm" | "second" | "gospel">("all");
+	const [activeTab, setActiveTab] = useState<"all" | "first" | "psalm" | "second" | "alleluia" | "gospel">("all");
 	const [fontSize, setFontSize] = useState<"sm" | "base" | "lg">("base");
 	const [copied, setCopied] = useState(false);
 
 	useEffect(() => {
 		if (isOpen && !scriptureTexts && !loading) {
 			setLoading(true);
-			getDailyScriptureTextsAction(liturgy.readings)
+			getDailyScriptureTextsAction(liturgy.readings, liturgy.season)
 				.then((res) => {
 					if (res.success && res.data) {
 						setScriptureTexts(res.data);
@@ -54,7 +54,7 @@ export function UsccbReaderModal({
 				})
 				.finally(() => setLoading(false));
 		}
-	}, [isOpen, liturgy.readings, scriptureTexts, loading]);
+	}, [isOpen, liturgy.readings, liturgy.season, scriptureTexts, loading]);
 
 	const fontSizeClasses = {
 		sm: "text-body-sm leading-relaxed",
@@ -70,6 +70,10 @@ export function UsccbReaderModal({
 
 		if (liturgy.readings.secondReading) {
 			textToCopy += `--- SECOND READING ---\n${liturgy.readings.secondReading}\n${scriptureTexts?.secondReading?.text || ""}\n\n`;
+		}
+
+		if (scriptureTexts?.alleluia?.text) {
+			textToCopy += `--- ${scriptureTexts.alleluia.label.toUpperCase()} ---\n${scriptureTexts.alleluia.text}\n\n`;
 		}
 
 		textToCopy += `--- HOLY GOSPEL ---\n${liturgy.readings.gospel}\n${scriptureTexts?.gospel?.text || ""}\n\n`;
@@ -252,6 +256,15 @@ export function UsccbReaderModal({
 								2nd Reading
 							</button>
 						)}
+						{scriptureTexts?.alleluia && (
+							<button
+								type="button"
+								onClick={() => setActiveTab("alleluia")}
+								className={`rounded-full px-3 py-1 transition-colors shrink-0 whitespace-nowrap ${activeTab === "alleluia" ? "bg-gold text-on-gold font-semibold" : "bg-surface-2 text-fg-dim hover:bg-surface-3 hover:text-fg"}`}
+							>
+								{scriptureTexts.alleluia.label}
+							</button>
+						)}
 						<button
 							type="button"
 							onClick={() => setActiveTab("gospel")}
@@ -284,8 +297,10 @@ export function UsccbReaderModal({
 											{liturgy.readings.firstReading}
 										</span>
 									</div>
-									<div className={`mt-3 text-fg-body whitespace-pre-line font-serif ${fontSizeClasses}`}>
-										{scriptureTexts?.firstReading?.text || (
+									<div className={`mt-3 text-fg-body font-serif ${fontSizeClasses}`}>
+										{scriptureTexts?.firstReading?.text ? (
+											<LiturgicalTextRenderer text={scriptureTexts.firstReading.text} />
+										) : (
 											<p className="italic text-fg-muted">
 												Scripture text for {liturgy.readings.firstReading}
 											</p>
@@ -305,8 +320,10 @@ export function UsccbReaderModal({
 											{liturgy.readings.psalm}
 										</span>
 									</div>
-									<div className={`mt-3 text-fg-body whitespace-pre-line font-serif ${fontSizeClasses}`}>
-										{scriptureTexts?.psalm?.text || (
+									<div className={`mt-3 text-fg-body font-serif ${fontSizeClasses}`}>
+										{scriptureTexts?.psalm?.text ? (
+											<LiturgicalTextRenderer text={scriptureTexts.psalm.text} isPsalm />
+										) : (
 											<p className="italic text-fg-muted">
 												{liturgy.readings.psalm}
 											</p>
@@ -326,12 +343,36 @@ export function UsccbReaderModal({
 											{liturgy.readings.secondReading}
 										</span>
 									</div>
-									<div className={`mt-3 text-fg-body whitespace-pre-line font-serif ${fontSizeClasses}`}>
-										{scriptureTexts?.secondReading?.text || (
+									<div className={`mt-3 text-fg-body font-serif ${fontSizeClasses}`}>
+										{scriptureTexts?.secondReading?.text ? (
+											<LiturgicalTextRenderer text={scriptureTexts.secondReading.text} />
+										) : (
 											<p className="italic text-fg-muted">
 												Scripture text for {liturgy.readings.secondReading}
 											</p>
 										)}
+									</div>
+								</section>
+							)}
+
+							{/* Alleluia / Gospel Acclamation */}
+							{(activeTab === "all" || activeTab === "alleluia") && scriptureTexts?.alleluia && (
+								<section className="rounded-xl border border-gold/40 bg-gold/5 p-4 sm:p-5 shadow-xs">
+									<div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-1 border-b border-gold/20 pb-2">
+										<div className="flex items-center gap-1.5 whitespace-nowrap shrink-0">
+											
+											<span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-widest text-gold">
+												{scriptureTexts.alleluia.label}
+											</span>
+										</div>
+										{scriptureTexts.alleluia.citation && (
+											<span className="text-caption sm:text-body-sm font-semibold text-fg whitespace-nowrap shrink-0">
+												{scriptureTexts.alleluia.citation}
+											</span>
+										)}
+									</div>
+									<div className={`mt-3 text-fg-body font-serif ${fontSizeClasses}`}>
+										<LiturgicalTextRenderer text={scriptureTexts.alleluia.text} />
 									</div>
 								</section>
 							)}
@@ -350,8 +391,10 @@ export function UsccbReaderModal({
 											{liturgy.readings.gospel}
 										</span>
 									</div>
-									<div className={`mt-3 text-fg-body whitespace-pre-line font-serif ${fontSizeClasses}`}>
-										{scriptureTexts?.gospel?.text || (
+									<div className={`mt-3 text-fg-body font-serif ${fontSizeClasses}`}>
+										{scriptureTexts?.gospel?.text ? (
+											<LiturgicalTextRenderer text={scriptureTexts.gospel.text} />
+										) : (
 											<p className="italic text-fg-muted">
 												Scripture text for {liturgy.readings.gospel}
 											</p>
@@ -382,5 +425,51 @@ export function UsccbReaderModal({
 				</div>
 			</DialogContent>
 		</Dialog>
+	);
+}
+
+function LiturgicalTextRenderer({
+	text,
+	isPsalm = false,
+}: {
+	text: string;
+	isPsalm?: boolean;
+}) {
+	if (!text) return null;
+
+	const paragraphs = text.split("\n\n").filter(Boolean);
+
+	return (
+		<div className="space-y-3.5">
+			{paragraphs.map((p, idx) => {
+				const trimmed = p.trim();
+				const isRefrain =
+					trimmed.startsWith("R. ") ||
+					trimmed.startsWith("℟. ") ||
+					trimmed.startsWith("R.") ||
+					trimmed.startsWith("℟.");
+
+				if (isRefrain) {
+					const refrainText = trimmed.replace(/^[R℟]\.?\s*/, "");
+					return (
+						<div
+							key={idx}
+							className="my-3 flex items-start gap-2.5 rounded-lg bg-gold/10 p-2.5 sm:p-3 text-gold dark:text-amber-300 font-semibold"
+						>
+							<span className="shrink-0 flex size-5.5 items-center justify-center rounded-full bg-gold text-on-gold font-sans font-bold text-xs">
+								R.
+							</span>
+							<span className="leading-snug pt-0.5">{refrainText}</span>
+						</div>
+					);
+				}
+
+				return (
+					<p key={idx} className="leading-relaxed whitespace-pre-line text-fg-body">
+						{p}
+					</p>
+				);
+			})}
+		</div>
 	);
 }
