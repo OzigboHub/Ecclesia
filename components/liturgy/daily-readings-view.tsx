@@ -132,7 +132,10 @@ export function DailyReadingsView({
 						onClick={() => {
 							const now = new Date();
 							const y = now.getFullYear();
-							const m = String(now.getMonth() + 1).padStart(2, "0");
+							const m = String(now.getMonth() + 1).padStart(
+								2,
+								"0",
+							);
 							const d = String(now.getDate()).padStart(2, "0");
 							startTransition(() => {
 								router.push(`/readings?date=${y}-${m}-${d}`);
@@ -164,15 +167,18 @@ export function DailyReadingsView({
 					<span
 						className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-caption font-semibold ${colorStyle.badge}`}
 					>
-						<span className={`size-2 rounded-full ${colorStyle.dot}`} />
+						<span
+							className={`size-2 rounded-full ${colorStyle.dot}`}
+						/>
 						{liturgy.colorName} · {liturgy.season}
 					</span>
 
-					{liturgy.celebration.type && liturgy.celebration.type !== "FERIA" && (
-						<span className="rounded bg-surface-2/80 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-fg-dim">
-							{liturgy.celebration.type}
-						</span>
-					)}
+					{liturgy.celebration.type &&
+						liturgy.celebration.type !== "FERIA" && (
+							<span className="rounded bg-surface-2/80 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-fg-dim">
+								{liturgy.celebration.type}
+							</span>
+						)}
 				</div>
 
 				<h1 className="mt-3 text-title-md font-bold text-fg">
@@ -190,7 +196,9 @@ export function DailyReadingsView({
 				liturgy.celebration.image) && (
 				<section className="rounded-card border border-hairline bg-surface-1 p-5">
 					<div className="flex items-center gap-2 text-title-sm font-semibold text-fg">
-						<Sparkles className="size-4 text-gold" />
+						<div className="flex size-5 shrink-0 items-center justify-center rounded-md bg-gold/15 text-[10px] font-bold text-gold">
+							✝
+						</div>
 						<h2>Saint & Celebration Reflection</h2>
 					</div>
 
@@ -235,7 +243,9 @@ export function DailyReadingsView({
 						<BookOpen className="size-4 text-gold" />
 						Liturgy of the Word
 					</h2>
-					<span className="text-caption text-fg-dim">NABRE / USCCB</span>
+					<span className="text-caption text-fg-dim">
+						NABRE / USCCB
+					</span>
 				</div>
 
 				{/* 1st Reading */}
@@ -285,6 +295,42 @@ export function DailyReadingsView({
 					</div>
 				)}
 
+				{/* Alleluia / Gospel Acclamation */}
+				{(() => {
+					const gMatch = (liturgy.readings.gospel || "").match(
+						/^([1-3]?\s*[a-zA-Z\s]+)\s*(\d+):(\d+)/,
+					);
+					const alleluiaCitation =
+						gMatch ?
+							`${gMatch[1].trim()} ${gMatch[2]}:${gMatch[3]}`
+						:	"Verse before Gospel";
+					const isLent = liturgy.season
+						?.toLowerCase()
+						.includes("lent");
+
+					return (
+						<div className="rounded-card border border-gold/40 bg-gold/5 p-4.5 transition-shadow">
+							<div className="flex items-center justify-between">
+								<div className="flex items-center gap-1.5">
+									<span className="text-[11px] font-bold uppercase tracking-widest text-gold">
+										{isLent ?
+											"Gospel Acclamation"
+										:	"Alleluia"}
+									</span>
+								</div>
+								<span className="text-caption text-gold font-semibold">
+									{alleluiaCitation}
+								</span>
+							</div>
+							<h3 className="mt-2 text-title-sm font-semibold text-fg">
+								{isLent ?
+									"Praise to you, Lord Jesus Christ, King of endless glory!"
+								:	"Alleluia, alleluia."}
+							</h3>
+						</div>
+					);
+				})()}
+
 				{/* Holy Gospel */}
 				<div className="rounded-card border-2 border-gold/40 bg-surface-1 p-4.5 shadow-xs transition-shadow">
 					<div className="flex items-center justify-between">
@@ -311,8 +357,8 @@ export function DailyReadingsView({
 								Read Full Scripture Text
 							</p>
 							<p className="text-caption text-fg-muted">
-								Official lectionary texts, audios, and daily video reflections
-								on the USCCB website.
+								Official lectionary texts, audios, and daily
+								video reflections on the USCCB website.
 							</p>
 						</div>
 					</div>

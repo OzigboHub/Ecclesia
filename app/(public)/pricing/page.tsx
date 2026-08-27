@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Sparkles } from "lucide-react";
+import { Check, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
@@ -133,7 +133,7 @@ export default function Pricing() {
 		<div className="flex flex-col gap-16 px-4 py-12 sm:px-6 lg:px-8">
 			<section className="mx-auto flex w-full max-w-4xl flex-col items-center gap-6 text-center">
 				<Badge variant="secondary" className="flex items-center gap-2">
-					<Sparkles className="h-4 w-4" />
+					<ShieldCheck className="h-4 w-4 text-primary" />
 					Trusted by Catholic parishes nationwide
 				</Badge>
 				<div className="space-y-3">

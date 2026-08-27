@@ -26,7 +26,6 @@ import {
 	Clock,
 	LogIn,
 	ShieldAlert,
-	Sparkles,
 	UserPlus,
 	Users,
 } from "lucide-react";
@@ -326,7 +325,7 @@ export function PublicJoinSocietyDialog({
 
 						{canAutoJoin ? (
 							<p className="text-xs text-muted-foreground flex items-center gap-1.5">
-								<Sparkles className="h-3.5 w-3.5 text-primary" />
+								<CheckCircle2 className="h-3.5 w-3.5 text-primary shrink-0" />
 								As parish staff, your membership will be active
 								immediately without review.
 							</p>

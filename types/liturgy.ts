@@ -84,5 +84,6 @@ export interface DailyScriptureTexts {
 	firstReading: ScripturePassage;
 	psalm: ScripturePassage;
 	secondReading?: ScripturePassage;
+	alleluia?: ScripturePassage;
 	gospel: ScripturePassage;
 }
