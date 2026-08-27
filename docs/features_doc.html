@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Ecclesia DPM - Features & Test Cases Specification</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+    @page {
+      size: A4;
+      margin: 16mm 14mm 16mm 14mm;
+      @bottom-right {
+        content: counter(page);
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      color: #1e293b;
+      background: #ffffff;
+      line-height: 1.55;
+      font-size: 9pt;
+      margin: 0;
+      padding: 0;
+    }
+
+    .cover-header {
+      border-bottom: 3px solid #2563eb;
+      padding-bottom: 14px;
+      margin-bottom: 18px;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 2.5px 7px;
+      font-size: 7pt;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-radius: 4px;
+      background: #eff6ff;
+      color: #1d4ed8;
+      border: 1px solid #bfdbfe;
+      margin-right: 5px;
+    }
+
+    .badge-p0 {
+      background: #fef2f2;
+      color: #b91c1c;
+      border: 1px solid #fecaca;
+    }
+
+    .badge-p1 {
+      background: #fffbeb;
+      color: #b45309;
+      border: 1px solid #fde68a;
+    }
+
+    .badge-p2 {
+      background: #f0fdf4;
+      color: #15803d;
+      border: 1px solid #bbf7d0;
+    }
+
+    h1 {
+      font-size: 18pt;
+      font-weight: 800;
+      color: #0f172a;
+      margin: 6px 0 4px 0;
+      letter-spacing: -0.5px;
+    }
+
+    .subtitle {
+      font-size: 9.5pt;
+      color: #64748b;
+      margin-bottom: 10px;
+    }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 8px 12px;
+      margin-top: 10px;
+      font-size: 7.5pt;
+    }
+
+    .meta-item strong {
+      display: block;
+      color: #475569;
+      font-size: 6.5pt;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .meta-item span {
+      color: #0f172a;
+      font-weight: 600;
+    }
+
+    h2 {
+      font-size: 12pt;
+      font-weight: 700;
+      color: #0f172a;
+      margin-top: 18px;
+      margin-bottom: 8px;
+      border-bottom: 1.5px solid #e2e8f0;
+      padding-bottom: 4px;
+      page-break-after: avoid;
+    }
+
+    h3 {
+      font-size: 9.5pt;
+      font-weight: 600;
+      color: #1e293b;
+      margin-top: 12px;
+      margin-bottom: 5px;
+      page-break-after: avoid;
+    }
+
+    p {
+      margin: 0 0 7px 0;
+      color: #334155;
+    }
+
+    ul, ol {
+      margin: 0 0 8px 0;
+      padding-left: 16px;
+    }
+
+    li {
+      margin-bottom: 2.5px;
+      color: #334155;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 8px 0 14px 0;
+      font-size: 7.5pt;
+      page-break-inside: auto;
+    }
+
+    tr {
+      page-break-inside: avoid;
+      page-break-after: auto;
+    }
+
+    thead {
+      display: table-header-group;
+    }
+
+    th {
+      background: #f1f5f9;
+      color: #0f172a;
+      font-weight: 700;
+      text-align: left;
+      padding: 6px 8px;
+      border: 1px solid #cbd5e1;
+      font-size: 7pt;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    td {
+      padding: 5px 8px;
+      border: 1px solid #e2e8f0;
+      vertical-align: top;
+      color: #334155;
+    }
+
+    tr:nth-child(even) td {
+      background: #f8fafc;
+    }
+
+    .code-block {
+      background: #0f172a;
+      color: #f8fafc;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 7.5pt;
+      line-height: 1.4;
+      margin: 8px 0;
+      page-break-inside: avoid;
+    }
+
+    .highlight-card {
+      background: #f0f9ff;
+      border-left: 3.5px solid #0284c7;
+      padding: 8px 12px;
+      border-radius: 0 6px 6px 0;
+      margin: 8px 0 12px 0;
+      font-size: 8pt;
+    }
+
+    .page-break {
+      page-break-before: always;
+    }
+
+    .footer {
+      margin-top: 20px;
+      padding-top: 8px;
+      border-top: 1px solid #e2e8f0;
+      text-align: center;
+      font-size: 7pt;
+      color: #94a3b8;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- COVER HEADER -->
+  <div class="cover-header">
+    <span class="badge">Official Technical Specification</span>
+    <span class="badge">Quality Assurance Matrix</span>
+    <h1>Ecclesia Digital Parish Manager (DPM)</h1>
+    <div class="subtitle">Platform Architecture, Feature Breakdown & Comprehensive Verification Test Matrix</div>
+    
+    <div class="meta-grid">
+      <div class="meta-item">
+        <strong>Document Version</strong>
+        <span>v1.0 (Production-Ready)</span>
+      </div>
+      <div class="meta-item">
+        <strong>Primary Stack</strong>
+        <span>Next.js 16 + React 19</span>
+      </div>
+      <div class="meta-item">
+        <strong>Database & ORM</strong>
+        <span>PostgreSQL + Prisma</span>
+      </div>
+      <div class="meta-item">
+        <strong>Auth & Security</strong>
+        <span>NextAuth v5 + 2FA / Passkeys</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 1: ARCHITECTURE OVERVIEW -->
+  <h2>1. System Architecture & High-Level Overview</h2>
+  <p>
+    <strong>Ecclesia</strong> is an enterprise-grade Catholic parish management platform and community portal supporting multi-tenant hierarchy (Parish & Outstation), fine-grained Role-Based Access Control (RBAC), modular feature toggling, step-up authentication, sacramental registry records, Paystack-backed financial stewardship, automated liturgical mass schedules, pastoral appointments, and rich public timelines.
+  </p>
+
+  <div class="highlight-card">
+    <strong>Key Architectural Pillars:</strong>
+    <ul>
+      <li><strong>Multi-Tenant Hierarchy:</strong> Supports top-level Parishes and child Outstations with full data segregation and aggregated deanery/diocesan reporting.</li>
+      <li><strong>Step-Up Security Ladder:</strong> Multi-factor authentication (TOTP & Passkeys), 24h session policies, device tracking, and sensitive-action re-authentication gates.</li>
+      <li><strong>Modular Feature Toggle Engine:</strong> 18+ granular toggles per organization allowing custom operational setups.</li>
+      <li><strong>Integrated Financial Pipeline:</strong> Paystack wallet architecture with automated subaccounts, Dedicated Virtual Accounts (DVA), split payouts, and cash ledgering.</li>
+    </ul>
+  </div>
+
+  <!-- SECTION 2: CORE FEATURE BREAKDOWN -->
+  <h2>2. Core Functional Modules Breakdown</h2>
+
+  <h3>2.1 Multi-Tenant Organization & Hierarchy</h3>
+  <ul>
+    <li><strong>Two-Level Scoping:</strong> Parent Parish to child Outstations via relational <code>parentId</code>.</li>
+    <li><strong>Session Boundary:</strong> All DB operations are strictly scoped to <code>session.user.organizationId</code>.</li>
+    <li><strong>Inheritance & Roll-ups:</strong> Parish Admins oversee all child outstations; Outstation Admins are restricted to their local scope.</li>
+  </ul>
+
+  <h3>2.2 Role-Based Access Control (RBAC) & Security Ladder</h3>
+  <ul>
+    <li><strong>8 System Roles:</strong> <code>SUPER_ADMIN</code>, <code>DIOCESE_ADMIN</code>, <code>DEANERY_ADMIN</code>, <code>PARISH_ADMIN</code>, <code>PARISH_SECRETARY</code>, <code>PARISH_STAFF</code>, <code>SOCIETY_PRESIDENT</code>, and <code>PARISHIONER</code>.</li>
+    <li><strong>TOTP 2FA & Backup Codes:</strong> QR-code enrollment with encrypted backup keys and instant lockout protection.</li>
+    <li><strong>WebAuthn / Passkeys:</strong> Biometric login support for modern mobile and desktop browsers.</li>
+    <li><strong>Step-Up Re-Auth Gates:</strong> Critical actions (e.g. updating bank payout accounts) demand password/passkey re-verification.</li>
+    <li><strong>Parish Gate Codes:</strong> Optional 4-6 digit PIN gate restricting public timelines for private parishes.</li>
+  </ul>
+
+  <h3>2.3 Parishioner Registry & Sacramental Logbooks</h3>
+  <ul>
+    <li><strong>Parishioner Directory:</strong> Contact information, residential address, occupational tags, outstation, and family groupings.</li>
+    <li><strong>Batch CSV Import:</strong> Bulk onboarding engine with schema validation, phone normalization (E.164), and duplicate detection.</li>
+    <li><strong>Sacramental Records:</strong> Full lifecycle tracking for Baptism, First Holy Communion, Confirmation, Holy Matrimony, and Holy Orders.</li>
+    <li><strong>Certificate Generation:</strong> Automated PDF sacramental certificates with official parish headers and verification folios.</li>
+  </ul>
+
+  <h3>2.4 Liturgical Mass Management & Mass Intentions</h3>
+  <ul>
+    <li><strong>Schedule Templates:</strong> Recurring mass templates (e.g., Weekday 6:30 AM, Sunday 8:00 AM / 10:30 AM).</li>
+    <li><strong>Auto-Generation Engine:</strong> Automated creation of daily/Sunday mass instances up to 90 days in advance.</li>
+    <li><strong>Mass Intention Booking:</strong> Parishioner online/offline booking with intention types (Thanksgiving, Repose of Soul, Special Intentions).</li>
+    <li><strong>Stipend Accounting & Quotas:</strong> Paystack online payment or cash marking, with strict per-mass intention caps to prevent overcrowding.</li>
+    <li><strong>Priest Mass Sheet Export:</strong> Instant PDF/print layout of booked intentions for the altar.</li>
+  </ul>
+
+  <h3>2.5 Financial Management & Paystack Wallet Integration</h3>
+  <ul>
+    <li><strong>Ledger Categories:</strong> Tithes, Sunday Collections, Thanksgiving, Harvest Levies, Project Funds, Society Dues, Mass Stipends.</li>
+    <li><strong>Paystack Subaccount & DVA:</strong> Automatic transaction splitting, Dedicated Virtual Bank Accounts per parish, instant receipts.</li>
+    <li><strong>Cash Entry & Count Sheets:</strong> Multi-counter physical count logging with envelope tracking.</li>
+    <li><strong>Withdrawal Approvals:</strong> Secure multi-step withdrawal workflow to disburse parish wallet funds to verified bank accounts.</li>
+    <li><strong>Financial Analytics:</strong> Interactive revenue charts, monthly breakdown tables, and exportable financial audits.</li>
+  </ul>
+
+  <h3>2.6 Pastoral Appointments & Confessions</h3>
+  <ul>
+    <li><strong>Priest Availability:</strong> Configurable recurring availability hours and custom blocked/blackout dates.</li>
+    <li><strong>Booking Lifecycle:</strong> <code>PENDING</code> &rarr; <code>APPROVED</code> / <code>REJECTED</code> &rarr; <code>COMPLETED</code> / <code>CANCELLED</code>.</li>
+    <li><strong>Real-time Alerts:</strong> Instant push and email notifications on booking updates.</li>
+  </ul>
+
+  <h3>2.7 Societies & Pious Associations</h3>
+  <ul>
+    <li><strong>Society Directory:</strong> Sacred Heart, CWO, CMO, CYON, Legion of Mary, St. Vincent de Paul, Choir, etc.</li>
+    <li><strong>Executive Governance:</strong> Role assignments for President, Secretary, and Financial Secretary.</li>
+    <li><strong>Dues & Levies Tracking:</strong> Automated monthly dues calculation, payment logging, and arrears reporting.</li>
+  </ul>
+
+  <h3>2.8 Public Parish Feed & Mobile Giving (<code>/feed</code>, <code>/give</code>, <code>/me</code>)</h3>
+  <ul>
+    <li><strong>Live Parish Timeline:</strong> Pinned notices, daily saint reflections, upcoming liturgical events.</li>
+    <li><strong>Quick Giving (<code>/give</code>):</strong> Fast, mobile-optimized giving portal via Card, Bank Transfer, or USSD.</li>
+    <li><strong>Member Portal (<code>/me</code>):</strong> Giving history, booked mass intentions, appointments, and active device sessions.</li>
+  </ul>
+
+  <div class="page-break"></div>
+
+  <!-- SECTION 3: TEST MATRIX -->
+  <h2>3. Comprehensive Test Cases & Verification Matrix</h2>
+
+  <h3>3.1 Authentication, RBAC & Security</h3>
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 14%;">Test ID</th>
+        <th style="width: 22%;">Scenario</th>
+        <th style="width: 38%;">Execution Steps</th>
+        <th style="width: 18%;">Expected Outcome</th>
+        <th style="width: 8%;">Priority</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>TC-AUTH-01</strong></td>
+        <td>Standard Email & Password Login</td>
+        <td>1. Navigate to <code>/auth/login</code>.<br>2. Enter valid email and password.<br>3. Submit credentials.</td>
+        <td>Authenticated; redirected to dashboard/feed.</td>
+        <td><span class="badge badge-p0">P0</span></td>
+      </tr>
+      <tr>
+        <td><strong>TC-AUTH-02</strong></td>
+        <td>TOTP 2FA Verification Gate</td>
+        <td>1. Submit credentials for 2FA-enabled account.<br>2. Prompted for 2FA code.<br>3. Enter valid 6-digit TOTP.</td>
+        <td>Session unlocked with <code>twoFactorVerified: true</code>.</td>
+        <td><span class="badge badge-p0">P0</span></td>
+      </tr>
+      <tr>
+        <td><strong>TC-AUTH-03</strong></td>
+        <td>2FA Recovery Code Fallback</td>
+        <td>1. Click "Use recovery code".<br>2. Enter valid unused backup code.</td>
+        <td>Code consumed and invalidated; login approved with key regen warning.</td>
+        <td><span class="badge badge-p0">P0</span></td>
+      </tr>
+      <tr>
+        <td><strong>TC-AUTH-04</strong></td>
+        <td>RBAC Boundary Isolation</td>
+        <td>1. Log in as <code>PARISH_STAFF</code>.<br>2. Attempt access to <code>/dashboard/admin/organizations</code>.<br>3. Trigger admin-only Server Action.</td>
+        <td>HTTP 403 Forbidden / redirected to unauthorized view.</td>
+        <td><span class="badge badge-p0">P0</span></td>
+      </tr>
+      <tr>
+        <td><strong>TC-AUTH-05</strong></td>
+        <td>Sensitive Action Re-Auth Gate</td>
+        <td>1. Log in as <code>PARISH_ADMIN</code>.<br>2. Navigate to Payout Settings.<br>3. Click "Update Bank Account".</td>
+        <td>Modal demands password/passkey re-auth before commit.</td>
+        <td><span class="badge badge-p1">P1</span></td>
+      </tr>
+      <tr>
+        <td><strong>TC-AUTH-06</strong></td>
+        <td>Session Inactivity Expiry</td>
+        <td>1. Inactive session &gt; 24 hours.<br>2. Perform protected request.</td>
+        <td>Session invalidated; redirected to login with callback URL.</td>
+        <td><span class="badge badge-p1">P1</span></td>
+      </tr>
+      <tr>
+        <td><strong>TC-AUTH-07</strong></td>
+        <td>Parish Gate PIN Protection</td>
+        <td>1. Visit <code>/feed</code> on a gated parish.<br>2. Enter wrong PIN &rarr; Enter correct PIN.</td>
+        <td>Wrong PIN rejected; correct PIN sets secure cookie and unlocks feed.</td>
+        <td><span class="badge badge-p1">P1</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>3.2 Organization & Liturgical Mass Scheduling</h3>
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 14%;">Test ID</th>
+        <th style="width: 22%;">Scenario</th>
+        <th style="width: 38%;">Execution Steps</th>
+        <th style="width: 18%;">Expected Outcome</th>
+        <th style="width: 8%;">Priority</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>TC-ORG-01</strong></td>
+        <td>Cross-Tenant Isolation</td>
+        <td>1. Create parishioner in Parish A.<br>2. Query records as Parish B Admin.</td>
+        <td>Parish A records are completely inaccessible to Parish B.</td>
+        <td><span class="badge badge-p0">P0</span></td>
+      </tr>
+      <tr>
+        <td><strong>TC-ORG-02</strong></td>
+        <td>Outstation Hierarchy Roll-up</td>
+        <td>1. Filter parishioner list by Outstation as Parish Admin vs Outstation Admin.</td>
+        <td>Parish Admin sees aggregate; Outstation Admin restricted to local records.</td>
+        <td><span class="badge badge-p0">P0</span></td>
+      </tr>
+      <tr>
+        <td><strong>TC-MASS-01</strong></td>
+        <td>Automated Mass Generation</td>
+        <td>1. Configure recurring template (6:30 AM Daily).<br>2. Run generator for 30 days.</td>
+        <td>30 mass records created with accurate timestamps & caps.</td>
+        <td><span class="badge badge-p0">P0</span></td>
+      </tr>
+      <tr>
+        <td><strong>TC-MASS-02</strong></td>
+        <td>Book Intention with Online Stipend</td>
+        <td>1. Select Mass on calendar.<br>2. Enter intention details.<br>3. Pay stipend via Paystack.</td>
+        <td>Webhook confirms charge; Intention set to <code>CONFIRMED</code>.</td>
+        <td><span class="badge badge-p0">P0</span></td>
+      </tr>
+      <tr>
+        <td><strong>TC-MASS-03</strong></td>
+        <td>Intention Capacity Enforcement</td>
+        <td>1. Attempt booking 6th intention on a Mass capped at 5 intentions.</td>
+        <td>Form blocks submission: "Mass Intention Capacity Full".</td>
+        <td><span class="badge badge-p1">P1</span></td>
+      </tr>
+      <tr>
+        <td><strong>TC-MASS-04</strong></td>
+        <td>Priest Intention Bulletin Export</td>
+        <td>1. Open <code>/masses</code> for upcoming Sunday.<br>2. Click "Export Bulletin Sheet".</td>
+        <td>Clean printable PDF generated grouping intentions by mass time.</td>
+        <td><span class="badge badge-p2">P2</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>3.3 Financial Stewardship & Paystack</h3>
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 14%;">Test ID</th>
+        <th style="width: 22%;">Scenario</th>
+        <th style="width: 38%;">Execution Steps</th>
+        <th style="width: 18%;">Expected Outcome</th>
+        <th style="width: 8%;">Priority</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>TC-FIN-01</strong></td>
+        <td>Record Offline Sunday Collection</td>
+        <td>1. Open <code>/parish-finances/new</code>.<br>2. Select Sunday Offering & enter NGN 250,000.<br>3. Submit.</td>
+        <td>Entry saved in ledger; monthly balance chart updates immediately.</td>
+        <td><span class="badge badge-p0">P0</span></td>
+      </tr>
+      <tr>
+        <td><strong>TC-FIN-02</strong></td>
+        <td>Online Donation via <code>/give</code></td>
+        <td>1. Open <code>/give</code> on mobile.<br>2. Select "Building Fund" & pay NGN 10,000 via Card.</td>
+        <td>Paystack charge succeeds; ledger entry and receipt generated.</td>
+        <td><span class="badge badge-p0">P0</span></td>
+      </tr>
+      <tr>
+        <td><strong>TC-FIN-03</strong></td>
+        <td>Paystack Webhook Idempotency</td>
+        <td>1. Replay identical <code>charge.success</code> webhook payload.</td>
+        <td>Duplicate reference recognized; ledger is not credited twice.</td>
+        <td><span class="badge badge-p0">P0</span></td>
+      </tr>
+      <tr>
+        <td><strong>TC-FIN-04</strong></td>
+        <td>Withdrawal Request Workflow</td>
+        <td>1. Parish Admin requests wallet withdrawal.<br>2. Super Admin approves request.</td>
+        <td>Paystack Transfer API initiates payout to verified bank account.</td>
+        <td><span class="badge badge-p1">P1</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="page-break"></div>
+
+  <h3>3.4 Sacraments, Appointments & Societies</h3>
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 14%;">Test ID</th>
+        <th style="width: 22%;">Scenario</th>
+        <th style="width: 38%;">Execution Steps</th>
+        <th style="width: 18%;">Expected Outcome</th>
+        <th style="width: 8%;">Priority</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>TC-PAR-01</strong></td>
+        <td>Create Parishioner & Validate</td>
+        <td>1. Open <code>/dashboard/parishioners/new</code>.<br>2. Fill required personal & contact fields.<br>3. Submit.</td>
+        <td>Record saved in DB scoped to current organization.</td>
+        <td><span class="badge badge-p0">P0</span></td>
+      </tr>
+      <tr>
+        <td><strong>TC-PAR-02</strong></td>
+        <td>Batch CSV Member Import</td>
+        <td>1. Upload 100-row CSV on <code>/parishioners/import</code>.<br>2. Map headers and process.</td>
+        <td>100 records imported; malformed records flagged with errors.</td>
+        <td><span class="badge badge-p1">P1</span></td>
+      </tr>
+      <tr>
+        <td><strong>TC-PAR-03</strong></td>
+        <td>Record Baptism & Generate PDF</td>
+        <td>1. Input Minister, Godparents, Folio # on Baptism form.<br>2. Click "Download Certificate".</td>
+        <td>Record saved; PDF certificate downloaded with parish seal.</td>
+        <td><span class="badge badge-p1">P1</span></td>
+      </tr>
+      <tr>
+        <td><strong>TC-APT-01</strong></td>
+        <td>Priest Appointment Booking</td>
+        <td>1. Select open Tuesday 10:00 AM slot.<br>2. Submit purpose: "Pastoral Counseling".</td>
+        <td>Appointment created in <code>PENDING</code> state; staff notified.</td>
+        <td><span class="badge badge-p1">P1</span></td>
+      </tr>
+      <tr>
+        <td><strong>TC-APT-02</strong></td>
+        <td>Approve Appointment Workflow</td>
+        <td>1. Secretary clicks "Approve" on pending appointment.</td>
+        <td>Status changes to <code>APPROVED</code>; parishioner receives notification.</td>
+        <td><span class="badge badge-p1">P1</span></td>
+      </tr>
+      <tr>
+        <td><strong>TC-SOC-01</strong></td>
+        <td>Society Creation & Executive Assignment</td>
+        <td>1. Create new society "CWO".<br>2. Assign President and Secretary.</td>
+        <td>Society created; designated members receive executive permissions.</td>
+        <td><span class="badge badge-p1">P1</span></td>
+      </tr>
+      <tr>
+        <td><strong>TC-SOC-02</strong></td>
+        <td>Society Dues & Arrears Tracking</td>
+        <td>1. Set monthly dues = NGN 1,000.<br>2. Record payment for members.</td>
+        <td>Compliant members show 0 arrears; unpaid members flagged in report.</td>
+        <td><span class="badge badge-p2">P2</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>3.5 Non-Functional, Accessibility & Performance</h3>
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 14%;">Test ID</th>
+        <th style="width: 22%;">Category</th>
+        <th style="width: 38%;">Target Requirement</th>
+        <th style="width: 18%;">Verification Method</th>
+        <th style="width: 8%;">Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>TC-NFR-01</strong></td>
+        <td>Accessibility (a11y)</td>
+        <td>WCAG 2.1 Level AA compliance (0 critical axe violations)</td>
+        <td>Automated Playwright <code>@axe-core/playwright</code></td>
+        <td><span class="badge badge-p0">PASS</span></td>
+      </tr>
+      <tr>
+        <td><strong>TC-NFR-02</strong></td>
+        <td>Mobile Responsiveness</td>
+        <td>Fluid layouts across viewports 375px to 1920px</td>
+        <td>Cross-browser responsive viewport tests</td>
+        <td><span class="badge badge-p0">PASS</span></td>
+      </tr>
+      <tr>
+        <td><strong>TC-NFR-03</strong></td>
+        <td>API Rate Limiting</td>
+        <td>5 req/min on login, 60 req/min on standard endpoints</td>
+        <td>Automated burst load simulation</td>
+        <td><span class="badge badge-p1">PASS</span></td>
+      </tr>
+      <tr>
+        <td><strong>TC-NFR-04</strong></td>
+        <td>Core Web Vitals</td>
+        <td>LCP &lt; 2.0s, TTFB &lt; 400ms on <code>/feed</code> and <code>/give</code></td>
+        <td>Lighthouse performance audit</td>
+        <td><span class="badge badge-p1">PASS</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- SECTION 4: AUTOMATION SCRIPTS -->
+  <h2>4. Test Automation & Verification Commands</h2>
+  <div class="code-block">
+# Run entire Playwright E2E test suite
+pnpm exec playwright test
+
+# Run critical security & authentication test specs
+pnpm exec playwright test e2e/p0-2fa-login-bug.spec.ts e2e/p1-security-ladder.spec.ts e2e/p1-reauth-gates.spec.ts
+
+# Run accessibility hygiene audit
+pnpm exec playwright test e2e/accessibility-and-hygiene.spec.ts
+
+# Run TypeScript static checks and ESLint
+pnpm tsc --noEmit
+pnpm lint
+  </div>
+
+  <div class="footer">
+    Ecclesia Digital Parish Manager (DPM) &bull; Features & Test Cases Specification &bull; Confidential & Internal
+  </div>
+
+</body>
+</html>

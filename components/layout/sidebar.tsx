@@ -94,6 +94,7 @@ export default function Sidebar({ session }: { session: Session | null }) {
 	// Parishioners get a curated set of links
 	const PARISHIONER_LINKS = [
 		"Dashboard",
+		"Daily Readings",
 		"Pay",
 		"Mass Intentions",
 		"Mass Calendar",
@@ -105,6 +106,7 @@ export default function Sidebar({ session }: { session: Session | null }) {
 
 	const OUTSTATION_ADMIN_LINKS = [
 		"Dashboard",
+		"Daily Readings",
 		"Parishioners",
 		"Mass Calendar",
 		"Mass Intentions",

@@ -8,6 +8,9 @@ import { FeedShell, RailSection } from "@/components/feed/feed-shell";
 import { FeedEmpty } from "@/components/feed/feed-states";
 import { LockInProvider } from "@/components/feed/lock-in/lock-in-provider";
 import { naira } from "@/components/feed/feed-card-shell";
+import { LiturgyFeedCard } from "@/components/liturgy/liturgy-feed-card";
+import { LiturgyRailWidget } from "@/components/liturgy/liturgy-rail-widget";
+import { LiturgyService } from "@/lib/services/liturgy.service";
 import db from "@/lib/db";
 import type { FeedItem } from "@/lib/feed/types";
 import Link from "next/link";
@@ -19,15 +22,23 @@ export const metadata = {
 };
 
 export default async function FeedPage() {
-	const [prefs, session] = await Promise.all([getPreferences(), auth()]);
+	const [prefs, session, liturgy] = await Promise.all([
+		getPreferences(),
+		auth(),
+		LiturgyService.getDailyLiturgy(),
+	]);
 
 	// No parish chosen: the cold open. Highlights from everywhere, with a
 	// standing invitation to pick one — a card in the feed, not a modal wall.
 	if (!prefs.organizationId) {
 		const highlights = await getHighlightsFeed();
 		return (
-			<FeedShell topBar={<HighlightsTopBar />}>
+			<FeedShell
+				topBar={<HighlightsTopBar />}
+				aside={<LiturgyRailWidget liturgy={liturgy} />}
+			>
 				<PickParishInvitation />
+				<LiturgyFeedCard liturgy={liturgy} />
 				<LockInProvider
 					isMember={false}
 					organizationId={null}
@@ -75,8 +86,14 @@ export default async function FeedPage() {
 					parishId={gate.data.organizationId}
 				/>
 			}
-			aside={<ContextRail {...rail} />}
+			aside={
+				<>
+					<LiturgyRailWidget liturgy={liturgy} />
+					<ContextRail {...rail} />
+				</>
+			}
 		>
+			<LiturgyFeedCard liturgy={liturgy} />
 			<LockInProvider
 				isMember={isMember}
 				organizationId={prefs.organizationId}

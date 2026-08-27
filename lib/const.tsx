@@ -1,4 +1,5 @@
 import {
+	BookOpen,
 	Building2,
 	Calendar,
 	CalendarCog,
@@ -27,6 +28,11 @@ export const SIDEBAR = [
 		icon: <LayoutDashboard className=" w-5 h-5" />,
 		name: "Dashboard",
 		href: "/dashboard",
+	},
+	{
+		icon: <BookOpen className=" w-5 h-5" />,
+		name: "Daily Readings",
+		href: "/readings",
 	},
 	{
 		icon: <Users className=" w-5 h-5" />,
