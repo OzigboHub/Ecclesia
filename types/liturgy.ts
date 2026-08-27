@@ -62,3 +62,27 @@ export interface DailyLiturgy {
 	};
 	usccbLink: string;
 }
+
+export interface ScriptureVerse {
+	book_id?: string;
+	book_name?: string;
+	chapter?: number;
+	verse?: number;
+	text: string;
+}
+
+export interface ScripturePassage {
+	citation: string;
+	label: string; // "First Reading", "Responsorial Psalm", etc.
+	text: string;
+	verses?: ScriptureVerse[];
+	translationName?: string;
+	error?: string;
+}
+
+export interface DailyScriptureTexts {
+	firstReading: ScripturePassage;
+	psalm: ScripturePassage;
+	secondReading?: ScripturePassage;
+	gospel: ScripturePassage;
+}

@@ -16,6 +16,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { LiturgyImageModal } from "./liturgy-image-modal";
+import { UsccbReaderModal } from "./usccb-reader-modal";
 
 interface DailyReadingsViewProps {
 	initialLiturgy: DailyLiturgy;
@@ -316,25 +317,29 @@ export function DailyReadingsView({
 						</div>
 					</div>
 
-					<div className="flex items-center gap-2 self-end sm:self-auto">
+					<div className="flex items-center gap-2 self-end sm:self-auto shrink-0 whitespace-nowrap">
 						<button
 							type="button"
 							onClick={handleShare}
-							className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-hairline bg-surface-2 px-3 py-1.5 text-body-sm font-medium text-fg hover:bg-surface-3 transition-colors"
+							className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-hairline bg-surface-2 px-3 py-1.5 text-body-sm font-medium text-fg hover:bg-surface-3 transition-colors shrink-0 whitespace-nowrap"
 						>
 							<Share2 className="size-3.5" />
 							Share
 						</button>
 
-						<a
-							href={liturgy.usccbLink}
-							target="_blank"
-							rel="noopener noreferrer"
-							className="inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-gold px-3.5 py-1.5 text-body-sm font-semibold text-on-gold hover:opacity-95 transition-opacity"
-						>
-							<span>Open USCCB</span>
-							<ExternalLink className="size-3.5" />
-						</a>
+						<UsccbReaderModal
+							url={liturgy.usccbLink}
+							liturgy={liturgy}
+							trigger={
+								<button
+									type="button"
+									className="inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-gold px-3.5 py-1.5 text-body-sm font-semibold text-on-gold hover:opacity-95 transition-opacity shrink-0 whitespace-nowrap"
+								>
+									<BookOpen className="size-3.5" />
+									<span>Read Full Text</span>
+								</button>
+							}
+						/>
 					</div>
 				</div>
 			</section>

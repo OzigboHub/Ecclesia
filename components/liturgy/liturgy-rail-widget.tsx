@@ -1,7 +1,8 @@
 import { RailSection } from "@/components/feed/feed-shell";
 import type { DailyLiturgy, LiturgicalColor } from "@/types/liturgy";
-import { BookOpen, ExternalLink, Quote } from "lucide-react";
+import { BookOpen, Quote } from "lucide-react";
 import Link from "next/link";
+import { UsccbReaderModal } from "./usccb-reader-modal";
 
 const colorBadgeStyles: Record<LiturgicalColor, { badge: string; dot: string }> = {
 	green: {
@@ -67,23 +68,26 @@ export function LiturgyRailWidget({ liturgy }: { liturgy: DailyLiturgy }) {
 					</div>
 				</div>
 
-				<div className="mt-3 flex items-center justify-between border-t border-hairline pt-2">
+				<div className="mt-3 flex items-center justify-between border-t border-hairline pt-2 whitespace-nowrap">
 					<Link
 						href={`/readings?date=${liturgy.date}`}
-						className="flex items-center gap-1 text-caption font-semibold text-gold hover:underline"
+						className="flex items-center gap-1 text-caption font-semibold text-gold hover:underline shrink-0 whitespace-nowrap"
 					>
 						<BookOpen className="size-3" />
-						View Full Liturgy
+						<span>View Full Liturgy</span>
 					</Link>
-					<a
-						href={liturgy.usccbLink}
-						target="_blank"
-						rel="noopener noreferrer"
-						className="flex items-center gap-0.5 text-caption text-fg-dim hover:text-fg"
-					>
-						<span>USCCB</span>
-						<ExternalLink className="size-2.5" />
-					</a>
+					<UsccbReaderModal
+						url={liturgy.usccbLink}
+						liturgy={liturgy}
+						trigger={
+							<button
+								type="button"
+								className="flex items-center gap-0.5 text-caption font-medium text-fg-dim hover:text-fg transition-colors shrink-0 whitespace-nowrap"
+							>
+								<span>Read Full Text</span>
+							</button>
+						}
+					/>
 				</div>
 			</div>
 		</RailSection>

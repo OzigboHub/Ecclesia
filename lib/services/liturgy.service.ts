@@ -208,4 +208,99 @@ export class LiturgyService {
 			usccbLink: readingsRes?.usccbLink || defaultUsccbLink,
 		};
 	}
+
+	/**
+	 * Fetch full Scripture texts for a set of readings citations
+	 */
+	static async getDailyScriptureTexts(readings: {
+		firstReading: string;
+		psalm: string;
+		secondReading?: string;
+		gospel: string;
+	}) {
+		const [firstReading, psalm, secondReading, gospel] = await Promise.all([
+			this.fetchPassage(readings.firstReading, "First Reading"),
+			this.fetchPassage(readings.psalm, "Responsorial Psalm"),
+			readings.secondReading ?
+				this.fetchPassage(readings.secondReading, "Second Reading")
+			:	Promise.resolve(undefined),
+			this.fetchPassage(readings.gospel, "Holy Gospel"),
+		]);
+
+		return {
+			firstReading,
+			psalm,
+			secondReading,
+			gospel,
+		};
+	}
+
+	/**
+	 * Helper to fetch and format scripture passage text
+	 */
+	static async fetchPassage(citation: string, label: string) {
+		if (!citation) {
+			return { citation: "", label, text: "No citation provided" };
+		}
+
+		// Clean citation string (remove verse sub-letters like 18b -> 18, replace "and" with comma)
+		let cleaned = citation
+			.replace(/(\d+)[a-z]/gi, "$1")
+			.replace(/\s+and\s+/gi, ", ")
+			.replace(/\s+/g, " ")
+			.trim();
+
+		const primaryUrl = `https://bible-api.com/${encodeURIComponent(cleaned)}`;
+
+		try {
+			const res = await fetch(primaryUrl, {
+				next: { revalidate: 604800 }, // 7 days cache
+			});
+
+			if (res.ok) {
+				const data = await res.json();
+				return {
+					citation,
+					label,
+					text: data.text ? data.text.trim() : "",
+					verses: data.verses || [],
+					translationName: data.translation_name || "Scripture Text",
+				};
+			}
+
+			// Fallback: if range syntax was too complex, try book + chapter
+			const match = cleaned.match(/^([1-3]?\s*[a-zA-Z\s]+)\s*(\d+)/);
+			if (match) {
+				const fallbackQuery = `${match[1].trim()} ${match[2]}`;
+				const fallbackRes = await fetch(
+					`https://bible-api.com/${encodeURIComponent(fallbackQuery)}`,
+					{ next: { revalidate: 604800 } },
+				);
+				if (fallbackRes.ok) {
+					const data = await fallbackRes.json();
+					return {
+						citation,
+						label,
+						text: data.text ? data.text.trim() : "",
+						verses: data.verses || [],
+						translationName: data.translation_name || "Scripture Text",
+					};
+				}
+			}
+
+			return {
+				citation,
+				label,
+				text: `Passage for ${citation}. Click below to view the official text on USCCB.`,
+				error: "Could not load full text directly",
+			};
+		} catch (error) {
+			return {
+				citation,
+				label,
+				text: `Passage for ${citation}. Click below to view the official text on USCCB.`,
+				error: "Network error loading scripture",
+			};
+		}
+	}
 }

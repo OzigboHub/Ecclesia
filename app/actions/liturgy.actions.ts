@@ -78,3 +78,28 @@ export async function getLiturgyRangeAction(
 		};
 	}
 }
+
+/**
+ * Get full scripture texts for the given readings
+ */
+export async function getDailyScriptureTextsAction(readings: {
+	firstReading: string;
+	psalm: string;
+	secondReading?: string;
+	gospel: string;
+}) {
+	try {
+		const data = await LiturgyService.getDailyScriptureTexts(readings);
+		return {
+			success: true,
+			message: "Scripture texts retrieved successfully",
+			data,
+		};
+	} catch (error) {
+		console.error("Error in getDailyScriptureTextsAction:", error);
+		return {
+			success: false,
+			message: "Failed to retrieve scripture texts",
+		};
+	}
+}
