@@ -1,19 +1,23 @@
 "use client";
 
 import { getMassDays, getMasses } from "@/app/actions/mass.actions"; // Ensure this action handles getting masses by date
+import { getLiturgyForDateAction } from "@/app/actions/liturgy.actions";
 import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatTime12h } from "@/lib/format-time";
 import { cn } from "@/lib/utils";
+import type { DailyLiturgy } from "@/types/liturgy";
 import { endOfMonth, format, startOfMonth } from "date-fns";
 import {
+	BookOpen,
 	Calendar as CalendarIcon,
 	Clock,
 	FileText,
 	MapPin,
 	User,
 } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { MassEditDialog } from "./mass-edit-dialog";
@@ -38,17 +42,27 @@ export function MassCalendar({
 	const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
 	const [masses, setMasses] = useState<any[]>([]);
 	const [massDays, setMassDays] = useState<Date[]>([]);
+	const [liturgy, setLiturgy] = useState<DailyLiturgy | null>(null);
 	const [loading, setLoading] = useState(false);
 
 	useEffect(() => {
 		if (date) {
 			loadMasses(date);
+			loadLiturgy(date);
 		}
 	}, [date]);
 
 	useEffect(() => {
 		loadMassDays(currentMonth);
 	}, [currentMonth]);
+
+	const loadLiturgy = async (selectedDate: Date) => {
+		const dateStr = format(selectedDate, "yyyy-MM-dd");
+		const res = await getLiturgyForDateAction(dateStr);
+		if (res.success && res.data) {
+			setLiturgy(res.data);
+		}
+	};
 
 	const loadMasses = async (selectedDate: Date) => {
 		setLoading(true);
@@ -103,6 +117,45 @@ export function MassCalendar({
 						{masses.length === 1 ? "Mass" : "Masses"}
 					</Badge>
 				</div>
+
+				{liturgy && (
+					<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-border bg-card p-3.5 shadow-xs">
+						<div className="flex items-center gap-3">
+							<div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-gold/15 text-sm font-bold text-gold">
+								✝
+							</div>
+							<div>
+								<div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+									<span className="font-semibold uppercase tracking-wider">
+										{liturgy.season}
+									</span>
+									<span>·</span>
+									<span className="font-medium text-foreground">
+										{liturgy.colorName}
+									</span>
+									{liturgy.celebration.type && liturgy.celebration.type !== "FERIA" && (
+										<>
+											<span>·</span>
+											<span className="uppercase text-[10px] font-semibold text-primary">
+												{liturgy.celebration.type}
+											</span>
+										</>
+									)}
+								</div>
+								<p className="text-sm font-semibold text-foreground">
+									{liturgy.celebration.name}
+								</p>
+							</div>
+						</div>
+						<Link
+							href={`/readings?date=${liturgy.date}`}
+							className="inline-flex items-center gap-1.5 self-end sm:self-auto rounded-lg bg-secondary/80 px-3 py-1.5 text-xs font-semibold text-gold hover:bg-secondary transition-colors"
+						>
+							<BookOpen className="size-3.5" />
+							<span>Daily Readings</span>
+						</Link>
+					</div>
+				)}
 
 				{loading ?
 					<div className="flex items-center justify-center h-48">

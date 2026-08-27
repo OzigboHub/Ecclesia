@@ -39,6 +39,18 @@ const TABS: Tab[] = [
 		),
 	},
 	{
+		href: "/readings",
+		label: "Readings",
+		icon: (p) => (
+			<svg viewBox="0 0 20 20" className={p.className} {...stroke}>
+				<path d="M3 4.5A2.5 2.5 0 0 1 5.5 2H17v14.5H5.5A2.5 2.5 0 0 0 3 19V4.5z" />
+				<path d="M3 16.5A2.5 2.5 0 0 1 5.5 14H17" />
+				<line x1="8" y1="6.5" x2="13" y2="6.5" />
+				<line x1="8" y1="10" x2="11.5" y2="10" />
+			</svg>
+		),
+	},
+	{
 		href: "/explore",
 		label: "Explore",
 		icon: (p) => (
