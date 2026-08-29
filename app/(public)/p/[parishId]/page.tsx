@@ -2,11 +2,13 @@ import { getPublicAppointmentAvailabilities } from "@/app/actions/appointment.ac
 import { getPublicSocietiesForParish } from "@/app/actions/society.actions";
 import { auth } from "@/auth";
 import { PublicAppointmentBooking } from "@/components/features/appointments/public-appointment-booking";
+import { LandingDailyReadings } from "@/components/public/landing-daily-readings";
 import { PublicSocietiesSection } from "@/components/public/public-societies-section";
 import { Button } from "@/components/ui/button";
 import db from "@/lib/db";
 import { isFeatureEnabled } from "@/lib/features.server";
 import { formatTime12h } from "@/lib/format-time";
+import { LiturgyService } from "@/lib/services/liturgy.service";
 import { format } from "date-fns";
 import {
 	BookOpen,
@@ -151,12 +153,21 @@ export default async function ParishPage({
 		massIntentionsEnabled,
 		societiesResult,
 		session,
+		todayLiturgy,
 	] = await Promise.all([
 		getPublicAppointmentAvailabilities(parishId),
 		isFeatureEnabled(parishId, "enableMassIntentions"),
 		getPublicSocietiesForParish(parishId),
 		auth(),
+		LiturgyService.getDailyLiturgy().catch(() => null),
 	]);
+
+	const scriptureTexts = todayLiturgy
+		? await LiturgyService.getDailyScriptureTexts(
+				todayLiturgy.readings,
+				todayLiturgy.season
+		  ).catch(() => null)
+		: null;
 
 	const societies = societiesResult.data ?? [];
 
@@ -317,6 +328,16 @@ export default async function ParishPage({
 			</section>
 
 			<div className="mx-auto max-w-6xl space-y-12 px-4 py-12">
+				{/* Daily Liturgy & Mass Readings Section */}
+				{todayLiturgy && (
+					<LandingDailyReadings
+						initialLiturgy={todayLiturgy}
+						initialScriptureTexts={scriptureTexts}
+						parishId={parishId}
+						parishName={org.name}
+					/>
+				)}
+
 				{appointmentAvailabilityResult.success && (
 					<section className="space-y-6">
 						<div className="flex items-center gap-2">
