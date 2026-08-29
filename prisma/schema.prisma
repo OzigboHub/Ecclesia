@@ -51,18 +51,18 @@ model Organization {
   parent                         Organization?                @relation("ChildOrganizations", fields: [parentId], references: [id])
   children                       Organization[]               @relation("ChildOrganizations")
   featureSettings                OrganizationFeatureSettings?
+  accessCodes                    ParishAccessCode[]
   financialEntries               ParishFinancialEntry[]
+  gateCode                       ParishGateCode?
   parishioners                   Parishioner[]
   payments                       Payment[]
   paymentTypes                   PaymentType[]
+  pushSubscriptions              PushSubscription[]
   sacraments                     Sacrament[]
   societies                      Society[]
   users                          User[]
-  withdrawals                    WithdrawalRequest[]
   userAccountRequests            UserAccountRequest[]
-  pushSubscriptions              PushSubscription[]
-  accessCodes                    ParishAccessCode[]
-  gateCode                       ParishGateCode?
+  withdrawals                    WithdrawalRequest[]
 
   @@index([parentId])
 }
@@ -90,12 +90,10 @@ model OrganizationFeatureSettings {
   enableRecurringDonations    Boolean      @default(false)
   enableMobileApp             Boolean      @default(false)
   enablePublicWebsite         Boolean      @default(true)
-  // When true, the parish's public timeline sits behind a shared gate code.
-  // Off by default: most parishes want to be found.
-  requireGateCode             Boolean      @default(false)
   createdAt                   DateTime     @default(now())
   updatedAt                   DateTime     @updatedAt
   enableSocieties             Boolean      @default(true)
+  requireGateCode             Boolean      @default(false)
   organization                Organization @relation(fields: [organizationId], references: [id])
 
   @@index([organizationId])
@@ -103,9 +101,6 @@ model OrganizationFeatureSettings {
 
 model User {
   id                          String                    @id @default(uuid())
-  // Nullable since the parish-code sign-in path: a parishioner imported from a
-  // paper register has a name and a phone number and nothing else. Postgres
-  // permits many NULLs under a unique index, so staff emails stay unique.
   email                       String?                   @unique
   password                    String?
   firstName                   String
@@ -129,35 +124,29 @@ model User {
   twoFactorMethod             TwoFactorMethod?
   twoFactorSecret             String?
   displayPicture              String?
-  // Whether the parish-code door works for this account. Parishioners may
-  // switch it off once they hold a verified email, a password and two-factor —
-  // staff never had it in the first place. Always re-enableable, so nobody can
-  // trap themselves out of their own account.
   allowCodeSignIn             Boolean                   @default(true)
-  // Set when a one-time code sent to `email` was confirmed. Cleared whenever
-  // the address changes, so it always refers to the address currently on file.
   emailVerifiedAt             DateTime?
   appointmentsAssigned        Appointment[]             @relation("AppointmentAssignee")
   appointmentsMade            Appointment[]             @relation("AppointmentCreator")
   availabilitySlots           AppointmentAvailability[] @relation("AppointmentAvailabilityAssignee")
+  emailVerificationTokens     EmailVerificationToken[]
   liveStreamsCreated          LiveStream[]              @relation("LiveStreamCreator")
+  accessCodesIssued           ParishAccessCode[]        @relation("AccessCodeIssuer")
   financialEntriesRecorded    ParishFinancialEntry[]    @relation("FinancialEntryRecorder")
+  parishioner                 Parishioner?              @relation("ParishionerAccount")
   passwordResetTokens         PasswordResetToken[]
   paymentsRecorded            Payment[]                 @relation("PaymentRecorder")
   paymentTypesCreated         PaymentType[]             @relation("PaymentTypeCreator")
   PaymentType                 PaymentType[]
+  pushSubscriptions           PushSubscription[]
   reviewedJoinRequests        SocietyJoinRequest[]      @relation("JoinRequestReviewer")
   twoFactorChallenges         TwoFactorChallenge[]
   twoFactorSetupTokens        TwoFactorSetupToken[]
   organization                Organization              @relation(fields: [organizationId], references: [id])
-  sessions                    UserSession[]
-  withdrawalsRequested        WithdrawalRequest[]       @relation("WithdrawalRequester")
   userAccountRequestsCreated  UserAccountRequest[]      @relation("RequestedBy")
   userAccountRequestsReviewed UserAccountRequest[]      @relation("ReviewedBy")
-  pushSubscriptions           PushSubscription[]
-  emailVerificationTokens     EmailVerificationToken[]
-  parishioner                 Parishioner?              @relation("ParishionerAccount")
-  accessCodesIssued           ParishAccessCode[]        @relation("AccessCodeIssuer")
+  sessions                    UserSession[]
+  withdrawalsRequested        WithdrawalRequest[]       @relation("WithdrawalRequester")
 
   @@index([organizationId])
   @@index([email])
@@ -203,11 +192,7 @@ model UserSession {
   lastSeenAt  DateTime  @default(now())
   expiresAt   DateTime
   revokedAt   DateTime?
-  // "password" for staff, "parish-code" for device-bound members. Staff keep
-  // one live session and a 30-minute idle timeout; members hold several
-  // devices for months. See auth.config.ts.
   authMethod  String    @default("password")
-  // "Tecno Spark · Chrome" — what the Devices screen shows.
   deviceLabel String?
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -251,9 +236,9 @@ model ParishAccessCode {
   consumedAt     DateTime?
   revokedAt      DateTime?
   attempts       Int          @default(0)
+  issuedBy       User         @relation("AccessCodeIssuer", fields: [issuedById], references: [id])
   organization   Organization @relation(fields: [organizationId], references: [id])
   parishioner    Parishioner  @relation(fields: [parishionerId], references: [id], onDelete: Cascade)
-  issuedBy       User         @relation("AccessCodeIssuer", fields: [issuedById], references: [id])
 
   @@index([organizationId])
   @@index([parishionerId])
@@ -270,7 +255,7 @@ model ParishGateCode {
   updatedById    String?
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
-  organization   Organization @relation(fields: [organizationId], references: [id])
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 }
 
 /// Durable rate-limit counters for gate-code and access-code entry. Keyed by a
@@ -309,13 +294,13 @@ model UserAccountRequest {
   lastName       String
   email          String
   role           UserRole
-  message        String?
   status         UserAccountRequestStatus @default(PENDING)
-  createdAt      DateTime                 @default(now())
+  message        String?
   reviewedAt     DateTime?
+  createdAt      DateTime                 @default(now())
   organization   Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   requestedBy    User                     @relation("RequestedBy", fields: [requestedById], references: [id], onDelete: Cascade)
-  reviewedBy     User?                    @relation("ReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewedBy     User?                    @relation("ReviewedBy", fields: [reviewedById], references: [id])
 
   @@index([organizationId])
   @@index([requestedById])
@@ -420,17 +405,9 @@ model Parishioner {
   isActive           Boolean              @default(true)
   photoUrl           String?
   organizationId     String
-  // Real foreign key to the login account. Replaces the email string-match in
-  // auth.config.ts, which cannot work once a parishioner has no email.
   userId             String?              @unique
-  user               User?                @relation("ParishionerAccount", fields: [userId], references: [id])
-  // E.164 form of `phone`, written by lib/phone.ts. This is the lock-in lookup
-  // key; `phone` stays as typed so the office still sees what it entered.
   phoneE164          String?
-  // Opt-in for the Parish moments feed card. Defaults off: a baptism or a
-  // birthday is not public until the person says it is.
   shareMoments       Boolean              @default(false)
-  accessCodes        ParishAccessCode[]
   appointments       Appointment[]        @relation("ParishionerAppointment")
   baptisms           Baptism[]
   confirmations      Confirmation[]
@@ -438,13 +415,15 @@ model Parishioner {
   marriagesAsHusband Marriage[]           @relation("MarriageHusband")
   marriagesAsWife    Marriage[]           @relation("MarriageWife")
   massIntentions     MassIntention[]
+  accessCodes        ParishAccessCode[]
   organization       Organization         @relation(fields: [organizationId], references: [id])
+  user               User?                @relation("ParishionerAccount", fields: [userId], references: [id])
   payments           Payment[]
   sacraments         Sacrament[]
-  joinRequests       SocietyJoinRequest[]
-  societyMemberships SocietyMembership[]
   societyLed         Society?             @relation("SocietyPresident")
   societyAssisted    Society?             @relation("SocietySecretary")
+  joinRequests       SocietyJoinRequest[]
+  societyMemberships SocietyMembership[]
 
   @@unique([organizationId, phoneE164])
   @@index([organizationId])
@@ -477,8 +456,8 @@ model SocietyMembership {
   parishionerId  String
   societyId      String
   joinedAt       DateTime    @default(now())
-  membershipDate DateTime?
   role           SocietyRole @default(MEMBER)
+  membershipDate DateTime?
   parishioner    Parishioner @relation(fields: [parishionerId], references: [id])
   society        Society     @relation(fields: [societyId], references: [id])
 
@@ -562,7 +541,6 @@ model MassIntention {
   intention      String
   intentionType  IntentionType
   requestedBy    String
-  intendedFor    String?
   contactEmail   String?
   contactPhone   String?
   stipend        Float?
@@ -576,6 +554,7 @@ model MassIntention {
   massId         String
   status         IntentionStatus @default(PENDING)
   organizationId String
+  intendedFor    String?
   event          Event?          @relation(fields: [eventId], references: [id])
   mass           Mass            @relation(fields: [massId], references: [id])
   organization   Organization    @relation(fields: [organizationId], references: [id])
@@ -840,8 +819,8 @@ model PushSubscription {
   organizationId String
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
-  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([organizationId])

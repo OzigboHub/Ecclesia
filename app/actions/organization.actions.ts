@@ -6,6 +6,7 @@ import db from "@/lib/db";
 import type { FeatureName } from "@/lib/features";
 import { featureDependencies } from "@/lib/features";
 import { isFeatureEnabled } from "@/lib/features.server";
+import { renderBrandedEmailTemplate } from "@/lib/notifications/email-template";
 import { canEditOrganizationProfile } from "@/lib/permissions";
 import type { ActionResponse } from "@/types";
 import {
@@ -13,6 +14,8 @@ import {
 	type OrganizationFeatureSettings,
 } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
+import { Resend } from "resend";
 
 /**
  * Get public information about an organization
@@ -725,9 +728,18 @@ export async function createParish(
 			};
 		}
 
+		const hasManualPassword = Boolean(
+			parishAdmin.password && parishAdmin.password.trim(),
+		);
+		const plainPassword =
+			hasManualPassword ?
+				parishAdmin.password!
+			:	crypto.randomBytes(32).toString("hex");
+		const hashedPassword = await bcrypt.hash(plainPassword, 12);
+
 		// Create parish and parish admin in a transaction
-		const parish = await db.$transaction(async (tx) => {
-			const newParish = await tx.organization.create({
+		const { newParish, newAdmin } = await db.$transaction(async (tx) => {
+			const createdParish = await tx.organization.create({
 				data: {
 					name: parsed.data.name,
 					level: "PARISH",
@@ -737,30 +749,95 @@ export async function createParish(
 				},
 			});
 
-			const hashedPassword = await bcrypt.hash(parishAdmin.password, 12);
-			await tx.user.create({
+			const createdAdmin = await tx.user.create({
 				data: {
 					firstName: parishAdmin.firstName,
 					lastName: parishAdmin.lastName,
 					email: parishAdmin.email,
 					password: hashedPassword,
 					role: "PARISH_ADMIN",
-					organizationId: newParish.id,
+					organizationId: createdParish.id,
 					isActive: true,
 				},
 			});
 
-			return newParish;
+			return { newParish: createdParish, newAdmin: createdAdmin };
 		});
+
+		if (!hasManualPassword) {
+			await sendAdminWelcomeInvitation({
+				email: parishAdmin.email,
+				firstName: parishAdmin.firstName,
+				organizationName: newParish.name,
+				roleTitle: "Parish Administrator",
+				userId: newAdmin.id,
+			});
+		}
 
 		return {
 			success: true,
-			message: "Parish created successfully with parish admin",
-			data: { id: parish.id, name: parish.name },
+			message:
+				hasManualPassword ?
+					"Parish created successfully with parish admin"
+				:	"Parish created successfully. An invitation email with password setup instructions has been sent to the parish admin.",
+			data: { id: newParish.id, name: newParish.name },
 		};
 	} catch (error) {
 		console.error("Failed to create parish:", error);
 		return { success: false, message: "Failed to create parish" };
+	}
+}
+
+/**
+ * Send an email invitation with password reset / setup link to a newly onboarded admin
+ */
+async function sendAdminWelcomeInvitation(params: {
+	email: string;
+	firstName: string;
+	organizationName: string;
+	roleTitle: string;
+	userId: string;
+}) {
+	try {
+		// Delete any existing reset tokens for this user
+		await db.passwordResetToken.deleteMany({
+			where: { userId: params.userId },
+		});
+
+		// Generate reset token (expires in 48 hours for onboarding)
+		const token = crypto.randomBytes(32).toString("hex");
+		const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000);
+
+		await db.passwordResetToken.create({
+			data: {
+				token,
+				userId: params.userId,
+				expiresAt,
+			},
+		});
+
+		if (process.env.RESEND_API_KEY) {
+			const resend = new Resend(process.env.RESEND_API_KEY);
+			const fromName = process.env.RESEND_FROM_NAME?.trim() || "Ecclesia";
+			const fromAddress = "support@ecclesialight.com";
+			const html = renderBrandedEmailTemplate({
+				title: `Welcome to Ecclesia, ${params.firstName}!`,
+				message: `You have been appointed as the ${params.roleTitle} for ${params.organizationName}. Click the button below to set up your account password and access your parish portal.`,
+				ctaLabel: "Set Up Your Password",
+				ctaUrl: `/auth/reset-password?token=${token}`,
+				footerNote:
+					"This invitation link expires in 48 hours. You can also use 'Forgot Password' on the login page anytime with your registered email.",
+			});
+
+			await resend.emails.send({
+				from: `${fromName} <${fromAddress}>`,
+				to: params.email,
+				subject: `Set up your ${params.roleTitle} account for ${params.organizationName}`,
+				html,
+			});
+		}
+	} catch (error) {
+		console.error("Failed to send admin welcome invitation email:", error);
 	}
 }
 
@@ -853,7 +930,16 @@ export async function createOutstation(
 			};
 		}
 
-		const outstation = await db.$transaction(async (tx) => {
+		const hasManualPassword = Boolean(
+			outstationAdmin.password && outstationAdmin.password.trim(),
+		);
+		const plainPassword =
+			hasManualPassword ?
+				outstationAdmin.password!
+			:	crypto.randomBytes(32).toString("hex");
+		const hashedPassword = await bcrypt.hash(plainPassword, 12);
+
+		const { outstation, newAdmin } = await db.$transaction(async (tx) => {
 			const newOutstation = await tx.organization.create({
 				data: {
 					name: parsed.data.name,
@@ -872,11 +958,7 @@ export async function createOutstation(
 				},
 			});
 
-			const hashedPassword = await bcrypt.hash(
-				outstationAdmin.password,
-				12,
-			);
-			await tx.user.create({
+			const createdAdmin = await tx.user.create({
 				data: {
 					firstName: outstationAdmin.firstName,
 					lastName: outstationAdmin.lastName,
@@ -888,8 +970,18 @@ export async function createOutstation(
 				},
 			});
 
-			return newOutstation;
+			return { outstation: newOutstation, newAdmin: createdAdmin };
 		});
+
+		if (!hasManualPassword) {
+			await sendAdminWelcomeInvitation({
+				email: outstationAdmin.email,
+				firstName: outstationAdmin.firstName,
+				organizationName: outstation.name,
+				roleTitle: "Outstation Administrator",
+				userId: newAdmin.id,
+			});
+		}
 
 		const paystackResult = await configureOutstationPaystackProfile(
 			parsed.data.paystackProfile,
@@ -907,7 +999,10 @@ export async function createOutstation(
 
 		return {
 			success: true,
-			message: "Outstation created with Paystack subaccount",
+			message:
+				hasManualPassword ?
+					"Outstation created with Paystack subaccount"
+				:	"Outstation created with Paystack subaccount. An invitation email with password setup instructions has been sent to the outstation admin.",
 			data: { id: outstation.id, name: outstation.name },
 		};
 	} catch (error) {
