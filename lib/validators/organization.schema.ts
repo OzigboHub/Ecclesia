@@ -59,7 +59,9 @@ const parishAdminPasswordSchema = z
 	.regex(
 		/[^A-Za-z0-9]/,
 		"Password must contain at least one special character",
-	);
+	)
+	.optional()
+	.or(z.literal(""));
 
 const outstationAdminFirstNameSchema = parishAdminFirstNameSchema;
 const outstationAdminLastNameSchema = parishAdminLastNameSchema;

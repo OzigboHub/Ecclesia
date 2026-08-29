@@ -375,19 +375,27 @@ export function AdminOrganizationForm({
 								)}
 							</div>
 							<div className="space-y-2">
-								<Label htmlFor="parishAdmin.password">
-									Parish Admin Password *
-								</Label>
+								<div className="flex items-center justify-between">
+									<Label htmlFor="parishAdmin.password">
+										Parish Admin Password (Optional)
+									</Label>
+									<span className="text-xs text-muted-foreground">
+										Optional
+									</span>
+								</div>
 								<Input
 									id="parishAdmin.password"
 									type="password"
 									{...register("parishAdmin.password")}
-									placeholder="Min 8 chars, uppercase, number, special character"
+									placeholder="Leave blank to invite admin via email"
 									disabled={isPending}
 									aria-invalid={
 										!!formErrors.parishAdmin?.password
 									}
 								/>
+								<p className="text-xs text-muted-foreground">
+									If left blank, a secure invitation and password setup link will be generated. The admin can also use Forgot Password anytime.
+								</p>
 								{formErrors.parishAdmin?.password && (
 									<p className="text-sm text-destructive">
 										{
@@ -488,19 +496,27 @@ export function AdminOrganizationForm({
 								)}
 							</div>
 							<div className="space-y-2">
-								<Label htmlFor="outstationAdmin.password">
-									Outstation Admin Password *
-								</Label>
+								<div className="flex items-center justify-between">
+									<Label htmlFor="outstationAdmin.password">
+										Outstation Admin Password (Optional)
+									</Label>
+									<span className="text-xs text-muted-foreground">
+										Optional
+									</span>
+								</div>
 								<Input
 									id="outstationAdmin.password"
 									type="password"
 									{...register("outstationAdmin.password")}
-									placeholder="Enter a strong password"
+									placeholder="Leave blank to invite admin via email"
 									disabled={isPending}
 									aria-invalid={
 										!!formErrors.outstationAdmin?.password
 									}
 								/>
+								<p className="text-xs text-muted-foreground">
+									If left blank, a secure invitation and password setup link will be generated. The admin can also use Forgot Password anytime.
+								</p>
 								{formErrors.outstationAdmin?.password && (
 									<p className="text-sm text-destructive">
 										{
