@@ -8,15 +8,20 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Eye, EyeOff } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
-export default function LoginPage() {
+function LoginFormContent() {
 	const router = useRouter();
+	const searchParams = useSearchParams();
 	const [isPending, startTransition] = useTransition();
 	const [showPassword, setShowPassword] = useState(false);
+
+	const rawCallback = searchParams.get("callbackUrl");
+	const callbackUrl =
+		rawCallback && rawCallback.startsWith("/") ? rawCallback : "/dashboard";
 
 	const form = useForm<LoginInput>({
 		resolver: zodResolver(loginSchema),
@@ -49,7 +54,9 @@ export default function LoginPage() {
 				router.push(
 					`/auth/setup-2fa?token=${encodeURIComponent(
 						twoFactorPayload.setupToken ?? "",
-					)}&email=${encodeURIComponent(data.email)}`,
+					)}&email=${encodeURIComponent(
+						data.email,
+					)}&callbackUrl=${encodeURIComponent(callbackUrl)}`,
 				);
 				return;
 			}
@@ -61,15 +68,16 @@ export default function LoginPage() {
 						twoFactorPayload.challengeToken ?? "",
 					)}&method=${encodeURIComponent(
 						twoFactorPayload.method ?? "",
-					)}&email=${encodeURIComponent(data.email)}`,
+					)}&email=${encodeURIComponent(
+						data.email,
+					)}&callbackUrl=${encodeURIComponent(callbackUrl)}`,
 				);
 				return;
 			}
 
 			if (result.success) {
 				toast.success("Welcome back!");
-				router.push("/dashboard");
-				router.refresh();
+				window.location.href = callbackUrl;
 			} else {
 				toast.error(result.message ?? "Invalid email or password");
 			}
@@ -240,5 +248,13 @@ export default function LoginPage() {
 				</div>
 			</div>
 		</div>
+	);
+}
+
+export default function LoginPage() {
+	return (
+		<Suspense fallback={<div className="min-h-screen bg-background" />}>
+			<LoginFormContent />
+		</Suspense>
 	);
 }

@@ -52,7 +52,7 @@ export function UserEditForm({
     defaultValues: {
       firstName: user.firstName,
       lastName: user.lastName,
-      email: user.email,
+      email: user.email ?? "",
       role: user.role,
     },
   });

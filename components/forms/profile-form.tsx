@@ -411,7 +411,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
 							<Input
 								id="email"
 								type="email"
-								value={user.email}
+								value={user.email ?? ""}
 								disabled
 								className="opacity-60"
 							/>

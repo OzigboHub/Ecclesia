@@ -33,6 +33,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { OrganizationContextSwitcher } from "../admin/organization-context-switcher";
+import { ThemeIconToggle } from "./theme-toggle";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Badge } from "../ui/badge";
 import { Separator } from "../ui/separator";
@@ -159,7 +160,7 @@ export default function ProtectedNavbar({
 	if (!user) return null;
 
 	return (
-		<div className="fixed inset-x-0 top-0 z-50 bg-secondary/95 backdrop-blur lg:left-[280px] lg:w-[calc(100%-280px)]">
+		<div className="fixed inset-x-0 top-0 z-50 bg-secondary/95 text-secondary-foreground border-b border-border backdrop-blur lg:left-[280px] lg:w-[calc(100%-280px)]">
 			<div className="flex h-16 w-full items-center justify-between px-4 md:px-6 lg:px-8">
 				<div className="lg:hidden inline w-28">
 					<Image
@@ -172,6 +173,7 @@ export default function ProtectedNavbar({
 				</div>
 
 				<div className="flex w-full items-center justify-end gap-3">
+					<ThemeIconToggle />
 					<Link
 						href="/profile"
 						className="flex items-center gap-3 hover:opacity-80 transition-opacity"
@@ -181,7 +183,7 @@ export default function ProtectedNavbar({
 								src={user?.displayPicture || undefined}
 								alt={user?.name ?? "User"}
 							/>
-							<AvatarFallback className="bg-primary text-secondary font-extrabold">
+							<AvatarFallback className="bg-primary text-primary-foreground font-extrabold">
 								{getInitials(user?.name ?? "")}
 							</AvatarFallback>
 						</Avatar>
@@ -208,7 +210,7 @@ export default function ProtectedNavbar({
 			</div>
 
 			{open && (
-				<div className="fixed inset-x-0 top-16 h-[calc(100vh-4rem)] bg-secondary px-3 py-4 overflow-y-auto lg:hidden">
+				<div className="fixed inset-x-0 top-16 h-[calc(100vh-4rem)] bg-secondary text-secondary-foreground border-b border-border px-3 py-4 overflow-y-auto lg:hidden">
 					<div className="mt-5">
 						<div className="flex min-h-[calc(100vh-10rem)] flex-col justify-between">
 							<div className="flex flex-col gap-3">
@@ -224,8 +226,8 @@ export default function ProtectedNavbar({
 												key={k}
 												className={`${
 													pathName === i.href ?
-														"text-secondary bg-primary "
-													:	" text-white hover:bg-white/10"
+														"text-primary-foreground bg-primary "
+													:	" text-secondary-foreground hover:bg-accent"
 												} items-center py-2.5 flex gap-4 rounded-[10px] px-4 mb-1 transition-all`}
 											>
 												<div className="shrink-0">
@@ -236,7 +238,7 @@ export default function ProtectedNavbar({
 												</div>
 											</Link>
 										))}
-										<Separator className="my-3 bg-white/10" />
+										<Separator className="my-3 bg-border" />
 									</div>
 								)}
 
@@ -266,8 +268,8 @@ export default function ProtectedNavbar({
 												key={k}
 												className={`${
 													pathName === i.href ?
-														"text-secondary bg-primary "
-													:	" text-white hover:bg-white/10"
+														"text-primary-foreground bg-primary "
+													:	" text-secondary-foreground hover:bg-accent"
 												} items-center py-2.5 flex gap-4 rounded-[10px] px-4 mb-1 transition-all`}
 											>
 												<div className="shrink-0">
@@ -288,8 +290,8 @@ export default function ProtectedNavbar({
 															`/societies/${mySocietyId}/manage`,
 														)
 													) ?
-														"text-secondary bg-primary "
-													:	" text-white hover:bg-white/10"
+														"text-primary-foreground bg-primary "
+													:	" text-secondary-foreground hover:bg-accent"
 												} items-center py-2.5 flex gap-4 rounded-[10px] px-4 mb-1 transition-all`}
 											>
 												<div className="shrink-0">
@@ -320,8 +322,8 @@ export default function ProtectedNavbar({
 													key={k}
 													className={`${
 														pathName === i.href ?
-															"text-secondary bg-primary "
-														:	" text-white hover:bg-white/10"
+															"text-primary-foreground bg-primary "
+														:	" text-secondary-foreground hover:bg-accent"
 													} items-center py-2.5 flex gap-4 rounded-[10px] px-4 mb-1 transition-all`}
 												>
 													<div className="shrink-0">
@@ -351,8 +353,8 @@ export default function ProtectedNavbar({
 													key={k}
 													className={`${
 														pathName === i.href ?
-															"text-secondary bg-primary "
-														:	" text-white hover:bg-white/10"
+															"text-primary-foreground bg-primary "
+														:	" text-secondary-foreground hover:bg-accent"
 													} items-center py-2.5 flex gap-4 rounded-[10px] px-4 mb-1 transition-all`}
 												>
 													<div className="shrink-0">
@@ -367,14 +369,14 @@ export default function ProtectedNavbar({
 									</div>
 								)}
 
-								<Separator className="my-4 bg-white/10" />
+								<Separator className="my-4 bg-border" />
 								<Link
 									href="/profile"
 									onClick={() => setOpen(false)}
 									className={`${
 										pathName === "/profile" ?
-											"text-secondary bg-primary "
-										:	" text-white hover:bg-white/10"
+											"text-primary-foreground bg-primary "
+										:	" text-secondary-foreground hover:bg-accent"
 									} items-center py-2.5 flex gap-4 rounded-[10px] px-4 mb-1 transition-all`}
 								>
 									<div className="text-[13px] font-medium">
@@ -384,7 +386,7 @@ export default function ProtectedNavbar({
 								{canInstall && (
 									<div
 										onClick={install}
-										className="px-4 py-2 text-primary cursor-pointer hover:bg-white/10 rounded-[10px] gap-4 flex items-center mb-1 transition-all"
+										className="px-4 py-2 text-primary cursor-pointer hover:bg-accent rounded-[10px] gap-4 flex items-center mb-1 transition-all"
 									>
 										<Download className="w-5 h-5 shrink-0" />
 										<p className="text-[13px] font-bold">
@@ -396,7 +398,7 @@ export default function ProtectedNavbar({
 									onClick={async () => {
 										await logout();
 									}}
-									className="px-4 py-2 text-primary cursor-pointer hover:bg-white/10 rounded-[10px] gap-4 flex items-center mb-6 transition-all"
+									className="px-4 py-2 text-primary cursor-pointer hover:bg-accent rounded-[10px] gap-4 flex items-center mb-6 transition-all"
 								>
 									<LogOut className="w-5 h-5 shrink-0" />
 									<p className="text-[13px] font-bold">

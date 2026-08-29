@@ -1,24 +1,14 @@
-import { neonConfig } from "@neondatabase/serverless";
-import { PrismaNeon } from "@prisma/adapter-neon";
+import "dotenv/config";
+import db from "../lib/db";
 import {
 	Gender,
 	HierarchyLevel,
 	MaritalStatus,
-	PrismaClient,
 	UserRole,
 } from "@prisma/client";
 import bcrypt from "bcryptjs";
-import WebSocket from "ws";
 
-neonConfig.webSocketConstructor = WebSocket;
-
-const connectionString = process.env.DATABASE_URL;
-if (!connectionString) {
-	throw new Error("DATABASE_URL environment variable is not set");
-}
-
-const adapter = new PrismaNeon({ connectionString });
-const prisma = new PrismaClient({ adapter });
+const prisma = db;
 
 async function main() {
 	console.log("Start seeding...");
@@ -149,21 +139,18 @@ async function main() {
 		});
 	}
 
-	for (const p of seedParishioners) {
-		await prisma.parishioner.upsert({
-			where: { email: p.email },
-			update: {},
-			create: {
-				firstName: p.firstName,
-				lastName: p.lastName,
-				email: p.email,
-				phone: p.phone,
-				gender: p.gender as unknown as Gender,
-				maritalStatus: p.maritalStatus as unknown as MaritalStatus,
-				organizationId: organization.id,
-			},
-		});
-	}
+	await prisma.parishioner.createMany({
+		data: seedParishioners.map((p) => ({
+			firstName: p.firstName,
+			lastName: p.lastName,
+			email: p.email,
+			phone: p.phone,
+			gender: p.gender as unknown as Gender,
+			maritalStatus: p.maritalStatus as unknown as MaritalStatus,
+			organizationId: organization.id,
+		})),
+		skipDuplicates: true,
+	});
 
 	console.log("Seeding finished.");
 }

@@ -1035,6 +1035,322 @@ export type JoinRequestWithParishionerAndSociety = Prisma.SocietyJoinRequestGetP
 	};
 }>;
 
+export type PublicSocietyItem = {
+	id: string;
+	name: string;
+	description: string | null;
+	patronSaint: string | null;
+	meetingSchedule: string | null;
+	monthlyDueAmount: number | null;
+	organizationId: string;
+	memberCount: number;
+	presidentName: string | null;
+	secretaryName: string | null;
+	userStatus:
+		| "NONE"
+		| "MEMBER"
+		| "PENDING"
+		| "REJECTED"
+		| "WRONG_PARISH"
+		| "WRONG_ROLE"
+		| "UNAUTHENTICATED";
+};
+
+export async function getPublicSocietiesForParish(
+	parishId: string,
+): Promise<ActionResponse<PublicSocietyItem[]>> {
+	try {
+		const enabled = await isFeatureEnabled(parishId, "enableSocieties");
+		if (!enabled) {
+			return {
+				success: true,
+				message: "Societies are disabled for this parish",
+				data: [],
+			};
+		}
+
+		const [societies, session] = await Promise.all([
+			db.society.findMany({
+				where: { organizationId: parishId },
+				select: {
+					id: true,
+					name: true,
+					description: true,
+					patronSaint: true,
+					meetingSchedule: true,
+					monthlyDueAmount: true,
+					organizationId: true,
+					president: {
+						select: {
+							firstName: true,
+							lastName: true,
+						},
+					},
+					secretary: {
+						select: {
+							firstName: true,
+							lastName: true,
+						},
+					},
+					_count: {
+						select: { members: true },
+					},
+				},
+				orderBy: { name: "asc" },
+			}),
+			auth(),
+		]);
+
+		let userParishionerId: string | null = session?.user?.parishionerId ?? null;
+		if (session?.user && !userParishionerId && session.user.email) {
+			const parishioner = await db.parishioner.findUnique({
+				where: { email: session.user.email },
+				select: { id: true },
+			});
+			userParishionerId = parishioner?.id ?? null;
+		}
+
+		const societyIds = societies.map((s) => s.id);
+		let memberMap = new Set<string>();
+		let requestMap = new Map<string, string>();
+
+		if (session?.user && userParishionerId && societyIds.length > 0) {
+			const [memberships, requests] = await Promise.all([
+				db.societyMembership.findMany({
+					where: {
+						parishionerId: userParishionerId,
+						societyId: { in: societyIds },
+					},
+					select: { societyId: true },
+				}),
+				db.societyJoinRequest.findMany({
+					where: {
+						parishionerId: userParishionerId,
+						societyId: { in: societyIds },
+					},
+					select: { societyId: true, status: true },
+				}),
+			]);
+
+			memberMap = new Set(memberships.map((m) => m.societyId));
+			requestMap = new Map(requests.map((r) => [r.societyId, r.status]));
+		}
+
+		const allowedRoles = [
+			"PARISHIONER",
+			"PARISH_ADMIN",
+			"PARISH_SECRETARY",
+			"PARISH_STAFF",
+			"SOCIETY_PRESIDENT",
+			"SOCIETY_SECRETARY",
+		];
+
+		const data: PublicSocietyItem[] = societies.map((s) => {
+			let userStatus: PublicSocietyItem["userStatus"] = "UNAUTHENTICATED";
+
+			if (session?.user) {
+				if (session.user.organizationId !== s.organizationId) {
+					userStatus = "WRONG_PARISH";
+				} else if (!allowedRoles.includes(session.user.role)) {
+					userStatus = "WRONG_ROLE";
+				} else if (memberMap.has(s.id)) {
+					userStatus = "MEMBER";
+				} else if (requestMap.has(s.id)) {
+					const status = requestMap.get(s.id);
+					userStatus =
+						status === "PENDING"
+							? "PENDING"
+							: status === "REJECTED"
+							? "REJECTED"
+							: "NONE";
+				} else {
+					userStatus = "NONE";
+				}
+			}
+
+			return {
+				id: s.id,
+				name: s.name,
+				description: s.description,
+				patronSaint: s.patronSaint,
+				meetingSchedule: s.meetingSchedule,
+				monthlyDueAmount: s.monthlyDueAmount,
+				organizationId: s.organizationId,
+				memberCount: s._count.members,
+				presidentName: s.president
+					? `${s.president.firstName} ${s.president.lastName}`
+					: null,
+				secretaryName: s.secretary
+					? `${s.secretary.firstName} ${s.secretary.lastName}`
+					: null,
+				userStatus,
+			};
+		});
+
+		return {
+			success: true,
+			message: "Societies retrieved successfully",
+			data,
+		};
+	} catch (error) {
+		console.error("Failed to get public societies:", error);
+		return { success: false, message: "Failed to load societies", data: [] };
+	}
+}
+
+export async function getSocietyJoinContext(societyId: string): Promise<
+	ActionResponse<{
+		society: PublicSocietyItem | null;
+		userStatus: PublicSocietyItem["userStatus"];
+	}>
+> {
+	try {
+		const session = await auth();
+		const society = await db.society.findUnique({
+			where: { id: societyId },
+			select: {
+				id: true,
+				name: true,
+				description: true,
+				patronSaint: true,
+				meetingSchedule: true,
+				monthlyDueAmount: true,
+				organizationId: true,
+				president: { select: { firstName: true, lastName: true } },
+				secretary: { select: { firstName: true, lastName: true } },
+				_count: { select: { members: true } },
+			},
+		});
+
+		if (!society) {
+			return {
+				success: false,
+				message: "Society not found",
+				data: { society: null, userStatus: "NONE" },
+			};
+		}
+
+		if (!session?.user) {
+			return {
+				success: true,
+				message: "Society retrieved",
+				data: {
+					society: {
+						id: society.id,
+						name: society.name,
+						description: society.description,
+						patronSaint: society.patronSaint,
+						meetingSchedule: society.meetingSchedule,
+						monthlyDueAmount: society.monthlyDueAmount,
+						organizationId: society.organizationId,
+						memberCount: society._count.members,
+						presidentName: society.president
+							? `${society.president.firstName} ${society.president.lastName}`
+							: null,
+						secretaryName: society.secretary
+							? `${society.secretary.firstName} ${society.secretary.lastName}`
+							: null,
+						userStatus: "UNAUTHENTICATED",
+					},
+					userStatus: "UNAUTHENTICATED",
+				},
+			};
+		}
+
+		let userParishionerId: string | null =
+			session.user.parishionerId ?? null;
+		if (!userParishionerId && session.user.email) {
+			const parishioner = await db.parishioner.findUnique({
+				where: { email: session.user.email },
+				select: { id: true },
+			});
+			userParishionerId = parishioner?.id ?? null;
+		}
+
+		const allowedRoles = [
+			"PARISHIONER",
+			"PARISH_ADMIN",
+			"PARISH_SECRETARY",
+			"PARISH_STAFF",
+			"SOCIETY_PRESIDENT",
+			"SOCIETY_SECRETARY",
+		];
+
+		let userStatus: PublicSocietyItem["userStatus"] = "NONE";
+
+		if (session.user.organizationId !== society.organizationId) {
+			userStatus = "WRONG_PARISH";
+		} else if (!allowedRoles.includes(session.user.role)) {
+			userStatus = "WRONG_ROLE";
+		} else if (userParishionerId) {
+			const [membership, joinRequest] = await Promise.all([
+				db.societyMembership.findUnique({
+					where: {
+						parishionerId_societyId: {
+							parishionerId: userParishionerId,
+							societyId,
+						},
+					},
+					select: { parishionerId: true },
+				}),
+				db.societyJoinRequest.findUnique({
+					where: {
+						parishionerId_societyId: {
+							parishionerId: userParishionerId,
+							societyId,
+						},
+					},
+					select: { status: true },
+				}),
+			]);
+
+			if (membership) {
+				userStatus = "MEMBER";
+			} else if (joinRequest?.status === "PENDING") {
+				userStatus = "PENDING";
+			} else if (joinRequest?.status === "REJECTED") {
+				userStatus = "REJECTED";
+			} else {
+				userStatus = "NONE";
+			}
+		}
+
+		const societyItem: PublicSocietyItem = {
+			id: society.id,
+			name: society.name,
+			description: society.description,
+			patronSaint: society.patronSaint,
+			meetingSchedule: society.meetingSchedule,
+			monthlyDueAmount: society.monthlyDueAmount,
+			organizationId: society.organizationId,
+			memberCount: society._count.members,
+			presidentName: society.president
+				? `${society.president.firstName} ${society.president.lastName}`
+				: null,
+			secretaryName: society.secretary
+				? `${society.secretary.firstName} ${society.secretary.lastName}`
+				: null,
+			userStatus,
+		};
+
+		return {
+			success: true,
+			message: "Society join context retrieved",
+			data: {
+				society: societyItem,
+				userStatus,
+			},
+		};
+	} catch (error) {
+		console.error("Failed to get society join context:", error);
+		return {
+			success: false,
+			message: "Failed to retrieve society details",
+			data: { society: null, userStatus: "NONE" },
+		};
+	}
+}
+
 export async function requestToJoinSociety(
 	societyId: string,
 	message?: string,
@@ -1042,7 +1358,49 @@ export async function requestToJoinSociety(
 	try {
 		const session = await auth();
 		if (!session?.user) {
-			return { success: false, message: "Unauthorized" };
+			return { success: false, message: "Please log in to join a society" };
+		}
+
+		const targetSociety = await db.society.findUnique({
+			where: { id: societyId },
+			select: { id: true, name: true, organizationId: true },
+		});
+		if (!targetSociety) {
+			return { success: false, message: "Society not found" };
+		}
+
+		if (session.user.organizationId !== targetSociety.organizationId) {
+			return {
+				success: false,
+				message: "You can only join societies in your registered parish.",
+			};
+		}
+
+		const allowedRoles = [
+			"PARISHIONER",
+			"PARISH_ADMIN",
+			"PARISH_SECRETARY",
+			"PARISH_STAFF",
+			"SOCIETY_PRESIDENT",
+			"SOCIETY_SECRETARY",
+		];
+		if (!allowedRoles.includes(session.user.role)) {
+			return {
+				success: false,
+				message:
+					"You do not have the appropriate roles to join this society.",
+			};
+		}
+
+		const enabled = await isFeatureEnabled(
+			targetSociety.organizationId,
+			"enableSocieties",
+		);
+		if (!enabled) {
+			return {
+				success: false,
+				message: "Societies feature is not enabled for this parish",
+			};
 		}
 
 		// Resolve parishionerId with email fallback + auto-create
@@ -1092,27 +1450,6 @@ export async function requestToJoinSociety(
 			};
 		}
 
-		const enabled = await isFeatureEnabled(
-			session.user.organizationId,
-			"enableSocieties",
-		);
-		if (!enabled) {
-			return {
-				success: false,
-				message: "Societies feature is not enabled",
-			};
-		}
-
-		const society = await db.society.findFirst({
-			where: {
-				id: societyId,
-				organizationId: session.user.organizationId,
-			},
-		});
-		if (!society) {
-			return { success: false, message: "Society not found" };
-		}
-
 		// Check if already a member
 		const alreadyMember = await db.societyMembership.findUnique({
 			where: {
@@ -1150,6 +1487,11 @@ export async function requestToJoinSociety(
 			revalidatePath(`/dashboard/societies/${societyId}`);
 			revalidatePath("/societies");
 			revalidatePath(`/societies/${societyId}`);
+			revalidatePath(`/p/${targetSociety.organizationId}`);
+			revalidatePath(`/p/${targetSociety.organizationId}/societies`);
+			revalidatePath(
+				`/p/${targetSociety.organizationId}/societies/${societyId}`,
+			);
 
 			return {
 				success: true,
@@ -1200,6 +1542,11 @@ export async function requestToJoinSociety(
 		revalidatePath(`/dashboard/societies/${societyId}`);
 		revalidatePath("/societies");
 		revalidatePath(`/societies/${societyId}`);
+		revalidatePath(`/p/${targetSociety.organizationId}`);
+		revalidatePath(`/p/${targetSociety.organizationId}/societies`);
+		revalidatePath(
+			`/p/${targetSociety.organizationId}/societies/${societyId}`,
+		);
 
 		return {
 			success: true,

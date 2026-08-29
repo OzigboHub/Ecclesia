@@ -34,6 +34,9 @@ export type UnifiedParishioner = {
 type ParishionerWithRelations = Prisma.ParishionerGetPayload<{
 	include: {
 		organization: true;
+		// Sign-in policy only. Never the credential columns — this type is
+		// handed to a page that renders it.
+		user: { select: { allowCodeSignIn: true } };
 		sacraments: true;
 		payments: true;
 	};
@@ -200,7 +203,7 @@ export async function getParishioners(
 				source: "parishioner" as const,
 			})),
 			...parishionerUsers
-				.filter((u) => !parishionerEmails.has(u.email.toLowerCase()))
+				.filter((u) => !u.email || !parishionerEmails.has(u.email.toLowerCase()))
 				.map((u) => ({
 					id: u.id,
 					firstName: u.firstName,
@@ -248,6 +251,8 @@ export async function getParishioner(
 			},
 			include: {
 				organization: true,
+				// Only the sign-in policy flag, never the credential columns.
+				user: { select: { allowCodeSignIn: true } },
 				sacraments: {
 					orderBy: { dateReceived: "desc" },
 				},

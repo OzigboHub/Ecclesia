@@ -15,7 +15,7 @@ export default async function ProfilePage() {
       <div className="flex items-center gap-3">
         <User className="h-7 w-7 text-primary" />
         <div>
-          <h1 className="text-2xl font-bold text-white">My Profile</h1>
+          <h1 className="text-2xl font-bold text-foreground">My Profile</h1>
           <p className="text-sm text-muted-foreground">
             Manage your personal information and profile picture
           </p>

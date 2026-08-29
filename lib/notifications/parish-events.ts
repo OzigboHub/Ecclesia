@@ -114,7 +114,14 @@ async function sendParishEventEmails(input: ParishEventNotificationInput) {
 
 	const chunkSize = 20;
 	for (let i = 0; i < users.length; i += chunkSize) {
-		const chunk = users.slice(i, i + chunkSize);
+		// Members who locked in by phone have no email address, so there is
+		// nothing to send to. They receive the same notice via web push.
+		const chunk = users
+			.slice(i, i + chunkSize)
+			.filter((user): user is typeof user & { email: string } =>
+				Boolean(user.email),
+			);
+		if (chunk.length === 0) continue;
 		await Promise.allSettled(
 			chunk.map((user) =>
 				resend.emails.send({

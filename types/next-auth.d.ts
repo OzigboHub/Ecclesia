@@ -11,6 +11,14 @@ declare module "next-auth" {
 			organizationName: string | null;
 			parishionerId: string | null;
 			sessionId: string;
+			/**
+			 * How this session was established. "password" is a staff login
+			 * through the console; "parish-code" is a parishioner who bound
+			 * this device with a phone number and a one-time code. The two
+			 * have different session lifetimes and concurrency rules — see
+			 * auth.config.ts.
+			 */
+			authMethod: AuthMethod;
 		} & DefaultSession["user"];
 	}
 
@@ -22,7 +30,12 @@ declare module "next-auth" {
 		parishionerId: string | null;
 		sessionVersion: number;
 		sessionId: string;
+		authMethod: AuthMethod;
 	}
+}
+
+declare global {
+	type AuthMethod = "password" | "parish-code";
 }
 
 declare module "next-auth/jwt" {
@@ -35,5 +48,6 @@ declare module "next-auth/jwt" {
 		parishionerId?: string | null;
 		sessionVersion?: number;
 		sessionId?: string;
+		authMethod?: AuthMethod;
 	}
 }

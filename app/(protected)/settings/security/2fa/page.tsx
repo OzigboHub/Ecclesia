@@ -35,6 +35,8 @@ export default function TwoFactorSettingsPage() {
 	const [totpSecret, setTotpSecret] = useState<string | null>(null);
 	const [otpauthUrl, setOtpauthUrl] = useState<string | null>(null);
 	const [isSetupReady, setIsSetupReady] = useState(false);
+	const [confirmingDisable, setConfirmingDisable] = useState(false);
+	const [disablePassword, setDisablePassword] = useState("");
 
 	useEffect(() => {
 		if (isLoading) return;
@@ -54,22 +56,31 @@ export default function TwoFactorSettingsPage() {
 		});
 	}, [isLoading]);
 
+	const handleDisable = () => {
+		startTransition(async () => {
+			const result = await disableTwoFactor(disablePassword);
+			if (result.success) {
+				toast.success(result.message || "Two-factor disabled");
+				setEnabled(false);
+				setCode("");
+				setChallengeToken(null);
+				setTotpSecret(null);
+				setOtpauthUrl(null);
+				setIsSetupReady(false);
+				setConfirmingDisable(false);
+				setDisablePassword("");
+				return;
+			}
+			toast.error(result.message || "Failed to disable two-factor");
+		});
+	};
+
 	const handleToggle = () => {
 		if (enabled) {
-			startTransition(async () => {
-				const result = await disableTwoFactor();
-				if (result.success) {
-					toast.success("Two-factor disabled");
-					setEnabled(false);
-					setCode("");
-					setChallengeToken(null);
-					setTotpSecret(null);
-					setOtpauthUrl(null);
-					setIsSetupReady(false);
-					return;
-				}
-				toast.error(result.message || "Failed to disable two-factor");
-			});
+			// Turning two-factor off needs the password, not just a live
+			// session — an unlocked, already-signed-in machine must not be able
+			// to strip the account back down to one factor.
+			setConfirmingDisable(true);
 			return;
 		}
 
@@ -146,6 +157,59 @@ export default function TwoFactorSettingsPage() {
 						disabled={isPending}
 					/>
 				</CardContent>
+
+				{confirmingDisable && (
+					<CardContent className="border-t pt-4">
+						<form
+							className="space-y-3"
+							onSubmit={(event) => {
+								event.preventDefault();
+								handleDisable();
+							}}
+						>
+							<div className="space-y-1">
+								<Label htmlFor="disable-password">
+									Confirm your password
+								</Label>
+								<p className="text-xs text-muted-foreground">
+									Turning two-factor off needs your password, so a
+									machine that&rsquo;s already signed in can&rsquo;t
+									weaken the account on its own.
+								</p>
+							</div>
+							<Input
+								id="disable-password"
+								type="password"
+								autoComplete="current-password"
+								value={disablePassword}
+								onChange={(event) =>
+									setDisablePassword(event.target.value)
+								}
+								className="max-w-sm"
+								required
+							/>
+							<div className="flex gap-2">
+								<Button
+									type="submit"
+									variant="destructive"
+									disabled={isPending || !disablePassword}
+								>
+									Turn two-factor off
+								</Button>
+								<Button
+									type="button"
+									variant="ghost"
+									onClick={() => {
+										setConfirmingDisable(false);
+										setDisablePassword("");
+									}}
+								>
+									Cancel
+								</Button>
+							</div>
+						</form>
+					</CardContent>
+				)}
 			</Card>
 
 			<Card>

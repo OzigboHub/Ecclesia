@@ -1,4 +1,6 @@
+import { ACCESS_CODE_LENGTH } from "@/lib/access-code";
 import db from "@/lib/db";
+import { normaliseNgPhone } from "@/lib/phone";
 import { loginSchema } from "@/lib/validators/auth.schema";
 import type { Prisma } from "@prisma/client";
 import bcrypt from "bcryptjs";
@@ -11,6 +13,76 @@ import { ZodError } from "zod";
 const MAX_FAILED_LOGIN_ATTEMPTS = 5;
 const LOCKOUT_DURATION_MINUTES = 30;
 const IDLE_TIMEOUT_MINUTES = 30;
+
+const STAFF_SESSION_MS = 24 * 60 * 60 * 1000;
+const MEMBER_SESSION_MS = 180 * 24 * 60 * 60 * 1000;
+
+/** Attempts allowed against one issued access code before it is burned. */
+const MAX_ACCESS_CODE_ATTEMPTS = 5;
+
+type SessionProfile = {
+	maxAgeMs: number;
+	/** Signing in revokes any other live session for the account. */
+	singleSession: boolean;
+	/** Revoke after 30 minutes of inactivity. */
+	idleTimeout: boolean;
+};
+
+/**
+ * How long a session lives and how strictly it is policed.
+ *
+ * Keyed on **role, not on how the person authenticated**. The single-session
+ * rule and the idle timeout exist to protect the console — a shared parish
+ * office computer that anyone can walk up to. That is a property of the surface
+ * being used, not of which credential was presented to reach it.
+ *
+ * Keying on the credential instead would mean a parishioner who *added a
+ * password* — that is, who improved their security — would suddenly be logged
+ * out every thirty minutes and unable to keep the app on both their phone and
+ * their tablet. Punishing people for climbing the ladder is the opposite of
+ * what the ladder is for.
+ */
+function sessionProfileFor(role: unknown): SessionProfile {
+	if (role === "PARISHIONER") {
+		return {
+			maxAgeMs: MEMBER_SESSION_MS,
+			singleSession: false,
+			idleTimeout: false,
+		};
+	}
+	return {
+		maxAgeMs: STAFF_SESSION_MS,
+		singleSession: true,
+		idleTimeout: true,
+	};
+}
+
+/**
+ * A short, human label for the Devices screen. Deliberately coarse: enough to
+ * recognise "that's my phone", not a fingerprint.
+ */
+function describeDevice(userAgent: string | null): string | null {
+	if (!userAgent) return null;
+
+	const platform =
+		/Android/i.test(userAgent) ? "Android"
+		: /iPhone/i.test(userAgent) ? "iPhone"
+		: /iPad/i.test(userAgent) ? "iPad"
+		: /Windows/i.test(userAgent) ? "Windows"
+		: /Macintosh/i.test(userAgent) ? "Mac"
+		: null;
+
+	const browser =
+		/Edg\//i.test(userAgent) ? "Edge"
+		: /OPR\//i.test(userAgent) ? "Opera"
+		: /Chrome\//i.test(userAgent) ? "Chrome"
+		: /Firefox\//i.test(userAgent) ? "Firefox"
+		: /Safari\//i.test(userAgent) ? "Safari"
+		: null;
+
+	if (platform && browser) return `${platform} · ${browser}`;
+	return platform ?? browser;
+}
 
 function getClientIp(request?: Request): string | null {
 	if (!request) return null;
@@ -227,7 +299,16 @@ export const authConfig: NextAuthConfig = {
 						}
 					}
 
-					if (user.activeSessionId) {
+					// Profile follows the account's role, so a parishioner
+					// signing in by password keeps the long-lived, multi-device
+					// binding they had with a code.
+					const profile = sessionProfileFor(user.role);
+
+					// Kicking the previous session is a console protection. Do
+					// it only for accounts that are held to one session at a
+					// time — otherwise a member signing in on their phone would
+					// silently sign out their tablet.
+					if (profile.singleSession && user.activeSessionId) {
 						const existingSession = await db.userSession.findUnique(
 							{
 								where: { tokenId: user.activeSessionId },
@@ -266,9 +347,7 @@ export const authConfig: NextAuthConfig = {
 					});
 
 					const tokenId = randomUUID();
-					const expiresAt = new Date(
-						Date.now() + 24 * 60 * 60 * 1000,
-					);
+					const expiresAt = new Date(Date.now() + profile.maxAgeMs);
 
 					await db.$transaction([
 						db.userSession.create({
@@ -278,6 +357,8 @@ export const authConfig: NextAuthConfig = {
 								ipAddress,
 								userAgent,
 								expiresAt,
+								authMethod: "password",
+								deviceLabel: describeDevice(userAgent),
 							},
 						}),
 						db.user.update({
@@ -292,9 +373,12 @@ export const authConfig: NextAuthConfig = {
 						}),
 					]);
 
-					// NEW: Look up parishioner record if any
+					// Resolved through the userId foreign key rather than by
+					// matching email strings: a parishioner imported from a
+					// paper register has no email to match on.
 					const parishioner = await db.parishioner.findUnique({
-						where: { email: user.email },
+						where: { userId: user.id },
+						select: { id: true },
 					});
 
 					// Return user data for JWT
@@ -309,6 +393,7 @@ export const authConfig: NextAuthConfig = {
 						parishionerId: parishioner?.id ?? null,
 						sessionVersion: user.sessionVersion,
 						sessionId: tokenId,
+						authMethod: "password" as const,
 					};
 				} catch (error) {
 					// Handle Zod validation errors - return null to indicate invalid credentials
@@ -321,10 +406,242 @@ export const authConfig: NextAuthConfig = {
 				}
 			},
 		}),
+
+		/**
+		 * Parishioner lock-in: phone number plus a one-time code the parish
+		 * office issued.
+		 *
+		 * This returns the exact same object shape as the password provider
+		 * above, which is what keeps the migration additive — every predicate
+		 * in lib/permissions.ts and every server action reading session.user
+		 * works unchanged for a member.
+		 */
+		Credentials({
+			id: "parish-code",
+			name: "Parish access code",
+			credentials: {
+				organizationId: { label: "Parish", type: "text" },
+				phone: { label: "Phone number", type: "tel" },
+				code: { label: "Access code", type: "text" },
+			},
+			async authorize(credentials, request) {
+				try {
+					const organizationId =
+						typeof credentials?.organizationId === "string" ?
+							credentials.organizationId.trim()
+						:	"";
+					const rawPhone =
+						typeof credentials?.phone === "string" ?
+							credentials.phone
+						:	"";
+					const rawCode =
+						typeof credentials?.code === "string" ?
+							credentials.code
+						:	"";
+
+					if (!organizationId || !rawPhone || !rawCode) return null;
+
+					const phone = normaliseNgPhone(rawPhone);
+					if (!phone.ok) return null;
+
+					const code = rawCode.trim().toUpperCase();
+					if (code.length !== ACCESS_CODE_LENGTH) return null;
+
+					const ipAddress = getClientIp(request);
+					const userAgent =
+						request?.headers.get("user-agent") ?? null;
+
+					// Scoped to the one parish the person selected. A phone
+					// number is only unique within a parish, and scoping also
+					// means this cannot be used to enumerate the platform.
+					const parishioner = await db.parishioner.findFirst({
+						where: {
+							organizationId,
+							phoneE164: phone.e164,
+							deletedAt: null,
+							isActive: true,
+						},
+						select: {
+							id: true,
+							firstName: true,
+							lastName: true,
+							photoUrl: true,
+							userId: true,
+							organizationId: true,
+							organization: { select: { id: true, name: true } },
+						},
+					});
+
+					if (!parishioner) return null;
+
+					const record = await db.parishAccessCode.findFirst({
+						where: {
+							parishionerId: parishioner.id,
+							organizationId,
+							consumedAt: null,
+							revokedAt: null,
+							expiresAt: { gt: new Date() },
+						},
+						orderBy: { issuedAt: "desc" },
+					});
+
+					if (!record) return null;
+
+					if (record.attempts >= MAX_ACCESS_CODE_ATTEMPTS) {
+						await db.parishAccessCode.update({
+							where: { id: record.id },
+							data: { revokedAt: new Date() },
+						});
+						return null;
+					}
+
+					const codeMatches = await bcrypt.compare(
+						code,
+						record.codeHash,
+					);
+
+					if (!codeMatches) {
+						await db.parishAccessCode.update({
+							where: { id: record.id },
+							data: { attempts: { increment: 1 } },
+						});
+						await logAuthEvent({
+							action: "LOGIN",
+							entityId: parishioner.id,
+							performedBy: "SYSTEM",
+							ipAddress,
+							details: {
+								status: "FAILED",
+								reason: "INVALID_ACCESS_CODE",
+								method: "parish-code",
+								organizationId,
+								attempts: record.attempts + 1,
+							},
+						});
+						return null;
+					}
+
+					// A parishioner may not have a login account yet — the
+					// common case, since the register was imported from paper.
+					// Create one lazily, with no email and no password.
+					let account =
+						parishioner.userId ?
+							await db.user.findUnique({
+								where: { id: parishioner.userId },
+								include: { organization: true },
+							})
+						:	null;
+
+					// This person closed the code door behind them: they hold a
+					// password and two-factor, and asked that a code no longer
+					// be enough. Honouring that here is what makes rung 3 real
+					// rather than decorative.
+					if (account && !account.allowCodeSignIn) {
+						await logAuthEvent({
+							action: "LOGIN",
+							entityId: account.id,
+							performedBy: "SYSTEM",
+							ipAddress,
+							details: {
+								status: "FAILED",
+								reason: "CODE_SIGN_IN_DISABLED",
+								method: "parish-code",
+								organizationId,
+							},
+						});
+						return null;
+					}
+
+					if (!account) {
+						account = await db.user.create({
+							data: {
+								firstName: parishioner.firstName,
+								lastName: parishioner.lastName,
+								role: "PARISHIONER",
+								organizationId: parishioner.organizationId,
+								displayPicture: parishioner.photoUrl,
+							},
+							include: { organization: true },
+						});
+						await db.parishioner.update({
+							where: { id: parishioner.id },
+							data: { userId: account.id },
+						});
+					}
+
+					if (!account.isActive) return null;
+
+					const tokenId = randomUUID();
+					const expiresAt = new Date(
+						Date.now() + sessionProfileFor(account.role).maxAgeMs,
+					);
+
+					await db.$transaction([
+						// Single use: burn the code the moment it works.
+						db.parishAccessCode.update({
+							where: { id: record.id },
+							data: { consumedAt: new Date() },
+						}),
+						// Note there is no activeSessionId write here. Members
+						// hold several devices at once; see the jwt callback.
+						db.userSession.create({
+							data: {
+								userId: account.id,
+								tokenId,
+								ipAddress,
+								userAgent,
+								expiresAt,
+								authMethod: "parish-code",
+								deviceLabel: describeDevice(userAgent),
+							},
+						}),
+						db.user.update({
+							where: { id: account.id },
+							data: { lastLogin: new Date() },
+						}),
+					]);
+
+					await logAuthEvent({
+						action: "LOGIN",
+						entityId: account.id,
+						performedBy: account.id,
+						ipAddress,
+						details: {
+							status: "SUCCESS",
+							method: "parish-code",
+							organizationId,
+							parishionerId: parishioner.id,
+						},
+					});
+
+					return {
+						id: account.id,
+						email: account.email,
+						name: `${account.firstName} ${account.lastName}`,
+						displayPicture: account.displayPicture ?? undefined,
+						role: account.role,
+						organizationId: account.organizationId,
+						organizationName:
+							account.organization?.name ??
+							parishioner.organization.name,
+						parishionerId: parishioner.id,
+						sessionVersion: account.sessionVersion,
+						sessionId: tokenId,
+						authMethod: "parish-code" as const,
+					};
+				} catch (error) {
+					console.error("Parish code auth error:", error);
+					return null;
+				}
+			},
+		}),
 	],
 	session: {
 		strategy: "jwt",
-		maxAge: 24 * 60 * 60, // 24 hours
+		// Long enough for a member's device binding. Staff are not affected:
+		// their 24-hour UserSession.expiresAt and 30-minute idle check below
+		// invalidate the token server-side long before this.
+		maxAge: MEMBER_SESSION_MS / 1000,
 	},
 	callbacks: {
 		async jwt({ token, user, trigger, session }) {
@@ -350,7 +667,13 @@ export const authConfig: NextAuthConfig = {
 				).sessionVersion as number;
 				token.sessionId = (user as unknown as Record<string, unknown>)
 					.sessionId as string;
+				token.authMethod = ((
+					user as unknown as Record<string, unknown>
+				).authMethod ?? "password") as AuthMethod;
 			}
+
+			// Tokens minted before this field existed are staff logins.
+			if (!token.authMethod) token.authMethod = "password";
 
 			if (trigger === "update" && session?.user) {
 				token.organizationId =
@@ -374,6 +697,12 @@ export const authConfig: NextAuthConfig = {
 					firstName: true,
 					lastName: true,
 					displayPicture: true,
+					// Refreshed on every check because a member can acquire an
+					// email mid-session by climbing the security ladder. Without
+					// this the token would keep claiming they have none until
+					// they next signed in.
+					email: true,
+					role: true,
 					organization: { select: { name: true } },
 				},
 			});
@@ -414,53 +743,64 @@ export const authConfig: NextAuthConfig = {
 				},
 			});
 
-			if (!currentUser.activeSessionId) {
-				if (
-					!activeSession ||
-					activeSession.userId !== token.id ||
-					activeSession.revokedAt ||
-					activeSession.expiresAt <= new Date()
-				) {
-					return {};
+			// From the record rather than the token, so a role change takes
+			// effect on the next request instead of at the next sign-in.
+			const profile = sessionProfileFor(currentUser.role);
+
+			// Members are device-bound and hold several devices at once, so
+			// they skip the single-active-session reconciliation entirely.
+			// Touching activeSessionId here would make signing in on a phone
+			// silently revoke the tablet — and the Devices screen exists
+			// precisely because that is not what should happen.
+			if (profile.singleSession) {
+				if (!currentUser.activeSessionId) {
+					if (
+						!activeSession ||
+						activeSession.userId !== token.id ||
+						activeSession.revokedAt ||
+						activeSession.expiresAt <= new Date()
+					) {
+						return {};
+					}
+
+					await db.user.update({
+						where: { id: token.id },
+						data: { activeSessionId: token.sessionId },
+					});
+				} else if (currentUser.activeSessionId !== token.sessionId) {
+					const expectedSession = await db.userSession.findUnique({
+						where: { tokenId: currentUser.activeSessionId },
+						select: {
+							revokedAt: true,
+							expiresAt: true,
+							lastSeenAt: true,
+						},
+					});
+
+					const expectedStillActive =
+						!!expectedSession &&
+						!expectedSession.revokedAt &&
+						expectedSession.expiresAt > new Date() &&
+						expectedSession.lastSeenAt > idleCutoff;
+
+					if (expectedStillActive) {
+						return {};
+					}
+
+					if (
+						!activeSession ||
+						activeSession.userId !== token.id ||
+						activeSession.revokedAt ||
+						activeSession.expiresAt <= new Date()
+					) {
+						return {};
+					}
+
+					await db.user.update({
+						where: { id: token.id },
+						data: { activeSessionId: token.sessionId },
+					});
 				}
-
-				await db.user.update({
-					where: { id: token.id },
-					data: { activeSessionId: token.sessionId },
-				});
-			} else if (currentUser.activeSessionId !== token.sessionId) {
-				const expectedSession = await db.userSession.findUnique({
-					where: { tokenId: currentUser.activeSessionId },
-					select: {
-						revokedAt: true,
-						expiresAt: true,
-						lastSeenAt: true,
-					},
-				});
-
-				const expectedStillActive =
-					!!expectedSession &&
-					!expectedSession.revokedAt &&
-					expectedSession.expiresAt > new Date() &&
-					expectedSession.lastSeenAt > idleCutoff;
-
-				if (expectedStillActive) {
-					return {};
-				}
-
-				if (
-					!activeSession ||
-					activeSession.userId !== token.id ||
-					activeSession.revokedAt ||
-					activeSession.expiresAt <= new Date()
-				) {
-					return {};
-				}
-
-				await db.user.update({
-					where: { id: token.id },
-					data: { activeSessionId: token.sessionId },
-				});
 			}
 
 			if (!activeSession || activeSession.userId !== token.id) {
@@ -474,7 +814,10 @@ export const authConfig: NextAuthConfig = {
 				return {};
 			}
 
-			if (activeSession.lastSeenAt <= idleCutoff) {
+			// Idle timeout is a console protection. A parishioner who opens the
+			// app once a fortnight has not done anything suspicious, so the
+			// binding survives until it expires or they sign the device out.
+			if (profile.idleTimeout && activeSession.lastSeenAt <= idleCutoff) {
 				await db.$transaction([
 					db.userSession.update({
 						where: { tokenId: token.sessionId },
@@ -493,11 +836,16 @@ export const authConfig: NextAuthConfig = {
 				data: { lastSeenAt: new Date() },
 			});
 
-			const cookieStore = await cookies();
-			const contextId =
-				token.role === "SUPER_ADMIN" ?
-					cookieStore.get("org-context-id")?.value
-				:	undefined;
+			let contextId: string | undefined;
+			try {
+				const cookieStore = await cookies();
+				contextId =
+					token.role === "SUPER_ADMIN" ?
+						cookieStore.get("org-context-id")?.value
+					:	undefined;
+			} catch {
+				// Cookies API is not available in all Auth.js callback execution contexts
+			}
 			let contextOrganization: {
 				id: string;
 				name: string | null;
@@ -538,6 +886,8 @@ export const authConfig: NextAuthConfig = {
 			}
 
 			token.sessionVersion = currentUser.sessionVersion;
+			token.email = currentUser.email ?? undefined;
+			token.role = currentUser.role;
 			token.name = `${currentUser.firstName} ${currentUser.lastName}`;
 			token.displayPicture = currentUser.displayPicture ?? undefined;
 			token.organizationId =
@@ -572,6 +922,8 @@ export const authConfig: NextAuthConfig = {
 					| string
 					| null;
 				session.user.sessionId = token.sessionId as string;
+				session.user.authMethod =
+					(token.authMethod as AuthMethod) ?? "password";
 			}
 			return session;
 		},

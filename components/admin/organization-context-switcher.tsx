@@ -97,11 +97,11 @@ export function OrganizationContextSwitcher({
 					onValueChange={handleSwitch}
 					disabled={isPending}
 				>
-					<SelectTrigger className="w-full">
-						<Building2 className="h-4 w-4 mr-2 text-muted-foreground" />
+					<SelectTrigger className="w-full bg-primary text-primary-foreground border-primary hover:bg-primary/90 focus:ring-primary data-[placeholder]:text-primary-foreground font-medium [&>svg]:text-primary-foreground [&>svg]:opacity-90">
+						<Building2 className="h-4 w-4 mr-2 text-primary-foreground shrink-0" />
 						<SelectValue placeholder="Select Organization Context" />
 					</SelectTrigger>
-					<SelectContent className=" bg-secondary">
+					<SelectContent>
 						{organizations.map((org) => (
 							<SelectItem key={org.id} value={org.id}>
 								{org.name}
@@ -117,7 +117,7 @@ export function OrganizationContextSwitcher({
 					onClick={handleClear}
 					disabled={isPending}
 					title="Clear Context"
-					className="shrink-0"
+					className="shrink-0 text-primary hover:bg-primary/10"
 				>
 					<X className="h-4 w-4" />
 				</Button>

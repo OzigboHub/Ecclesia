@@ -1,28 +1,276 @@
 @import "tailwindcss";
 
+@variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
 :root {
-	--background: #1f2937;
-	--foreground: #f9fafb;
+	--background: #fbfaf7;
+	--foreground: #16181d;
+	--card: #ffffff;
+	--card-foreground: #16181d;
+	--popover: #ffffff;
+	--popover-foreground: #16181d;
 	--primary: #eab308;
 	--primary-foreground: #111827;
-	--secondary: #1f2937;
-	--secondary-foreground: #f3f4f6;
-	--accent: #374151;
-	--accent-foreground: #f9fafb;
-	--muted: #111827;
-	--muted-foreground: #cbd5f5;
-	--border: #334155;
-	--input: #334155;
+	--secondary: #ffffff;
+	--secondary-foreground: #16181d;
+	--accent: #f4f1ea;
+	--accent-foreground: #16181d;
+	--muted: #f4f1ea;
+	--muted-foreground: #55606e;
+	--border: #e6e1d6;
+	--input: #e6e1d6;
 	--ring: #eab308;
 	--radius: 0.5rem;
+	--sidebar: #ffffff;
+	--sidebar-foreground: #16181d;
+	--sidebar-primary: #fbbf24;
+	--sidebar-primary-foreground: #111827;
+	--sidebar-accent: #f4f1ea;
+	--sidebar-accent-foreground: #16181d;
+	--sidebar-border: #e6e1d6;
+	--sidebar-ring: hsl(217.2 91.2% 59.8%);
+
+	--surface-0: #fbfaf7;
+	--surface-1: #ffffff;
+	--surface-2: #f4f1ea;
+	--surface-3: #ede7da;
+	--hairline: #e6e1d6;
+	--gold: #945a06;
+	--fg: #16181d;
+	--fg-body: #3a414d;
+	--fg-muted: #55606e;
+	--fg-dim: #616874;
+	--positive: #147839;
+	--critical: #b42318;
+	--scrim: rgba(22, 24, 29, 0.45);
+	--on-gold: #ffffff;
+}
+
+/* Fallback: elements with #111827 background render white text */
+.bg-\[\#111827\], [style*="background: #111827"], [style*="background-color: #111827"] {
+	color: #ffffff;
+}
+
+:root[data-theme="light"] {
+	--background: #fbfaf7;
+	--foreground: #16181d;
+	--card: #ffffff;
+	--card-foreground: #16181d;
+	--popover: #ffffff;
+	--popover-foreground: #16181d;
+	--primary: #eab308;
+	--primary-foreground: #111827;
+	--secondary: #ffffff;
+	--secondary-foreground: #16181d;
+	--accent: #f4f1ea;
+	--accent-foreground: #16181d;
+	--muted: #f4f1ea;
+	--muted-foreground: #55606e;
+	--border: #e6e1d6;
+	--input: #e6e1d6;
+	--ring: #eab308;
+	--sidebar: #ffffff;
+	--sidebar-foreground: #16181d;
+	--sidebar-primary: #fbbf24;
+	--sidebar-primary-foreground: #111827;
+	--sidebar-accent: #f4f1ea;
+	--sidebar-accent-foreground: #16181d;
+	--sidebar-border: #e6e1d6;
+
+	--surface-0: #fbfaf7;
+	--surface-1: #ffffff;
+	--surface-2: #f4f1ea;
+	--surface-3: #ede7da;
+	--hairline: #e6e1d6;
+	--gold: #945a06;
+	--fg: #16181d;
+	--fg-body: #3a414d;
+	--fg-muted: #55606e;
+	--fg-dim: #616874;
+	--positive: #147839;
+	--critical: #b42318;
+	--scrim: rgba(22, 24, 29, 0.45);
+	--on-gold: #ffffff;
+}
+
+/* System preference, only when the user has not chosen light explicitly. */
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme="light"]) {
+		--background: #0f151f;
+		--foreground: #f9fafb;
+		--card: #161d29;
+		--card-foreground: #f9fafb;
+		--popover: #161d29;
+		--popover-foreground: #f9fafb;
+		--primary: #eab308;
+		--primary-foreground: #111827;
+		--secondary: #161d29;
+		--secondary-foreground: #f3f4f6;
+		--accent: #1f2937;
+		--accent-foreground: #f9fafb;
+		--muted: #111827;
+		--muted-foreground: #a7b0be;
+		--border: #2a3441;
+		--input: #2a3441;
+		--ring: #eab308;
+		--sidebar: #111827;
+		--sidebar-foreground: #e5e7eb;
+		--sidebar-primary: #fbbf24;
+		--sidebar-primary-foreground: #111827;
+		--sidebar-accent: #1f2937;
+		--sidebar-accent-foreground: #f9fafb;
+		--sidebar-border: #2a3441;
+
+		--surface-0: #0f151f;
+		--surface-1: #161d29;
+		--surface-2: #1f2937;
+		--surface-3: #273241;
+		--hairline: #2a3441;
+		--gold: #eab308;
+		--fg: #f9fafb;
+		--fg-body: #c7cdd6;
+		--fg-muted: #a7b0be;
+		--fg-dim: #9199a7;
+		--positive: #8bd1a6;
+		--critical: #f2777a;
+		--scrim: rgba(6, 9, 14, 0.72);
+		--on-gold: #0f151f;
+	}
+}
+
+/* Explicit choice wins in both directions. */
+:root[data-theme="dark"] {
+	--background: #0f151f;
+	--foreground: #f9fafb;
+	--card: #161d29;
+	--card-foreground: #f9fafb;
+	--popover: #161d29;
+	--popover-foreground: #f9fafb;
+	--primary: #eab308;
+	--primary-foreground: #111827;
+	--secondary: #161d29;
+	--secondary-foreground: #f3f4f6;
+	--accent: #1f2937;
+	--accent-foreground: #f9fafb;
+	--muted: #111827;
+	--muted-foreground: #a7b0be;
+	--border: #2a3441;
+	--input: #2a3441;
+	--ring: #eab308;
 	--sidebar: #111827;
 	--sidebar-foreground: #e5e7eb;
 	--sidebar-primary: #fbbf24;
 	--sidebar-primary-foreground: #111827;
 	--sidebar-accent: #1f2937;
 	--sidebar-accent-foreground: #f9fafb;
-	--sidebar-border: #334155;
-	--sidebar-ring: hsl(217.2 91.2% 59.8%);
+	--sidebar-border: #2a3441;
+
+	--surface-0: #0f151f;
+	--surface-1: #161d29;
+	--surface-2: #1f2937;
+	--surface-3: #273241;
+	--hairline: #2a3441;
+	--gold: #eab308;
+	--fg: #f9fafb;
+	--fg-body: #c7cdd6;
+	--fg-muted: #a7b0be;
+	--fg-dim: #9199a7;
+	--positive: #8bd1a6;
+	--critical: #f2777a;
+	--scrim: rgba(6, 9, 14, 0.72);
+	--on-gold: #0f151f;
+}
+
+@theme inline {
+	--color-card: var(--card);
+	--color-card-foreground: var(--card-foreground);
+	--color-popover: var(--popover);
+	--color-popover-foreground: var(--popover-foreground);
+	--color-surface-0: var(--surface-0);
+	--color-surface-1: var(--surface-1);
+	--color-surface-2: var(--surface-2);
+	--color-surface-3: var(--surface-3);
+	--color-hairline: var(--hairline);
+	--color-gold: var(--gold);
+	--color-on-gold: var(--on-gold);
+	--color-fg: var(--fg);
+	--color-fg-body: var(--fg-body);
+	--color-fg-muted: var(--fg-muted);
+	--color-fg-dim: var(--fg-dim);
+	--color-positive: var(--positive);
+	--color-critical: var(--critical);
+	--color-scrim: var(--scrim);
+
+	--text-caption: 11px;
+	--text-caption--line-height: 16px;
+	--text-meta: 12px;
+	--text-meta--line-height: 16px;
+	--text-body-sm: 13px;
+	--text-body-sm--line-height: 20px;
+	--text-body: var(--fluid-body, 14px);
+	--text-body--line-height: var(--fluid-body-lh, 21px);
+	--text-title-sm: var(--fluid-title-sm, 15px);
+	--text-title-sm--line-height: var(--fluid-title-sm-lh, 20px);
+	--text-title: var(--fluid-title, 17px);
+	--text-title--line-height: var(--fluid-title-lh, 24px);
+	--text-headline: var(--fluid-headline, 20px);
+	--text-headline--line-height: var(--fluid-headline-lh, 26px);
+	--text-display: var(--fluid-display, 24px);
+	--text-display--line-height: var(--fluid-display-lh, 30px);
+
+	--font-plex: var(--ff-plex-sans), system-ui, sans-serif;
+	--font-plex-serif: var(--ff-plex-serif), Georgia, serif;
+	--font-plex-mono: var(--ff-plex-mono), ui-monospace, monospace;
+
+	--radius-card: 14px;
+}
+
+/* Desktop type bump. Five of the eight steps grow; caption, meta and body-sm
+   are already at their floor and stay put. */
+@media (min-width: 1024px) {
+	:root {
+		--fluid-body: 15px;
+		--fluid-body-lh: 23px;
+		--fluid-title-sm: 16px;
+		--fluid-title-sm-lh: 22px;
+		--fluid-title: 18px;
+		--fluid-title-lh: 26px;
+		--fluid-headline: 22px;
+		--fluid-headline-lh: 28px;
+		--fluid-display: 32px;
+		--fluid-display-lh: 38px;
+	}
+}
+
+@keyframes livePulse {
+	0%,
+	100% {
+		opacity: 1;
+		transform: scale(1);
+	}
+	50% {
+		opacity: 0.3;
+		transform: scale(0.7);
+	}
+}
+
+@keyframes feedShimmer {
+	0% {
+		background-position: -340px 0;
+	}
+	100% {
+		background-position: 340px 0;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+	}
 }
 
 @theme inline {
@@ -119,4 +367,104 @@ body {
 /* Hide public navbar on docs layout */
 body[data-docs-layout="true"] [data-public-navbar] {
 	display: none !important;
+}
+
+/* Site-wide Custom Scrollbar for all screens */
+html,
+body,
+* {
+	scrollbar-width: thin;
+	scrollbar-color: color-mix(in srgb, var(--gold) 45%, transparent) transparent;
+}
+
+::-webkit-scrollbar {
+	width: 8px;
+	height: 8px;
+}
+
+::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+	background-color: color-mix(in srgb, var(--gold) 45%, transparent);
+	border-radius: 9999px;
+	border: 2px solid transparent;
+	background-clip: padding-box;
+	transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+	background-color: var(--gold);
+}
+
+::-webkit-scrollbar-corner {
+	background: transparent;
+}
+
+/* Dark mode scrollbar enhancement */
+:root[data-theme="dark"] html,
+:root[data-theme="dark"] body,
+:root[data-theme="dark"] * {
+	scrollbar-color: color-mix(in srgb, #fbbf24 45%, transparent) transparent;
+}
+
+:root[data-theme="dark"] ::-webkit-scrollbar-thumb {
+	background-color: color-mix(in srgb, #fbbf24 45%, transparent);
+}
+
+:root[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+	background-color: #fbbf24;
+}
+
+/* Custom Liturgy & Reader Scrollbar (Explicit Utility) */
+.custom-scrollbar,
+.reader-scroll {
+	scrollbar-width: thin;
+	scrollbar-color: color-mix(in srgb, var(--gold) 50%, transparent) transparent;
+	scroll-behavior: smooth;
+	-webkit-overflow-scrolling: touch;
+}
+
+.custom-scrollbar::-webkit-scrollbar,
+.reader-scroll::-webkit-scrollbar {
+	width: 8px;
+	height: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track,
+.reader-scroll::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb,
+.reader-scroll::-webkit-scrollbar-thumb {
+	background-color: color-mix(in srgb, var(--gold) 50%, transparent);
+	border-radius: 9999px;
+	border: 2px solid transparent;
+	background-clip: padding-box;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover,
+.reader-scroll::-webkit-scrollbar-thumb:hover {
+	background-color: var(--gold);
+}
+
+/* Hide scrollbar utility for touch swipe navigation */
+.scrollbar-none::-webkit-scrollbar,
+.no-scrollbar::-webkit-scrollbar {
+	display: none;
+}
+.scrollbar-none,
+.no-scrollbar {
+	-ms-overflow-style: none !important;
+	scrollbar-width: none !important;
+}
+
+/* The feed paints its own surface; the console's --background must not show
+   through behind it. */
+[data-feed-root] {
+	background: var(--surface-0);
+	color: var(--fg-body);
+	min-height: 100dvh;
 }

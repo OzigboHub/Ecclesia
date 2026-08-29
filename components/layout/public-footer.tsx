@@ -101,7 +101,7 @@ export default function PublicFooter() {
             Get the latest updates on the new parish features.
           </p>
           <div className=" mt-[20px]">
-            <Input className="bg-white text-black " placeholder="Email" />
+            <Input className="bg-background text-foreground border-border placeholder:text-muted-foreground" placeholder="Email" />
           </div>
         </div>
       </div>

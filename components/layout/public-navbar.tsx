@@ -6,13 +6,17 @@ import { Download, Menu, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
+import { ThemeIconToggle } from "./theme-toggle";
 import { Button } from "../ui/button";
 
 export default function PublicNavbar() {
 	const [open, setOpen] = useState(false);
 	const { canInstall, install } = usePwaInstall();
 	return (
-		<div className="fixed inset-x-0 top-0 z-50 flex h-16 items-center justify-between bg-secondary/95 px-4 backdrop-blur md:px-8">
+		<div
+			data-public-navbar
+			className="fixed inset-x-0 top-0 z-50 flex h-16 items-center justify-between border-b border-border bg-secondary/95 px-4 text-secondary-foreground backdrop-blur md:px-8"
+		>
 			<Link href={"/"}>
 				<Image
 					src={"/standalone-golden-yellow-logo-typography.png"}
@@ -22,15 +26,18 @@ export default function PublicNavbar() {
 					className="h-8 w-auto"
 				/>
 			</Link>
-			<button
-				onClick={() => setOpen(!open)}
-				className="md:hidden"
-				type="button"
-			>
-				{open ?
-					<X className="w-6 h-6" />
-				:	<Menu className="w-6 h-6" />}
-			</button>
+			<div className="flex items-center gap-1 md:hidden">
+				<ThemeIconToggle />
+				<button
+					onClick={() => setOpen(!open)}
+					className="p-2 text-secondary-foreground"
+					type="button"
+				>
+					{open ?
+						<X className="w-6 h-6" />
+					:	<Menu className="w-6 h-6" />}
+				</button>
+			</div>
 
 			<div className="hidden items-center md:flex gap-2">
 				{NAVLINKS.map((i, k) => {
@@ -38,13 +45,14 @@ export default function PublicNavbar() {
 						<Link
 							key={k}
 							href={i.link}
-							className="rounded-[10px] px-3 py-2 text-[13px] font-medium text-white hover:bg-white/10"
+							className="rounded-[10px] px-3 py-2 text-[13px] font-medium text-secondary-foreground hover:bg-accent"
 						>
 							{i.name}
 						</Link>
 					);
 				})}
-				<div className="flex gap-3">
+				<div className="flex items-center gap-3">
+					<ThemeIconToggle />
 					{canInstall && (
 						<Button
 							variant={"outline"}
@@ -57,11 +65,11 @@ export default function PublicNavbar() {
 					)}
 					<Button
 						variant={"outline"}
-						className="border-white/20 text-white hover:bg-white/10"
+						className="border-border text-secondary-foreground hover:bg-accent"
 					>
 						<Link href={"/auth/register"}>Register</Link>
 					</Button>
-					<Button className="text-secondary">
+					<Button className="bg-primary text-primary-foreground hover:bg-primary/90">
 						<Link href={"/auth/login"}>Login</Link>
 					</Button>
 				</div>
@@ -72,7 +80,7 @@ export default function PublicNavbar() {
 						{NAVLINKS.map((i, k) => {
 							return (
 								<Link
-									className="w-full rounded-[10px] px-4 py-2.5 text-[13px] font-medium text-white hover:bg-white/10"
+									className="w-full rounded-[10px] px-4 py-2.5 text-[13px] font-medium text-secondary-foreground hover:bg-accent"
 									key={k}
 									href={i.link}
 									onClick={() => setOpen(false)}
@@ -98,13 +106,13 @@ export default function PublicNavbar() {
 							<Button
 								variant={"outline"}
 								onClick={() => setOpen(false)}
-								className="border-white/20 text-white hover:bg-white/10"
+								className="border-border text-secondary-foreground hover:bg-accent"
 							>
 								<Link href={"/auth/register"}>Register</Link>
 							</Button>
 							<Button
 								onClick={() => setOpen(false)}
-								className="text-secondary"
+								className="bg-primary text-primary-foreground hover:bg-primary/90"
 							>
 								<Link href={"/auth/login"}>Login</Link>
 							</Button>

@@ -61,6 +61,8 @@ model Organization {
   withdrawals                    WithdrawalRequest[]
   userAccountRequests            UserAccountRequest[]
   pushSubscriptions              PushSubscription[]
+  accessCodes                    ParishAccessCode[]
+  gateCode                       ParishGateCode?
 
   @@index([parentId])
 }
@@ -88,6 +90,9 @@ model OrganizationFeatureSettings {
   enableRecurringDonations    Boolean      @default(false)
   enableMobileApp             Boolean      @default(false)
   enablePublicWebsite         Boolean      @default(true)
+  // When true, the parish's public timeline sits behind a shared gate code.
+  // Off by default: most parishes want to be found.
+  requireGateCode             Boolean      @default(false)
   createdAt                   DateTime     @default(now())
   updatedAt                   DateTime     @updatedAt
   enableSocieties             Boolean      @default(true)
@@ -98,8 +103,11 @@ model OrganizationFeatureSettings {
 
 model User {
   id                          String                    @id @default(uuid())
-  email                       String                    @unique
-  password                    String
+  // Nullable since the parish-code sign-in path: a parishioner imported from a
+  // paper register has a name and a phone number and nothing else. Postgres
+  // permits many NULLs under a unique index, so staff emails stay unique.
+  email                       String?                   @unique
+  password                    String?
   firstName                   String
   lastName                    String
   role                        UserRole
@@ -121,6 +129,14 @@ model User {
   twoFactorMethod             TwoFactorMethod?
   twoFactorSecret             String?
   displayPicture              String?
+  // Whether the parish-code door works for this account. Parishioners may
+  // switch it off once they hold a verified email, a password and two-factor —
+  // staff never had it in the first place. Always re-enableable, so nobody can
+  // trap themselves out of their own account.
+  allowCodeSignIn             Boolean                   @default(true)
+  // Set when a one-time code sent to `email` was confirmed. Cleared whenever
+  // the address changes, so it always refers to the address currently on file.
+  emailVerifiedAt             DateTime?
   appointmentsAssigned        Appointment[]             @relation("AppointmentAssignee")
   appointmentsMade            Appointment[]             @relation("AppointmentCreator")
   availabilitySlots           AppointmentAvailability[] @relation("AppointmentAvailabilityAssignee")
@@ -139,6 +155,9 @@ model User {
   userAccountRequestsCreated  UserAccountRequest[]      @relation("RequestedBy")
   userAccountRequestsReviewed UserAccountRequest[]      @relation("ReviewedBy")
   pushSubscriptions           PushSubscription[]
+  emailVerificationTokens     EmailVerificationToken[]
+  parishioner                 Parishioner?              @relation("ParishionerAccount")
+  accessCodesIssued           ParishAccessCode[]        @relation("AccessCodeIssuer")
 
   @@index([organizationId])
   @@index([email])
@@ -175,19 +194,97 @@ model TwoFactorChallenge {
 }
 
 model UserSession {
-  id         String    @id @default(uuid())
-  userId     String
-  tokenId    String    @unique
-  ipAddress  String?
-  userAgent  String?
-  createdAt  DateTime  @default(now())
-  lastSeenAt DateTime  @default(now())
-  expiresAt  DateTime
-  revokedAt  DateTime?
-  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id          String    @id @default(uuid())
+  userId      String
+  tokenId     String    @unique
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime  @default(now())
+  lastSeenAt  DateTime  @default(now())
+  expiresAt   DateTime
+  revokedAt   DateTime?
+  // "password" for staff, "parish-code" for device-bound members. Staff keep
+  // one live session and a 30-minute idle timeout; members hold several
+  // devices for months. See auth.config.ts.
+  authMethod  String    @default("password")
+  // "Tecno Spark · Chrome" — what the Devices screen shows.
+  deviceLabel String?
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, revokedAt])
   @@index([expiresAt])
+}
+
+/// A one-time code emailed to prove an address actually reaches its owner.
+///
+/// `email` records the address the code was sent to, so a code cannot be
+/// redeemed against an address changed after it was issued — otherwise someone
+/// could request a code to an address they control, change the account email,
+/// and mark the new one verified.
+model EmailVerificationToken {
+  id         String    @id @default(uuid())
+  userId     String
+  email      String
+  codeHash   String
+  expiresAt  DateTime
+  consumedAt DateTime?
+  attempts   Int       @default(0)
+  createdAt  DateTime  @default(now())
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+/// A one-time code the parish office issues so a person can bind their phone
+/// to their register entry. Stored as a bcrypt hash: the office reads the code
+/// out once at issue time and it is never recoverable from the database, so a
+/// dump does not hand over the parish.
+model ParishAccessCode {
+  id             String       @id @default(uuid())
+  organizationId String
+  parishionerId  String
+  codeHash       String
+  issuedById     String
+  issuedAt       DateTime     @default(now())
+  expiresAt      DateTime
+  consumedAt     DateTime?
+  revokedAt      DateTime?
+  attempts       Int          @default(0)
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  parishioner    Parishioner  @relation(fields: [parishionerId], references: [id], onDelete: Cascade)
+  issuedBy       User         @relation("AccessCodeIssuer", fields: [issuedById], references: [id])
+
+  @@index([organizationId])
+  @@index([parishionerId])
+  @@index([expiresAt])
+}
+
+/// The optional shared code that gates a parish's public timeline. One per
+/// parish, hashed, rotatable by the parish admin.
+model ParishGateCode {
+  id             String       @id @default(uuid())
+  organizationId String       @unique
+  codeHash       String
+  isActive       Boolean      @default(true)
+  updatedById    String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id])
+}
+
+/// Durable rate-limit counters for gate-code and access-code entry. Keyed by a
+/// caller-built string ("gate:<orgId>:<ipHash>", "code:<parishionerId>") so one
+/// table serves both paths. Rows are disposable; a sweep can delete anything
+/// past resetAt.
+model AuthAttemptBucket {
+  id           String    @id @default(uuid())
+  key          String    @unique
+  count        Int       @default(0)
+  resetAt      DateTime
+  blockedUntil DateTime?
+
+  @@index([resetAt])
 }
 
 model PasswordResetToken {
@@ -323,6 +420,17 @@ model Parishioner {
   isActive           Boolean              @default(true)
   photoUrl           String?
   organizationId     String
+  // Real foreign key to the login account. Replaces the email string-match in
+  // auth.config.ts, which cannot work once a parishioner has no email.
+  userId             String?              @unique
+  user               User?                @relation("ParishionerAccount", fields: [userId], references: [id])
+  // E.164 form of `phone`, written by lib/phone.ts. This is the lock-in lookup
+  // key; `phone` stays as typed so the office still sees what it entered.
+  phoneE164          String?
+  // Opt-in for the Parish moments feed card. Defaults off: a baptism or a
+  // birthday is not public until the person says it is.
+  shareMoments       Boolean              @default(false)
+  accessCodes        ParishAccessCode[]
   appointments       Appointment[]        @relation("ParishionerAppointment")
   baptisms           Baptism[]
   confirmations      Confirmation[]
@@ -338,9 +446,11 @@ model Parishioner {
   societyLed         Society?             @relation("SocietyPresident")
   societyAssisted    Society?             @relation("SocietySecretary")
 
+  @@unique([organizationId, phoneE164])
   @@index([organizationId])
   @@index([email])
   @@index([phone])
+  @@index([phoneE164])
 }
 
 model SocietyJoinRequest {
@@ -364,13 +474,13 @@ model SocietyJoinRequest {
 }
 
 model SocietyMembership {
-  parishionerId String
-  societyId     String
-  joinedAt      DateTime    @default(now())
+  parishionerId  String
+  societyId      String
+  joinedAt       DateTime    @default(now())
   membershipDate DateTime?
-  role          SocietyRole @default(MEMBER)
-  parishioner   Parishioner @relation(fields: [parishionerId], references: [id])
-  society       Society     @relation(fields: [societyId], references: [id])
+  role           SocietyRole @default(MEMBER)
+  parishioner    Parishioner @relation(fields: [parishionerId], references: [id])
+  society        Society     @relation(fields: [societyId], references: [id])
 
   @@id([parishionerId, societyId])
   @@index([societyId])

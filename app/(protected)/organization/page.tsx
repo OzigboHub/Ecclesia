@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { OrganizationProfileForm } from "@/components/forms/organization-profile-form";
+import { GateCodeSettings } from "@/components/organizations/gate-code-settings";
 import db from "@/lib/db";
 import { canEditOrganizationProfile } from "@/lib/permissions";
 import { redirect } from "next/navigation";
@@ -23,6 +24,8 @@ export default async function OrganizationPage() {
 			address: true,
 			contactEmail: true,
 			contactPhone: true,
+			featureSettings: { select: { requireGateCode: true } },
+			gateCode: { select: { isActive: true } },
 		},
 	});
 
@@ -47,6 +50,11 @@ export default async function OrganizationPage() {
 			<OrganizationProfileForm
 				organization={organization}
 				canEditName={canEditName}
+			/>
+
+			<GateCodeSettings
+				enabled={Boolean(organization.featureSettings?.requireGateCode)}
+				hasCode={Boolean(organization.gateCode?.isActive)}
 			/>
 		</div>
 	);
