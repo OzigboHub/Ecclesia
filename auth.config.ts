@@ -836,11 +836,16 @@ export const authConfig: NextAuthConfig = {
 				data: { lastSeenAt: new Date() },
 			});
 
-			const cookieStore = await cookies();
-			const contextId =
-				token.role === "SUPER_ADMIN" ?
-					cookieStore.get("org-context-id")?.value
-				:	undefined;
+			let contextId: string | undefined;
+			try {
+				const cookieStore = await cookies();
+				contextId =
+					token.role === "SUPER_ADMIN" ?
+						cookieStore.get("org-context-id")?.value
+					:	undefined;
+			} catch {
+				// Cookies API is not available in all Auth.js callback execution contexts
+			}
 			let contextOrganization: {
 				id: string;
 				name: string | null;
