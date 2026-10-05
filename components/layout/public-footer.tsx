@@ -68,11 +68,11 @@ export default function PublicFooter() {
               matter where they are.
             </p>
             <div className=" mt-[10px] flex flex-row gap-3">
-              <Link href={""}>
-                <MdEmail className=" w-6 h-6" />
-              </Link>
-              <Link href={""}>
-                <RiInstagramFill className=" w-6 h-6" />
+              <a href="mailto:support@ecclesialight.com" aria-label="Support Email">
+                <MdEmail className=" w-6 h-6 hover:text-primary transition-colors" />
+              </a>
+              <Link href="/contact" aria-label="Contact Us">
+                <RiInstagramFill className=" w-6 h-6 hover:text-primary transition-colors" />
               </Link>
             </div>
           </div>
@@ -85,7 +85,7 @@ export default function PublicFooter() {
                 <div className=" text-muted-foreground flex-col flex mt-[20px] gap-4">
                   {i.links.map((e, k) => {
                     return (
-                      <Link key={k} href={e.link}>
+                      <Link key={k} href={e.link} className="hover:text-foreground transition-colors">
                         {e.name}
                       </Link>
                     );
@@ -109,9 +109,9 @@ export default function PublicFooter() {
         <p>© {dateYear} EcclesiaLight. All rights reserved.</p>
 
         <div className="flex flex-wrap justify-center gap-4 md:gap-8">
-          <Link href={""}>Terms of Services</Link>
-          <Link href={""}>Privacy Policy</Link>
-          <Link href={""}>Cookie Settings</Link>
+          <Link href={"/terms"} className="hover:text-foreground transition-colors">Terms of Service</Link>
+          <Link href={"/privacy"} className="hover:text-foreground transition-colors">Privacy Policy</Link>
+          <Link href={"/refund-policy"} className="hover:text-foreground transition-colors">Refund Policy</Link>
         </div>
       </div>
     </div>

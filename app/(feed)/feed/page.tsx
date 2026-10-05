@@ -156,27 +156,27 @@ type RailContext = {
 };
 
 async function getRailContext(organizationId: string): Promise<RailContext> {
-	const [organization, campaigns, societies] = await Promise.all([
-		db.organization.findUnique({
-			where: { id: organizationId },
-			select: { name: true, address: true, contactPhone: true },
-		}),
-		db.donationCampaign.findMany({
-			where: { organizationId, isActive: true },
-			select: { id: true, name: true, targetAmount: true },
-			take: 3,
-			orderBy: { createdAt: "desc" },
-		}),
-		db.society.findMany({
-			where: { organizationId },
-			select: { id: true, name: true },
-			take: 5,
-			orderBy: { name: "asc" },
-		}),
-	]);
+	const organization = await db.organization.findUnique({
+		where: { id: organizationId },
+		select: { name: true, address: true, contactPhone: true },
+	});
+
+	const campaigns = await db.donationCampaign.findMany({
+		where: { organizationId, isActive: true },
+		select: { id: true, name: true, targetAmount: true },
+		take: 3,
+		orderBy: { createdAt: "desc" },
+	});
+
+	const societies = await db.society.findMany({
+		where: { organizationId },
+		select: { id: true, name: true },
+		take: 5,
+		orderBy: { name: "asc" },
+	});
 
 	const raised = await Promise.all(
-		campaigns.map((campaign) =>
+		campaigns.map((campaign: { id: string; name: string; targetAmount: number | null }) =>
 			db.payment.aggregate({
 				where: {
 					donationCampaignId: campaign.id,
@@ -192,17 +192,18 @@ async function getRailContext(organizationId: string): Promise<RailContext> {
 		address: organization?.address ?? null,
 		contactPhone: organization?.contactPhone ?? null,
 		societies,
-		campaigns: campaigns.map((campaign, index) => {
+		campaigns: campaigns.map((campaign: { id: string; name: string; targetAmount: number | null }, index: number) => {
 			const total = raised[index]._sum.amount ?? 0;
+			const target = campaign.targetAmount ?? 0;
 			return {
 				id: campaign.id,
 				name: campaign.name,
 				raised: total,
 				progress:
-					campaign.targetAmount > 0 ?
+					target > 0 ?
 						Math.min(
 							100,
-							Math.round((total / campaign.targetAmount) * 100),
+							Math.round((total / target) * 100),
 						)
 					:	0,
 			};

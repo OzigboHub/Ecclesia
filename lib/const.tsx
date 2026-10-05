@@ -156,8 +156,8 @@ export const NAVLINKS = [
     link: "/",
   },
   {
-    name: "Daily Manna",
-    link: "/readings",
+    name: "Daily Mass",
+    link: "/reading",
   },
   {
     name: "Parish",
@@ -167,10 +167,10 @@ export const NAVLINKS = [
     name: "Features",
     link: "#features",
   },
-  // {
-  //   name: "Pricing",
-  //   link: "/pricing",
-  // },
+  {
+    name: "Pricing",
+    link: "/pricing",
+  },
   {
     name: "Contact",
     link: "/contact",
@@ -238,42 +238,34 @@ export const FOOTERITEMS = [
   {
     title: "RESOURCES",
     links: [
-      // {
-      //   name: "Documentation",
-      //   link: "",
-      // },
       {
-        name: "Support Center",
-        link: "",
+        name: "Pricing Plans",
+        link: "/pricing",
       },
       {
-        name: "Search For Parish",
-        link: "",
+        name: "Contact Support",
+        link: "/contact",
       },
       {
-        name: "Live Streaming Guide",
-        link: "",
+        name: "Developer Docs",
+        link: "/developer-documentation",
       },
     ],
   },
   {
-    title: "COMPANY",
+    title: "LEGAL & POLICIES",
     links: [
       {
-        name: "About Us",
-        link: "",
-      },
-      {
-        name: "Mission Statements",
-        link: "",
-      },
-      {
-        name: "Contact",
-        link: "",
+        name: "Terms of Service",
+        link: "/terms",
       },
       {
         name: "Privacy Policy",
-        link: "",
+        link: "/privacy",
+      },
+      {
+        name: "Refund Policy",
+        link: "/refund-policy",
       },
     ],
   },

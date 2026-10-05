@@ -41,7 +41,7 @@ const tiers = [
 	},
 	{
 		name: "Advanced",
-		price: "₦50,000",
+		price: "₦20,000",
 		period: "per month",
 		description: "Everything you need for a growing parish office.",
 		cta: "Request a quote",
@@ -75,7 +75,7 @@ const tiers = [
 const faqs = [
 	{
 		question: "Is there a free trial?",
-		answer: "Yes. The Parish plan includes a 14-day free trial with full access and no credit card required.",
+		answer: "Yes. Paid plans include a 14-day free trial with full access and no credit card required.",
 	},
 	{
 		question: "Can we migrate our existing records?",
@@ -83,7 +83,11 @@ const faqs = [
 	},
 	{
 		question: "What payment methods are supported?",
-		answer: "Bank transfer, card payments, and direct debit are supported for Nigerian accounts.",
+		answer: "Bank transfer, card payments, USSD, and direct debit are supported via Paystack & Flutterwave for Nigerian accounts.",
+	},
+	{
+		question: "What is your refund and cancellation policy?",
+		answer: "You can cancel your subscription at any time. Subscriptions are backed by a 7-day money-back guarantee. View our full Refund & Cancellation Policy for details.",
 	},
 ];
 
